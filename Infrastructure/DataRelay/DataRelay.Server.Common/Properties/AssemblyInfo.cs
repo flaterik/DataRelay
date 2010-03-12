@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("FIM")]
 [assembly: AssemblyProduct("MySpace.DataRelay.Server.Common")]
-[assembly: AssemblyCopyright("Copyright © FIM 2008")]
+[assembly: AssemblyCopyright("Copyright © MySpace 2008")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
