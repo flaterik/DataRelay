@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="RelayTransportSettings" targetNamespace="http://myspace.com/RelayTransportSettings.xsd" elementFormDefault="qualified" xmlns="http://myspace.com/RelayTransportSettings.xsd" xmlns:mstns="http://myspace.com/RelayTransportSettings.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="TransportSettings">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="ListenPort" type="xs:int" minOccurs="1" maxOccurs="1" nillable="false"/>
+        <xs:element name="HttpListenPort" type="xs:int" minOccurs="0" maxOccurs="1" nillable="true" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

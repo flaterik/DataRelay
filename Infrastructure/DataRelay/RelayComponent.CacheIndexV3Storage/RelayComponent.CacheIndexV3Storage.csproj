@@ -1,0 +1,191 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{5C5513D3-6995-43C9-AA66-A8C729AE90F7}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MySpace.DataRelay.RelayComponent.CacheIndexV3Storage</RootNamespace>
+    <AssemblyName>MySpace.DataRelay.RelayComponent.CacheIndexV3Storage</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="$(Platform)!='x64'">
+      <ItemGroup>
+        <Reference Include="MySpace.BerkeleyDb.Configuration.win32, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Configuration.win32.dll</HintPath>
+        </Reference>
+        <Reference Include="MySpace.BerkeleyDb.Facade.win32, Version=1.0.0.1, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Facade.win32.dll</HintPath>
+        </Reference>
+        <Reference Include="MySpace.BerkeleyDb.Wrapper.win32, Version=1.0.2718.25488, Culture=neutral, processorArchitecture=x86">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.win32.dll</HintPath>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(Platform)=='x64'">
+      <ItemGroup>
+        <Reference Include="MySpace.BerkeleyDb.Configuration.x64, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Configuration.x64.dll</HintPath>
+        </Reference>
+        <Reference Include="MySpace.BerkeleyDb.Facade.x64, Version=1.0.0.1, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Facade.x64.dll</HintPath>
+        </Reference>
+        <Reference Include="MySpace.BerkeleyDb.Wrapper.x64, Version=1.0.2718.25488, Culture=neutral, processorArchitecture=x64">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.x64.dll</HintPath>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <ItemGroup>
+    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="PowerCollections, Version=1.0.2141.24679, Culture=neutral, PublicKeyToken=e7bb31f1c2166e2e, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\PowerCollections.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Context\OutDeserializationContext.cs" />
+    <Compile Include="Context\StringHashCollection.cs" />
+    <Compile Include="PerfCounters\PerformanceCounterConstant.cs" />
+    <Compile Include="PerfCounters\PerformanceCounters.cs" />
+    <Compile Include="Processors\IntersectionQueryProcessor.cs" />
+    <Compile Include="Processors\BaseRemoteClusteredQueryProcessor.cs" />
+    <Compile Include="Processors\MultiIndexIdQueryProcessor.cs" />
+    <Compile Include="Processors\RandomQueryProcessor.cs" />
+    <Compile Include="Processors\RemoteClusteredIntersectionQueryProcessor.cs" />
+    <Compile Include="Processors\RemoteClusteredPagedIndexQueryProcessor.cs" />
+    <Compile Include="Processors\RemoteClusteredSpanQueryProcessor.cs" />
+    <Compile Include="Processors\SpanQueryProcessor.cs" />
+    <Compile Include="Store\CacheIndexInternalAdapter.cs" />
+    <Compile Include="Store\InternalItem.cs" />
+    <Compile Include="Store\InternalItemAdapter.cs" />
+    <Compile Include="Store\InternalItemList.cs" />
+    <Compile Include="Utils\DataTierUtil.cs" />
+    <Compile Include="Utils\InternalItemComparer.cs" />
+    <Compile Include="Utils\LoggingUtil.cs" />
+    <Compile Include="Context\MessageContext.cs" />
+    <Compile Include="Store\CacheIndexInternal.cs" />
+    <Compile Include="Config\CacheIndexV3StorageConfig.cs">
+      <DependentUpon>CacheIndexV3StorageConfig.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="Store\CacheIndexV3Store.cs" />
+    <Compile Include="Processors\ContainsQueryProcessor.cs" />
+    <Compile Include="Processors\FilteredIndexDeleteProcessor.cs" />
+    <Compile Include="Processors\UpdateProcessor.cs" />
+    <Compile Include="Processors\GetProcessor.cs" />
+    <Compile Include="Processors\GetRangeQueryProcessor.cs" />
+    <Compile Include="Processors\DeleteAllInTypeProcessor.cs" />
+    <Compile Include="Processors\DeleteProcessor.cs" />
+    <Compile Include="Utils\FilterUtil.cs" />
+    <Compile Include="Processors\FirstLastQueryProcessor.cs" />
+    <Compile Include="Utils\IndexServerUtils.cs" />
+    <Compile Include="Context\IndexStoreContext.cs" />
+    <Compile Include="Utils\LegacySerializationUtil.cs" />
+    <Compile Include="Enums\IndexServerMode.cs" />
+    <Compile Include="Utils\LockingUtil.cs" />
+    <Compile Include="Processors\PagedQueryProcessor.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Processors\SaveProcessor.cs" />
+    <Compile Include="Context\InDeserializationContext.cs" />
+    <Compile Include="Context\TagHashCollection.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Config\CacheIndexV3StorageConfig.xsd" />
+    <None Include="ServerConfigs\RelayComponents.config" />
+    <None Include="ServerConfigs\RelayNodeMapping.config" />
+    <None Include="ServerConfigs\RelayTransportSettings.config" />
+    <None Include="ServerConfigs\RelayTypeSettings.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DataRelay.Client\DataRelay.Client.csproj">
+      <Project>{9EAF04E0-5DB7-4FBD-A23C-B4C93DA1AE63}</Project>
+      <Name>DataRelay.Client</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DataRelay.Common\DataRelay.Common.csproj">
+      <Project>{96D6B431-2895-4C2D-A9B3-2F96655F8C5F}</Project>
+      <Name>DataRelay.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DataRelay.NodeFactory\DataRelay.NodeFactory.csproj">
+      <Project>{A7168E1C-2A56-44BE-80C3-342B4A0EFC09}</Project>
+      <Name>DataRelay.NodeFactory</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RelayComponent.BerkeleyDb\RelayComponent.BerkeleyDb.csproj">
+      <Project>{07B5031F-1EC5-420E-937C-C4D28C5E71B8}</Project>
+      <Name>RelayComponent.BerkeleyDb</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RelayComponent.Forwarding\RelayComponent.Forwarding.csproj">
+      <Project>{74FE2ACF-763C-483B-BF5D-673A807F7E17}</Project>
+      <Name>RelayComponent.Forwarding</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

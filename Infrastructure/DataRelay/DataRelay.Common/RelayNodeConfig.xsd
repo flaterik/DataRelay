@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="RelayNodeConfig" targetNamespace="http://myspace.com/RelayNodeConfig.xsd" elementFormDefault="qualified" xmlns="http://myspace.com/RelayNodeConfig.xsd" xmlns:mstns="http://myspace.com/RelayNodeConfig.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" version="1.0">
+	<xs:element name="RelayNodeConfig">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="RelayComponents">
+					<xs:complexType>
+						<xs:sequence>
+						</xs:sequence>
+						<xs:attribute name="configSource" type="xs:string" />
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="TypeSettings" minOccurs="1" maxOccurs="1">
+					<xs:complexType>
+						<xs:sequence>
+						</xs:sequence>
+						<xs:attribute name="configSource" type="xs:string" />
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="RelayNodeMapping" minOccurs="1" maxOccurs="1">
+					<xs:complexType>
+						<xs:sequence>
+						</xs:sequence>
+						<xs:attribute name="configSource" type="xs:string" />
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="TransportSettings" minOccurs="0" maxOccurs="1" nillable="true">
+					<xs:complexType>
+						<xs:sequence>
+						</xs:sequence>
+						<xs:attribute name="configSource" type="xs:string" />
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="OutputTraceInfo" type="xs:boolean" minOccurs="0" maxOccurs="1" nillable="true" />
+        <xs:element name="TraceSettings" minOccurs="0" maxOccurs="1" nillable="true">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="WriteToDiagnostic" type="xs:boolean" minOccurs="0" maxOccurs="1" nillable="true" default="true"/>
+              <xs:element name="TraceFilename" type="xs:string" minOccurs="0" maxOccurs="1" nillable="true"/>
+              <xs:element name="SampleSeconds" type="xs:int" minOccurs="0" maxOccurs="1" nillable="true"/>              
+              <xs:element name="TracedMessageTypes" minOccurs="0" maxOccurs="1" nillable="true">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="MessageType" type="MessageType" minOccurs="0" maxOccurs="unbounded" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="TracedMessageTypeIds" minOccurs="0" maxOccurs="1" nillable="true">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="MessageTypeId" type="xs:short" minOccurs="0" maxOccurs="unbounded" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element> 
+				<xs:element name="NumberOfThreads" type="xs:int" minOccurs="0" maxOccurs="1" nillable="true"/>
+				<xs:element name="NumberOfOutMessageThreads" type="xs:int" minOccurs="0" maxOccurs ="1" nillable="true" />
+				<xs:element name="MaximumMessageQueueDepth" type="xs:int" minOccurs="0" maxOccurs="1" nillable="true"/>
+				<xs:element name="MaximumOutMessageQueueDepth" type="xs:int" minOccurs="0" maxOccurs ="1" nillable="true" />
+				
+				<xs:element name="FatalShutdownTimeout" type="xs:int" minOccurs="0" maxOccurs="1" nillable="true"/>
+				<xs:element name="SendExpirationDeletes" type="xs:boolean" minOccurs="0" nillable="true" />
+				<xs:element name="IgnoredMessageTypes" nillable="true" minOccurs="0" maxOccurs="1">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="MessageType" type="MessageType" minOccurs="0" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="OutMessagesOnRelayThreads" type="xs:boolean" minOccurs="0" maxOccurs ="1" nillable="true"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:simpleType name="MessageType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Get" />
+			<xs:enumeration value="Save" />
+			<xs:enumeration value="Delete" />
+			<xs:enumeration value="DeleteInAllTypes" />
+			<xs:enumeration value="DeleteAllInType" />
+			<xs:enumeration value="Update" />
+			<xs:enumeration value="Query" />
+			<xs:enumeration value="Invoke" />
+      <xs:enumeration value="Notification"/>
+      <xs:enumeration value="Increment"/>
+      <xs:enumeration value="SaveWithConfirm"/>
+      <xs:enumeration value="UpdateWithConfirm"/>
+      <xs:enumeration value="DeleteWithConfirm"/>
+      <xs:enumeration value="DeleteAllInTypeWithConfirm"/>
+      <xs:enumeration value="DeleteAllWithConfirm"/>
+      <xs:enumeration value="DeleteInAllTypesWithConfirm"/>
+      <xs:enumeration value="NotificationWithConfirm"/>
+      <xs:enumeration value="IncrementWithConfirm"/>
+     </xs:restriction>
+	</xs:simpleType>
+</xs:schema>

@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="http://myspace.com/TypeMappingConfig.xsd" elementFormDefault="qualified" targetNamespace="http://myspace.com/TypeMappingConfig.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="typeMapping" nillable="true" type="tns:TypeMappingConfig" />
+  <xs:complexType name="TypeMappingConfig">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="types" type="tns:ArrayOfTypeInfoConfig" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ArrayOfTypeInfoConfig">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="type" nillable="true" type="tns:TypeInfoConfig" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="TypeInfoConfig">
+    <xs:attribute name="id" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:short">
+          <xs:minInclusive value="0" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="name" type="xs:string" use="required" />
+    <xs:attribute name="wellEstablished" type="xs:boolean" use="required" />
+  </xs:complexType>
+</xs:schema>

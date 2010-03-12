@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="http://myspace.com/CacheIndexV3StorageConfig.xsd" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://myspace.com/CacheIndexV3StorageConfig.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="http://myspace.com/BerkeleyDbConfig.xsd" />
+  <xs:element name="CacheIndexV3StorageConfiguration">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="CacheIndexV3StorageConfig">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="StorageStateFile" type="xs:string" />
+              <xs:element name="IndexTypeMappingCollection">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="IndexTypeMapping">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="TypeId" type="xs:unsignedByte" />
+                          <xs:element name="Mode" type="xs:string" />
+                          <xs:element name="MetadataStoredSeperately" type="xs:boolean" />
+                          <xs:element name="FullDataIDCollection">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element maxOccurs="unbounded" name="DataIDPart">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="IsTag" type="xs:boolean" />
+                                      <xs:element name="PartName" type="xs:string" />
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="IndexCollection">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="Index">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="IndexName" type="xs:string" />
+                                      <xs:element name="ExtendedIdSuffix" type="xs:unsignedByte" />
+                                      <xs:element name="PrimarySortInfo">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="FieldName">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="xs:string">
+                                                    <xs:attribute name="IsTag" type="xs:boolean" use="required" />
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                            <xs:element name="SortOrderStructureCollection">
+                                              <xs:complexType>
+                                                <xs:sequence>
+                                                  <xs:element name="SortOrderStructure">
+                                                    <xs:complexType>
+                                                      <xs:sequence>
+                                                        <xs:element name="DataType" type="xs:string" />
+                                                        <xs:element name="SortBy" type="xs:string" />
+                                                      </xs:sequence>
+                                                    </xs:complexType>
+                                                  </xs:element>
+                                                </xs:sequence>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="MetadataPresent" type="xs:boolean" />
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element xmlns:q1="http://myspace.com/BerkeleyDbConfig.xsd" ref="q1:BerkeleyDbConfig" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

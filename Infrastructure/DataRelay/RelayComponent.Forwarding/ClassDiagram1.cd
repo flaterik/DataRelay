@@ -1,0 +1,141 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Font Name="Tahoma" Size="8.25" />
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.CounterInstaller" Collapsed="true">
+    <Position X="0.5" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>CounterInstaller.cs</FileName>
+      <HashCode>CCAAAAAAACAAAAAEAACAAAACAAAAAAAAAAAAAAAAAAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.DebugWriter" Collapsed="true">
+    <Position X="2.25" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>DebugWriter.cs</FileName>
+      <HashCode>IAAAAAAAAAAgAAAAAAABIAAAAAAAAAAAQAAIAAAAAAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.Forwarder" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="4" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>Forwarder.cs</FileName>
+      <HashCode>ASAAAABAAAAAAQAEAAAAAQCAAAAAAAAAAABoAAAAgEA=</HashCode>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.ForwardingConfig" Collapsed="true">
+    <Position X="5.75" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>ForwardingConfig.cs</FileName>
+      <HashCode>AAAAAQAAAAAAEAAAAAAAAAAAAAAAAAAAAIAIAAAAAAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.QueueConfig" Collapsed="true">
+    <Position X="7.5" Y="2.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>ForwardingConfig.cs</FileName>
+      <HashCode>AQEAAAAAAAAAAIAAAAAAAAAAAAAAACAAAAAAAAAAAAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.ForwardingCounters" Collapsed="true">
+    <Position X="7.5" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>ForwardingCounters.cs</FileName>
+      <HashCode>CCQAMAAQQAQAAQABYAQgAAAQAEAQQAAAAwAAAgAAFgA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.MessageQueue" Collapsed="true">
+    <Position X="0.5" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>MessageQueue.cs</FileName>
+      <HashCode>AQNAAAAAAAAAAIAAAAIAAIIAACBABAgAAAAAAAIAAAg=</HashCode>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.Node" Collapsed="true">
+    <Position X="2.25" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>Node.cs</FileName>
+      <HashCode>ICIGADBAAABBdALEAsgAAISSjIQAqICAgDIqiCIAIAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.NodeCluster" Collapsed="true">
+    <Position X="4" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>NodeCluster.cs</FileName>
+      <HashCode>CAAAEAgBAAAAAACBCAAAAAAgASCAAAAAAAAKAAIAABA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.NodeGroup" Collapsed="true">
+    <Position X="5.75" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>NodeGroup.cs</FileName>
+      <HashCode>AAAAAAAAEAEAAIAEAAAAAAAgCkAAAAAAIAEKAAICABE=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.NodeGroupCollection" Collapsed="true">
+    <Position X="7.5" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>NodeGroupCollection.cs</FileName>
+      <HashCode>AAAAAAAAAAAAACCAAAAAAAAgAAAAAAAAAAACAAAAAAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.NodeManager" Collapsed="true">
+    <Position X="0.5" Y="2.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>NodeManager.cs</FileName>
+      <HashCode>AQIAACEAAgAAAUQEEAABAQAABIRAEgEQQEwAACAAARg=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.NodeWithMessagesCollection" Collapsed="true">
+    <Position X="4" Y="2.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>NodeWithMessages.cs</FileName>
+      <HashCode>AAIAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.NodeWithMessages" Collapsed="true">
+    <Position X="2.25" Y="2.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>NodeWithMessages.cs</FileName>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.SimpleLinkedList&lt;T&gt;" Collapsed="true">
+    <Position X="0.5" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>SimpleLinkedList.cs</FileName>
+      <HashCode>AAAAAAAAgAAAAAAABAAAAAQAAACAAIAAAAAAAAAACAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.SimpleLinkedListNode&lt;T&gt;" Collapsed="true">
+    <Position X="2.25" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>SimpleLinkedList.cs</FileName>
+      <HashCode>AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAA=</HashCode>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.Transports.NullTransport" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="5.75" Y="2.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>Transports\NullTransport.cs</FileName>
+      <HashCode>AAAAAAAAACAAAAAABCAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="MySpace.DataRelay.RelayComponent.Forwarding.Transports.SocketTransportAdapter" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="4" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>Transports\SocketTransportAdapter.cs</FileName>
+      <HashCode>AAAAAAAAACAAAAAABCAAAFAAAAAAAAAAAAAAAAAAAAI=</HashCode>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Interface Name="MySpace.DataRelay.RelayComponent.Forwarding.Transports.IRelayTransport" Collapsed="true">
+    <Position X="0.5" Y="4.75" Width="1.5" />
+    <TypeIdentifier>
+      <FileName>Transports\IRelayTransport.cs</FileName>
+      <HashCode>AAAAAAAAACAAAAAABCAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+    </TypeIdentifier>
+  </Interface>
+</ClassDiagram>

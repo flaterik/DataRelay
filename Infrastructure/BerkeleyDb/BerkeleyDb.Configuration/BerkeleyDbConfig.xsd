@@ -1,0 +1,392 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="http://myspace.com/BerkeleyDbConfig.xsd"
+           elementFormDefault="qualified"
+           targetNamespace="http://myspace.com/BerkeleyDbConfig.xsd"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema" >
+  <xs:element name="BerkeleyDbConfig" nillable="true" type="tns:BerkeleyDbConfig" />
+  <xs:complexType name="BerkeleyDbConfig">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="MinTypeId" type="xs:short" nillable="true"/>
+      <xs:element minOccurs="0" maxOccurs="1" name="MaxTypeId" type="xs:short" nillable="true"/>
+      <xs:element minOccurs="0" maxOccurs="1" name="DbLoadMode" nillable="true">
+        <xs:simpleType>
+          <xs:list>
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="OnStartup" />
+                <xs:enumeration value="Lazy" />
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:list>
+        </xs:simpleType>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="BufferSize" type="xs:int" nillable="true"/>
+      <xs:element minOccurs="0" maxOccurs="1" name="MaxPoolItemReuse" type="xs:int" nillable="true"/>
+      <xs:element minOccurs="0" maxOccurs="1" name="StatTimer" nillable="true">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="1" maxOccurs="1" name="Enabled" type="xs:boolean" />
+            <xs:element minOccurs="0" maxOccurs="1" name="Interval" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" name="StatFlag">
+              <xs:simpleType>
+                <xs:list>
+                  <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                      <xs:enumeration value="None" />
+                      <xs:enumeration value="FastStat" />
+                      <xs:enumeration value="ReadCommitted" />
+                      <xs:enumeration value="ReadUncommitted" />
+                    </xs:restriction>
+                  </xs:simpleType>
+                </xs:list>
+              </xs:simpleType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="ThrottleThreads" nillable="true">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="1" maxOccurs="1" name="Enabled" type="xs:boolean" />
+            <xs:element minOccurs="0" maxOccurs="1" name="ThreadCount" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" name="WaitTimeout" type="xs:int" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="AllowPartialDatabaseRecovery" type="xs:boolean" nillable="true"/>
+      <xs:element minOccurs="0" maxOccurs="1" name="RecoveryFailureAction" nillable="true">
+        <xs:simpleType>
+          <xs:list>
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="RemoveAllFiles" />
+                <xs:enumeration value="ThrowException" />
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:list>
+        </xs:simpleType>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="ShutdownWindow" type="xs:long" nillable="true"/>
+      <xs:element minOccurs="0" maxOccurs="1" name="EnvironmentConfig" nillable="true">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" maxOccurs="1" name="CacheSize">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element minOccurs="0" maxOccurs="1" name="GigaBytes" type="xs:int" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="Bytes" type="xs:int" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="NumberCaches" type="xs:int" />
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="CacheTrickle">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element minOccurs="1" maxOccurs="1" name="Enabled" type="xs:boolean"  />
+                  <xs:element minOccurs="0" maxOccurs="1" name="Interval" type="xs:int" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="Percentage" type="xs:int" />
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Checkpoint">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element minOccurs="1" maxOccurs="1" name="Enabled" type="xs:boolean" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="Interval" type="xs:int" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="LogAgeMinutes" type="xs:int" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="LogSizeKByte" type="xs:int" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="Force" type="xs:boolean" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="Backup">
+                    <xs:complexType>
+                      <xs:sequence>
+                        <xs:element minOccurs="1" maxOccurs="1" name="Enabled" type="xs:boolean" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="CopyLogs" type="xs:boolean" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="Directory" type="xs:string" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="DataCopyBufferKByte" type="xs:int" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="Interval" type="xs:int" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="Method">
+                          <xs:simpleType>
+                            <xs:list>
+                              <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                  <xs:enumeration value="MpoolFile" />
+                                  <xs:enumeration value="Fstream" />
+                                </xs:restriction>
+                              </xs:simpleType>
+                            </xs:list>
+                          </xs:simpleType>
+                        </xs:element>
+                        <xs:element minOccurs="0" maxOccurs="1" name="ReinitializeInterval" type="xs:int" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="ReinitializeLogFileCount" type="xs:int" />
+                      </xs:sequence>
+                    </xs:complexType>
+                  </xs:element>
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Compact">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element minOccurs="1" maxOccurs="1" name="Enabled" type="xs:boolean" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="Interval" type="xs:int" />
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="HomeDirectory" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="OpenFlags">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="OpenFlag" minOccurs="0" maxOccurs="unbounded">
+                    <xs:simpleType>
+                      <xs:list>
+                        <xs:simpleType>
+                          <xs:restriction base="xs:string">
+                            <xs:enumeration value="None" />
+                            <xs:enumeration value="JoinEnv" />
+                            <xs:enumeration value="InitCDB" />
+                            <xs:enumeration value="InitLock" />
+                            <xs:enumeration value="InitLog" />
+                            <xs:enumeration value="InitMPool" />
+                            <xs:enumeration value="InitRep" />
+                            <xs:enumeration value="InitTxn" />
+                            <xs:enumeration value="Recover" />
+                            <xs:enumeration value="RecoverFatal" />
+                            <xs:enumeration value="UseEnviron" />
+                            <xs:enumeration value="UseEnvironRoot" />
+                            <xs:enumeration value="Create" />
+                            <xs:enumeration value="LockDown" />
+                            <xs:enumeration value="Private" />
+                            <xs:enumeration value="SystemMem" />
+                            <xs:enumeration value="ThreadSafe" />
+                          </xs:restriction>
+                        </xs:simpleType>
+                      </xs:list>
+                    </xs:simpleType>
+                  </xs:element>
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Flags">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="Flag" minOccurs="0" maxOccurs="unbounded">
+                    <xs:simpleType>
+                      <xs:list>
+                        <xs:simpleType>
+                          <xs:restriction base="xs:string">
+                            <xs:enumeration value="Direct" />
+                            <xs:enumeration value="DSync" />
+                            <xs:enumeration value="DirectLog" />
+                            <xs:enumeration value="LSync" />
+                            <xs:enumeration value="TxnNoSync" />
+                            <xs:enumeration value="TxnNoWriteSync" />
+                            <xs:enumeration value="LogInMemory"/>
+                          </xs:restriction>
+                        </xs:simpleType>
+                      </xs:list>
+                    </xs:simpleType>      
+                  </xs:element>
+                </xs:sequence>
+              </xs:complexType>              
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="MaxLockers" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" name="MaxLocks" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" name="MaxLockObjects" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" name="DeadlockDetection">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element minOccurs="1" maxOccurs="1" name="Enabled" type="xs:boolean" />
+                  <xs:element minOccurs="1" maxOccurs="1" name="Mode" >
+                    <xs:simpleType>
+                      <xs:list>
+                        <xs:simpleType>
+                          <xs:restriction base="xs:string">
+                            <xs:enumeration value="OnTransaction" />
+                            <xs:enumeration value="OnTimer" />
+                            <xs:enumeration value="OnTimeout" />
+                          </xs:restriction>
+                        </xs:simpleType>
+                      </xs:list>
+                    </xs:simpleType>
+                  </xs:element>
+                  <xs:element minOccurs="1" maxOccurs="1" name="DetectPolicy" >
+                    <xs:simpleType>
+                      <xs:list>
+                        <xs:simpleType>
+                          <xs:restriction base="xs:string">
+                            <xs:enumeration value="Default" />
+                            <xs:enumeration value="Epire" />
+                            <xs:enumeration value="MaxLocks" />
+                            <xs:enumeration value="MaxWriteLocks" />
+                            <xs:enumeration value="MinLocks" />
+                            <xs:enumeration value="MinWriteLocks" />
+                            <xs:enumeration value="OldestLocks" />
+                            <xs:enumeration value="Random" />
+                            <xs:enumeration value="Youngest" />
+                          </xs:restriction>
+                        </xs:simpleType>
+                      </xs:list>
+                    </xs:simpleType>
+                  </xs:element>
+                  <xs:element minOccurs="0" maxOccurs="1" name="TimerInterval" type="xs:int" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="Timeout">
+                    <xs:complexType>
+                      <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="Interval" type="xs:int" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="Flag">
+                          <xs:simpleType>
+                            <xs:list>
+                              <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                  <xs:enumeration value="LockTimeout" />
+                                  <xs:enumeration value="TxnTimeout" />
+                                </xs:restriction>
+                              </xs:simpleType>
+                            </xs:list>
+                          </xs:simpleType>
+                        </xs:element>
+                      </xs:sequence>
+                    </xs:complexType>
+                  </xs:element>
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="TempDirectory" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="VerboseDeadlock" type="xs:boolean" />
+            <xs:element minOccurs="0" maxOccurs="1" name="VerboseRecovery" type="xs:boolean" />
+            <xs:element minOccurs="0" maxOccurs="1" name="VerboseWaitsFor" type="xs:boolean" />
+            <xs:element minOccurs="0" maxOccurs="1" name="VerifyOnStartup" type="xs:boolean" />
+            <xs:element minOccurs="0" maxOccurs="1" name="DatabaseConfigs" nillable="true">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="DatabaseConfig" minOccurs="0" maxOccurs="unbounded">                    
+                    <xs:complexType>                      
+                      <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="FileName" type="xs:string" nillable="true"/>
+                        <xs:element minOccurs="0" maxOccurs="1" name="FederationSize" type="xs:int" />                        
+                        <xs:element minOccurs="0" maxOccurs="1" name="OpenFlags">
+                          <xs:complexType>
+                            <xs:sequence>
+                              <xs:element name="OpenFlag" minOccurs="0" maxOccurs="unbounded">
+                                <xs:simpleType>
+                                  <xs:list>
+                                    <xs:simpleType>
+                                      <xs:restriction base="xs:string">
+                                        <xs:enumeration value="None" />
+                                        <xs:enumeration value="Create" />
+                                        <xs:enumeration value="NoMemoryMap" />
+                                        <xs:enumeration value="ReadOnly" />
+                                        <xs:enumeration value="ThreadSafe" />
+                                        <xs:enumeration value="Truncate" />
+                                        <xs:enumeration value="Exclusive" />
+                                        <xs:enumeration value="AutoCommit" />
+                                        <xs:enumeration value="DirtyRead" />
+                                      </xs:restriction>
+                                    </xs:simpleType>
+                                  </xs:list>
+                                </xs:simpleType>      
+                              </xs:element>
+                            </xs:sequence>
+                          </xs:complexType>
+                        </xs:element>
+                        <xs:element minOccurs="0" maxOccurs="1" name="Flags" >
+                          <xs:complexType>
+                            <xs:sequence>
+                              <xs:element name="Flag" minOccurs="0" maxOccurs="unbounded">
+                                <xs:simpleType>
+                                  <xs:list>
+                                    <xs:simpleType>
+                                      <xs:restriction base="xs:string">
+                                        <xs:enumeration value="None" />
+                                        <xs:enumeration value="ChkSum" />
+                                        <xs:enumeration value="Dup" />
+                                        <xs:enumeration value="DupSort" />
+                                        <xs:enumeration value="Encrypt" />
+                                        <xs:enumeration value="InOrder" />
+                                        <xs:enumeration value="RecNum" />
+                                        <xs:enumeration value="Renumber" />
+                                        <xs:enumeration value="RevSplitOff" />
+                                        <xs:enumeration value="Snapshot" />
+                                        <xs:enumeration value="TxnNotDurable" />
+                                      </xs:restriction>
+                                    </xs:simpleType>
+                                  </xs:list>
+                                </xs:simpleType>      
+                              </xs:element>
+                            </xs:sequence>                            
+                          </xs:complexType>                          
+                        </xs:element>
+                        <xs:element minOccurs="0" maxOccurs="1" name="PageSize" type="xs:long" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="Type">
+                          <xs:simpleType>
+                            <xs:restriction base="xs:string">
+                              <xs:enumeration value="BTree" />
+                              <xs:enumeration value="Hash" />
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:element>
+                        <xs:element minOccurs="0" maxOccurs="1" name="HashFillFactor" type="xs:long" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="HashSize" type="xs:long" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="RecordLength" type="xs:int" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="MaxDeadlockRetries" type="xs:int" />
+                        <xs:element minOccurs="0" maxOccurs="1" name="TransactionMode">
+                          <xs:simpleType>
+                            <xs:restriction base="xs:string">
+                              <xs:enumeration value="None" />
+                              <xs:enumeration value="PerCall" />
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:element>
+                        <xs:element minOccurs="0" maxOccurs="1" name="Compact">
+                          <xs:complexType>
+                            <xs:sequence>
+                              <xs:element minOccurs="0" maxOccurs="1" name="Enabled" type="xs:boolean" />
+                              <xs:element minOccurs="0" maxOccurs="1" name="Percentage" type="xs:int" />
+                              <xs:element minOccurs="0" maxOccurs="1" name="MaxPages" type="xs:int" />
+                              <xs:element minOccurs="0" maxOccurs="1" name="Timeout" type="xs:int" />
+                            </xs:sequence>
+                          </xs:complexType>
+                        </xs:element>      
+                      </xs:sequence>
+                      <xs:attribute  name="Id" type="xs:int" />
+                    </xs:complexType>
+                  </xs:element>                  
+                </xs:sequence>                
+              </xs:complexType>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="MutexIncrement" type="xs:unsignedInt" />
+            <xs:element minOccurs="0" maxOccurs="1" name="LockStatistics">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element minOccurs="1" maxOccurs="1" name="Enabled" type="xs:boolean" />
+                  <xs:element minOccurs="0" maxOccurs="1" name="TimerInterval" type="xs:int" />
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="MaxLogSize" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" name="LogBufferSize" type="xs:int" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</xs:schema>
