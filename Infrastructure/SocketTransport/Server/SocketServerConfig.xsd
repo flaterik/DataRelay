@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="SocketServerConfig" targetNamespace="http://myspace.com/SocketServerConfig.xsd" elementFormDefault="qualified" xmlns="http://myspace.com/SocketServerConfig.xsd" xmlns:mstns="http://myspace.com/SocketServerConfig.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" version="2">
+	<xs:element name="SocketServerConfig">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="ConnectionCheckIntervalSeconds" type="xs:int" />
+				<xs:element name="ReceiveTimeout" type="xs:int" />
+				<xs:element name="ReceiveBufferSize" type="xs:int" />
+				<xs:element name="SendTimeout" type="xs:int" />
+				<xs:element name="SendBufferSize" type="xs:int" />
+				<xs:element name="InitialMessageSize" type="xs:int" />
+				<xs:element name="MaximumMessageSize" type="xs:int" />
+				<xs:element name="DiscardTooBigMessages" type="xs:boolean" />
+				<xs:element name="OnewayQueueDepth" type="xs:int" />
+				<xs:element name="SyncQueueDepth" type="xs:int" />
+				<xs:element name="OnewayThreads" type="xs:int" />
+				<xs:element name="SyncThreads" type="xs:int" />
+				<xs:element name="BufferPoolReuses" type="xs:int" />
+				<xs:element type="xs:int" name="ConnectionStateReuses" />
+				<xs:element name="UseNetworkOrder" type="xs:boolean" />
+				<xs:element name="MaximumWorkerThreads" type="xs:int" minOccurs="0" maxOccurs="1" />
+				<xs:element name="MaximumCompletionPortThreads" type="xs:int" />
+				<xs:element name="MaximumOpenSockets" type="xs:int" />
+			</xs:sequence>
+			<xs:attribute name="type" type="xs:string" />
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

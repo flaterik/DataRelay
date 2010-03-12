@@ -1,0 +1,15 @@
+﻿The following list is a list of files available with Microsoft Robotics
+Developer Studio 2008 R2 for redistribution under the Microsoft Robotics
+Developer Studio 2008 R2 license. If the Microsoft software you have
+licensed is not Microsoft Robotics Developer Studio 2008 R2, only the files
+that are installed by the Microsoft software may be redistributed under
+such license.
+
+----------------------------------------------------------------------------
+
+Runtime Components:
+
+Subject to the license terms for the software, the following files may be
+distributed unmodified:
+
+	Microsoft CCR and DSS Runtime 2008 R2 Redistributable.exe

@@ -1,0 +1,236 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{74FE2ACF-763C-483B-BF5D-673A807F7E17}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MySpace.DataRelay.RelayComponent.Forwarding</RootNamespace>
+    <AssemblyName>MySpace.DataRelay.RelayComponent.Forwarding</AssemblyName>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|AnyCPU' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x86' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x64' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Ccr.Core, Version=2.0.913.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\Microsoft.Ccr.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.ResourcePool, Version=1.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.ResourcePool.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="PowerCollections, Version=1.0.2141.24679, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\PowerCollections.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Configuration.Install" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Status\BulkMessageInfo.cs" />
+    <Compile Include="Status\HydrationPolicyStatus.cs" />
+    <Compile Include="Status\MessageCountInfo.cs" />
+    <Compile Include="Status\ServerDownErrorInfo.cs" />
+    <Compile Include="Status\ServerStatus.cs" />
+    <Compile Include="Status\ForwarderStatus.cs" />
+    <Compile Include="HandleWithCount.cs" />
+    <Compile Include="MessagesWithLock.cs" />
+    <Compile Include="Status\NodeClusterStatus.cs" />
+    <Compile Include="Status\NodeGroupStatus.cs" />
+    <Compile Include="Status\NodeStatus.cs" />
+    <Compile Include="NodeWithInfo.cs" />
+    <Compile Include="NodeWithMessagesCollection.cs" />
+    <Compile Include="Status\RelayInfo.cs" />
+    <Compile Include="Status\RelayStatistics.cs" />
+    <Compile Include="Status\ServerUnreachableErrorInfo.cs" />
+    <Compile Include="Status\TypeSettingStatus.cs" />
+    <Compile Include="SynchronousAsyncResult.cs" />
+    <Compile Include="SyncRelayOperationException.cs" />
+    <Compile Include="CounterInstaller.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CounterInstaller.Designer.cs">
+      <DependentUpon>CounterInstaller.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DebugWriter.cs" />
+    <Compile Include="ErrorQueueState.cs" />
+    <Compile Include="Forwarder.cs" />
+    <Compile Include="ForwarderRuntimeInfo.cs" />
+    <Compile Include="ForwardingConfig.cs">
+      <DependentUpon>ForwardingConfig.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="ForwardingCounters.cs" />
+    <Compile Include="MessageQueue.cs" />
+    <Compile Include="Node.cs" />
+    <Compile Include="NodeCluster.cs" />
+    <Compile Include="NodeGroup.cs" />
+    <Compile Include="NodeGroupCollection.cs" />
+    <Compile Include="NodeManager.cs" />
+    <Compile Include="NodeWithMessages.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SimpleLinkedList.cs" />
+    <Compile Include="TransportFactory.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram1.cd" />
+    <None Include="ForwardingConfig.xsd">
+      <SubType>
+      </SubType>
+    </None>
+    <None Include="ForwardingConfig.xsx">
+      <DependentUpon>ForwardingConfig.xsd</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{B4F97281-0DBD-4835-9ED8-7DFB966E87FF}" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DataRelay.Common\DataRelay.Common.csproj">
+      <Project>{96D6B431-2895-4C2D-A9B3-2F96655F8C5F}</Project>
+      <Name>DataRelay.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DataRelay.NodeFactory\DataRelay.NodeFactory.csproj">
+      <Project>{A7168E1C-2A56-44BE-80C3-342B4A0EFC09}</Project>
+      <Name>DataRelay.NodeFactory</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DataRelay.Transports.Socket\DataRelay.Transports.Socket.csproj">
+      <Project>{8EE6155E-AD75-4D62-9E74-945E27565698}</Project>
+      <Name>DataRelay.Transports.Socket</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <PropertyGroup>
+    <PostBuildEvent>IF NOT EXIST "$(ProjectDir)..\..\..\_drop\" MKDIR "$(ProjectDir)..\..\..\_drop\"
+copy /Y "$(TargetDir)$(TargetName).*" "$(ProjectDir)..\..\..\_drop\"
+</PostBuildEvent>
+  </PropertyGroup>
+</Project>

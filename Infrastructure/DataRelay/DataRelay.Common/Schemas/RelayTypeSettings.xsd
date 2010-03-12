@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="RelayTypeSettings" targetNamespace="http://myspace.com/RelayTypeSettings.xsd" elementFormDefault="qualified" xmlns="http://myspace.com/RelayTypeSettings.xsd" xmlns:mstns="http://myspace.com/RelayTypeSettings.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" version="2">
+	<xs:element name="TypeSettings">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="TypeSettingCollection" maxOccurs="1" minOccurs="1">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="TypeSetting" minOccurs="1" maxOccurs="1000">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="TypeId" type="xs:short" />
+										<xs:element name="RelatedIndexTypeId" type="xs:short" nillable="true" default="0" minOccurs="0" maxOccurs="1" />
+										<xs:element name="Disabled" type="xs:boolean" nillable="true" default="false" minOccurs="0" maxOccurs="1"/>
+										<xs:element name="Compress" type="xs:boolean" nillable="true" default="false" minOccurs="0" maxOccurs="1"/>
+										<xs:element name="GroupName" type="xs:string" />
+										<xs:element name="CheckRaceCondition" type="xs:boolean" nillable="true" default="false" minOccurs="0" maxOccurs="1"/>
+										<xs:element name="TTLSetting" minOccurs="0" maxOccurs="1" nillable="true">
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="Enabled" type="xs:boolean" />
+													<xs:element name="DefaultTTLSeconds" type="xs:int" />
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="SyncInMessages" type="xs:boolean"  nillable="true" default="false" minOccurs="0" maxOccurs="1" />
+										<xs:element name="ThrowOnSyncFailure" type="xs:boolean"  nillable="true" default="false" minOccurs="0" maxOccurs="1"/>
+										<xs:element name="AssemblyQualifiedTypeName" type="xs:string" minOccurs="0" maxOccurs="1" />
+									</xs:sequence>
+									<xs:attribute name="TypeName" type="xs:string" />
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="MaxTypeId" type="xs:int" />
+			<xs:attribute name="Compressor" type="CompressionImplementation" />
+		</xs:complexType>
+	</xs:element>
+	<xs:simpleType name="CompressionImplementation">
+		<xs:restriction base="xs:string">			
+			<xs:enumeration value="ManagedZLib" />
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

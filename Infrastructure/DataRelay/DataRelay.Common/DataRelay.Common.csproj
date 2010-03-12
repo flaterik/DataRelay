@@ -1,0 +1,355 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{96D6B431-2895-4C2D-A9B3-2F96655F8C5F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MySpace.DataRelay</RootNamespace>
+    <AssemblyName>MySpace.DataRelay.Common</AssemblyName>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <CodeAnalysisRules>-Microsoft.Design#CA2210;-Microsoft.Design#CA1020;-Microsoft.Design#CA1021;-Microsoft.Design#CA1011;-Microsoft.Design#CA1031;-Microsoft.Design#CA1051;-Microsoft.Design#CA1002;-Microsoft.Design#CA1004;-Microsoft.Design#CA1014;-Microsoft.Design#CA1024;-Microsoft.Design#CA1062;-Microsoft.Globalization#CA1301;-Microsoft.Globalization#CA1302;-Microsoft.Globalization#CA1303;-Microsoft.Globalization#CA1306;-Microsoft.Globalization#CA1304;-Microsoft.Globalization#CA1305;-Microsoft.Globalization#CA1300;-Microsoft.Naming#CA1720;-Microsoft.Usage#CA2209</CodeAnalysisRules>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|AnyCPU' ">
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x86' ">
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x64' ">
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Ccr.Core, Version=2.0.913.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\Microsoft.Ccr.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.DataRelay.NodeFactory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.DataRelay.NodeFactory.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
+    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
+    <Reference Include="PowerCollections, Version=1.0.2141.24679, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\PowerCollections.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.configuration" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AggregateCounter.cs" />
+    <Compile Include="GenericStorage.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\CapCondition.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\FilterCap.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\FilterCaps.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\IndexCondition.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\BaseMultiIndexIdQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\BaseMultiIndexIdQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\IIndexIdParam.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Paged\RemoteClusteredPagedIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Paged\VirtualRemoteClusteredPagedIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Span\RemoteClusteredSpanQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Span\SpanQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Span\SpanQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Span\VirtualRemoteClusteredSpanQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Span\VirtualSpanQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\FullDataIdPartFormat.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\GetIndexHeaderType.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Utils\ByteArrayComparerUtil.cs" />
+    <Compile Include="IRelayHydrationPolicy.cs" />
+    <Compile Include="RelayHydrationOptions.cs" />
+    <Compile Include="RelayHydrationPolicyAttribute.cs" />
+    <Compile Include="Interfaces\IAsyncDataHandler.cs" />
+    <Compile Include="Interfaces\IReplicationComponent.cs" />
+    <Compile Include="Interfaces\IWarmableComponent.cs" />
+    <Compile Include="Interfaces\Messages\MessageType.cs" />
+    <Compile Include="Interfaces\Messages\RelayErrorType.cs" />
+    <Compile Include="Interfaces\Messages\RelayPayload.cs" />
+    <Compile Include="Interfaces\Messages\RelayOutcome.cs" />
+    <Compile Include="Interfaces\Messages\SerializedRelayMessage.cs" />
+    <Compile Include="Interfaces\Notifications\NotificationType.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\ByteArrayEqualityComparer.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\CacheData.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\CacheDataReference.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\CacheIndex.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\CacheIndexExtractionUtility.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\ContainsIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\ContainsIndexQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\IndexCacheComparer.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\PagedIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\PagedIndexQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\SortableCacheDataReference.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\VirtualCacheIndex.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\VirtualContainsIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV2\VirtualPagedIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\Criterion.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\CriterionList.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\FullDataIdField.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\FullDataIdFieldList.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\FullDataIdInfo.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\IndexIdParams.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\ClusteredIntersectionQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\IntersectionAlgo.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\IntersectionQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\IntersectionQueryParams.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\IntersectionQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\RemoteClusteredIntersectionQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\VirtualClusteredIntersectionQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\VirtualRemoteClusteredIntersectionQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Paged\MergeAlgo.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\ItemList.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\FullDataIdPartType.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Interfaces\IItem.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\AggregateFilter.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\AndFilter.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Random\RandomQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Random\RandomQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Random\VirtualRandomQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Update\Command\Command.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Factory\CommandFactory.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Utils\ByteArrayEqualityComparer.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Update\CacheIndexUpdate.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\CommandType.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Contains\ContainsIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Contains\ContainsIndexQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\Condition.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Update\VirtualCacheIndexUpdate.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\Filter.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Factory\FilterFactory.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\FilterType.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Utils\IndexCacheUtils.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\IndexHeader.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\MultiItemResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\OrFilter.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Update\Command\FilteredIndexDeleteCommand.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\GetRange\VirtualGetRangeQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\GetRange\GetRangeQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\GetRange\GetRangeQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\DataType.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Save\CacheIndex.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\IndexDataItem.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\IndexItem.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\Operation.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Paged\PagedIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Paged\PagedIndexQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\ResultItem.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\SortBy.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\SortOrder.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\TagSort.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\FirstLast\FirstLastQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\FirstLast\FirstLastQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Save\VirtualCacheIndex.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Contains\VirtualContainsIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Paged\VirtualPagedIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\FirstLast\VirtualFirstLastQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Utils\BaseComparer.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Utils\IndexDataItemComparer.cs" />
+    <Compile Include="Interfaces\Query\IndexCache\CacheData.cs" />
+    <Compile Include="Interfaces\Query\IndexCache\CacheDataReference.cs" />
+    <Compile Include="Interfaces\Query\IndexCache\CappedCompositeIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IRelayMessageQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCache\PagedIndexQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCache\PagedIndexQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCache\CacheIndex.cs" />
+    <Compile Include="Interfaces\Query\ListCache\CacheList.cs" />
+    <Compile Include="Interfaces\Query\ListCache\CacheListNode.cs" />
+    <Compile Include="Interfaces\Query\ListCache\ContainsCacheListQuery.cs" />
+    <Compile Include="Interfaces\Query\ListCache\ExclusionSublistCacheListQuery.cs" />
+    <Compile Include="Interfaces\Query\ListCache\MultiContainsCacheListQuery.cs" />
+    <Compile Include="Interfaces\Query\ListCache\PagedCacheListQuery.cs" />
+    <Compile Include="Interfaces\Query\ListCache\CacheListQueryResult.cs" />
+    <Compile Include="Interfaces\Query\ListCache\RandomizedCacheListQuery.cs" />
+    <Compile Include="Interfaces\Query\ListCache\SublistCacheListQuery.cs" />
+    <Compile Include="Interfaces\Query\ListCache\VirtualCacheList.cs" />
+    <Compile Include="RelayKeyType.cs" />
+    <Compile Include="Transports\IAsyncRelayTransport.cs" />
+    <Compile Include="Transports\IRelayTransport.cs" />
+    <Compile Include="Interfaces\Messages\SerializedMessageList.cs" />
+    <Compile Include="RelayPopulation.cs" />
+    <Compile Include="Formatters\RelayMessageFormatter.cs" />
+    <Compile Include="Interfaces\IDataHandler.cs" />
+    <Compile Include="Interfaces\IRelayComponent.cs" />
+    <Compile Include="Interfaces\Messages\MessageList.cs" />
+    <Compile Include="MinuteAggregateCounter.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Interfaces\Messages\RelayMessage.cs" />
+    <Compile Include="RelayNodeConfig.cs">
+      <DependentUpon>RelayNodeConfig.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="Schemas\RelayComponents.cs">
+      <DependentUpon>RelayComponents.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="Schemas\RelayNodeMapping.cs">
+      <DependentUpon>RelayNodeMapping.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="Schemas\RelayTransportSettings.cs">
+      <DependentUpon>RelayTransportSettings.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="Schemas\RelayTypeSettings.cs">
+      <DependentUpon>RelayTypeSettings.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="SocketCommands.cs" />
+    <Compile Include="Transports\IRelayTransportExtended.cs" />
+    <Compile Include="Transports\NullTransport.cs" />
+    <Compile Include="Util\AverageMessageLife.cs" />
+    <Compile Include="Util\MessageTracer.cs" />
+    <Compile Include="Util\SmallDateTime.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="RelayNodeConfig.xsd">
+      <SubType>
+      </SubType>
+    </None>
+    <None Include="RelayNodeConfig.xsx">
+      <DependentUpon>RelayNodeConfig.xsd</DependentUpon>
+    </None>
+    <None Include="Schemas\RelayComponents.xsd">
+      <SubType>
+      </SubType>
+    </None>
+    <None Include="Schemas\RelayComponents.xsx">
+      <DependentUpon>RelayComponents.xsd</DependentUpon>
+    </None>
+    <None Include="Schemas\RelayNodeMapping.xsd">
+      <SubType>
+      </SubType>
+    </None>
+    <None Include="Schemas\RelayNodeMapping.xsx">
+      <DependentUpon>RelayNodeMapping.xsd</DependentUpon>
+    </None>
+    <None Include="Schemas\RelayTransportSettings.xsd">
+      <SubType>
+      </SubType>
+    </None>
+    <None Include="Schemas\RelayTransportSettings.xsx">
+      <DependentUpon>RelayTransportSettings.xsd</DependentUpon>
+    </None>
+    <None Include="Schemas\RelayTypeSettings.xsd">
+      <SubType>
+      </SubType>
+    </None>
+    <None Include="Schemas\RelayTypeSettings.xsx">
+      <DependentUpon>RelayTypeSettings.xsd</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{B4F97281-0DBD-4835-9ED8-7DFB966E87FF}" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <PropertyGroup>
+    <PreBuildEvent>IF NOT EXIST "$(TargetDir)Microsoft.Ccr.Core.dll" IF EXIST C:\Windows\assembly\GAC_MSIL\Microsoft.Ccr.Core\2.1.61.2__31bf3856ad364e35\Microsoft.Ccr.Core.dll COPY /Y C:\Windows\assembly\GAC_MSIL\Microsoft.Ccr.Core\2.1.61.2__31bf3856ad364e35\Microsoft.Ccr.Core.dll "$(TargetDir)"</PreBuildEvent>
+  </PropertyGroup>
+</Project>

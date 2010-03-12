@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="RelayNodeMapping" targetNamespace="http://myspace.com/RelayNodeMapping.xsd" elementFormDefault="qualified" xmlns="http://myspace.com/RelayNodeMapping.xsd" xmlns:mstns="http://myspace.com/RelayNodeMapping.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element name="RelayNodeMapping">
+		<xs:complexType >
+			<xs:sequence>
+				<xs:element name="ZoneDefinitions" type="ZoneDefinitionsType" minOccurs="0" maxOccurs="1"/>
+				<xs:element name="RelayNodeGroups" type="RelayNodeGroupsType" minOccurs="1" maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:complexType name="ZoneDefinitionsType">
+		<xs:sequence>
+			<xs:element name="Zone" minOccurs="1" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Subnets" minOccurs="1" maxOccurs="1">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="Subnet" type="xs:string" minOccurs="1" maxOccurs="unbounded" />
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="Prefixes" minOccurs="0" maxOccurs="1">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="Prefix" type="xs:string" minOccurs="1" maxOccurs="unbounded" />
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="Id" type="xs:unsignedShort"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="EnvironmentType">
+		<xs:sequence>
+			<xs:element name="Environment" minOccurs ="0" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="SocketSettings" type="SocketSettingsType" minOccurs="0" maxOccurs="1"/>
+						<xs:element name="NodeSelectionHopWindowSize" type="xs:int" nillable="true" minOccurs="0" maxOccurs="1"  />
+						<xs:element name="QueueConfig" type="QueueConfig" nillable="true" minOccurs="0" maxOccurs="1" />
+						<xs:element name="RelayNodeClusters" type="RelayNodeClustersType" minOccurs="1" maxOccurs="1000" />
+					</xs:sequence>
+					<xs:attribute name="names" type="xs:string"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="RelayNodeGroupsType">
+		<xs:sequence>
+			<xs:element name="RelayNodeGroup" maxOccurs="100" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="SocketSettings" type="SocketSettingsType" minOccurs="0" maxOccurs="1"/>
+						<xs:element name="NodeSelectionHopWindowSize" type="xs:int" nillable="true" minOccurs="0" maxOccurs="1"  />
+						<xs:element name="QueueConfig" type="QueueConfig" nillable="true" minOccurs="0" maxOccurs="1" />
+						<xs:element name="RelayNodeClusters" type="RelayNodeClustersType" minOccurs="0" maxOccurs="1000" />
+						<xs:element name="Environments" type="EnvironmentType" minOccurs="0" maxOccurs="1" nillable="true" />
+					</xs:sequence>
+					<xs:attribute name="Activated" type="xs:boolean" />
+					<xs:attribute name="Name" type="xs:string" />
+					<xs:attribute name="DangerZoneSeconds" type="xs:int" />
+					<xs:attribute name="DangerZoneThreshold" type="xs:int" />
+					<xs:attribute name="RetryCount" type="xs:int" />
+					<xs:attribute name="NodeReselectMinutes" type="xs:int" />
+					<xs:attribute name="UseIdRanges" type="xs:boolean" default="false" use="optional" />
+					<xs:attribute name="StartupRepopulateDuration" type="xs:int" use="optional" default="0" />
+					<xs:attribute name="LegacySerialization" type="xs:boolean" use="optional" default="true" />
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="RelayNodeClustersType">
+		<xs:sequence>
+			<xs:element name="RelayNodeCluster" minOccurs="1" maxOccurs="1000">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="RelayNodes">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="RelayNode" minOccurs="1" maxOccurs="1000">
+										<xs:complexType>
+											<xs:sequence />
+											<xs:attribute name="GatherStatistics" type="xs:boolean" />
+											<xs:attribute name="Activated" type="xs:boolean" />
+											<xs:attribute name="Host" type="xs:string" />
+											<xs:attribute name="Port" type="xs:int" />
+											<xs:attribute name="ServiceType" type="ServiceType" />
+											<xs:attribute name="Zone" type="xs:unsignedShort" />
+											<xs:attribute name="StartupRepopulateDuration" type="xs:int" use="optional" default="0" />
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="MinId" type="xs:int" default="0" use="optional" />
+					<xs:attribute name="MaxId" type="xs:int" use="optional" default="0" />
+					<xs:attribute name="StartupRepopulateDuration" type="xs:int" use="optional" default="0" />
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="ServiceType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Sockets" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="SocketSettingsType">
+		<xs:sequence />
+		<xs:attribute name="ReceiveTimeout" type="xs:int" />
+		<xs:attribute name="ReceiveBufferSize" type="xs:int" />
+		<xs:attribute name="SendTimeout" type="xs:int" />
+		<xs:attribute name="SendBufferSize" type="xs:int" />
+		<xs:attribute name="MaximumMessageSize" type="xs:int" />
+		<xs:attribute name="ConnectTimeout" type="xs:int" />
+		<xs:attribute name="SocketPoolSize" type="xs:int"/>
+	</xs:complexType>
+	<xs:complexType name="QueueConfig">
+		<xs:sequence>
+			<xs:element name="Enabled" type="xs:boolean" />
+			<xs:element name="MaxCount" type="xs:int" />
+			<xs:element name="ItemsPerDequeue" type="xs:int" />
+			<xs:element name="DequeueIntervalSeconds" type="xs:int" />
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

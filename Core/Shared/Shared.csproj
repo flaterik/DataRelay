@@ -1,0 +1,224 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{4331D056-5130-4E93-9318-6B406E4CAF7F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MySpace.Common</RootNamespace>
+    <AssemblyName>MySpace.Shared</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\_drop\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <OutputPath>..\..\_drop\</OutputPath>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <OutputPath>..\..\_drop\</OutputPath>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="$(PlatformName)==IMPersistence OR $(PlatformName)==x64 OR $(Platform)==x64">
+      <ItemGroup>
+        <Reference Include="ManagedZLib.x64, Version=1.0.2754.20352, Culture=neutral, PublicKeyToken=null">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\_drop\ManagedZLib.x64.dll</HintPath>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(PlatformName)!=IMPersistence AND $(PlatformName)!=x64 AND $(Platform)!=x64">
+      <ItemGroup>
+        <Reference Include="ManagedZLib.x86, Version=1.0.2754.20409, Culture=neutral, PublicKeyToken=null">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\_drop\ManagedZLib.x86.dll</HintPath>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <ItemGroup>
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="System" />
+    <Reference Include="System.configuration" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml.Linq">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data.DataSetExtensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\_drop\MySpace.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="PowerCollections, Version=1.0.2141.24679, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\_drop\PowerCollections.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Configuration\EnvironmentManager.cs" />
+    <Compile Include="Configuration\EnvironmentMappingsConfig.cs">
+      <DependentUpon>EnvironmentMappingsConfig.xsd</DependentUpon>
+    </Compile>
+    <None Include="Configuration\EnvironmentMappingsConfig.xsd" />
+    <Compile Include="Configuration\XmlSerializerSectionHandler.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ChangeNotification\FileModifiedEventArgs.cs" />
+    <Compile Include="ChangeNotification\FileStalker.cs" />
+    <Compile Include="ChangeNotification\FileStalkerCacheDependency.cs" />
+    <Compile Include="Delegates\Procedure.cs" />
+    <Compile Include="Delegates\Factory.cs" />
+    <Compile Include="Delegates\ParameterlessDelegate.cs" />
+    <Compile Include="IO\AutoSerializationHelper.cs" />
+    <Compile Include="IO\BitConverterEx.cs" />
+    <Compile Include="IO\SafeMemoryAllocator.cs" />
+    <Compile Include="IO\TypeInfo.cs" />
+    <Compile Include="IO\TypeInfoConfig.cs" />
+    <Compile Include="IO\TypeInfoConfigCollection.cs" />
+    <EmbeddedResource Include="IO\TypeMappingConfig.xsd" />
+    <Compile Include="IO\TypeMappingConfig.cs">
+      <DependentUpon>TypeMappingConfig.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="IO\CompactBinaryReader.cs" />
+    <Compile Include="IO\CompactBinaryWriter.cs" />
+    <Compile Include="IO\Compressor.cs" />
+    <Compile Include="IO\ILHelper.cs" />
+    <Compile Include="IO\IPrimitiveReader.cs" />
+    <Compile Include="IO\IPrimitiveWriter.cs" />
+    <Compile Include="IO\JSON\Converters\AspNetAjaxDateTimeConverter.cs" />
+    <Compile Include="IO\JSON\Converters\HtmlColorConverter.cs" />
+    <Compile Include="IO\JSON\Converters\XmlNodeConverter.cs" />
+    <Compile Include="IO\JSON\Identifier.cs" />
+    <Compile Include="IO\JSON\JavaScriptArray.cs" />
+    <Compile Include="IO\JSON\JavaScriptConstructor.cs" />
+    <Compile Include="IO\JSON\JavaScriptConvert.cs" />
+    <Compile Include="IO\JSON\JavaScriptObject.cs" />
+    <Compile Include="IO\JSON\JavaScriptParameters.cs" />
+    <Compile Include="IO\JSON\JavaScriptUtils.cs" />
+    <Compile Include="IO\JSON\JsonConverter.cs" />
+    <Compile Include="IO\JSON\JsonConverterCollection.cs" />
+    <Compile Include="IO\JSON\JsonDeserializer.cs" />
+    <Compile Include="IO\JSON\JsonHandler.cs" />
+    <Compile Include="IO\JSON\JsonIgnoreAttribute.cs" />
+    <Compile Include="IO\JSON\JsonReader.cs" />
+    <Compile Include="IO\JSON\JsonReaderException.cs" />
+    <Compile Include="IO\JSON\JsonSerializationException.cs" />
+    <Compile Include="IO\JSON\JsonSerializer.cs" />
+    <Compile Include="IO\JSON\JsonToken.cs" />
+    <Compile Include="IO\JSON\JsonWriter.cs" />
+    <Compile Include="IO\JSON\JsonWriterException.cs" />
+    <Compile Include="IO\JSON\StringBuffer.cs" />
+    <Compile Include="IO\JSON\Utilities\CollectionUtils.cs" />
+    <Compile Include="IO\JSON\Utilities\HandlerBase.cs" />
+    <Compile Include="IO\JSON\Utilities\ReflectionUtils.cs" />
+    <Compile Include="IO\JSON\Utilities\StringUtils.cs" />
+    <Compile Include="IO\PropertySerializationInfo.cs" />
+    <Compile Include="IO\SerializationInfo.cs" />
+    <Compile Include="IO\TypeNameTable.cs" />
+    <Compile Include="IO\TypeSerializationArgs.cs" />
+    <Compile Include="IO\TypeSerializationHeader.cs" />
+    <Compile Include="IO\TypeSerializationInfo.cs" />
+    <Compile Include="IO\Serializer.cs" />
+    <Compile Include="IO\SerializerFactory.cs" />
+    <Compile Include="IO\UnicodeStringCompressor.cs" />
+    <Compile Include="IO\SerializableClassAttribute.cs" />
+    <Compile Include="IO\SerializableInheritedPropertyAttribute.cs" />
+    <Compile Include="IO\SerializablePropertyAttribute.cs" />
+    <Compile Include="IO\SerializableStructAttribute.cs" />
+    <Compile Include="IO\ICompactSerializable.cs" />
+    <Compile Include="IO\ICustomSerializable.cs" />
+    <Compile Include="IO\IVersionSerializable.cs" />
+    <Compile Include="IO\ICacheParameter.cs" />
+    <Compile Include="IO\DataSource.cs" />
+    <Compile Include="IO\CompactBinaryFormatter.cs" />
+    <Compile Include="IO\DeserializeMethod.cs" />
+    <None Include="Pooling\PoolConfig.xsd" />
+    <Compile Include="Pooling\IPoolItem.cs" />
+    <Compile Include="Pooling\Pool.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Pooling\PoolConfig.cs">
+      <DependentUpon>PoolConfig.xsd</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Pooling\PoolFetchOrder.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Pooling\PoolItemPhase.cs" />
+    <Compile Include="Storage\DataBuffer.cs" />
+    <Compile Include="Storage\DataBufferType.cs" />
+    <Compile Include="Storage\PostAccessUnmanagedMemoryCleanup.cs" />
+    <Compile Include="Storage\SafeUnmanagedMemoryStream.cs" />
+    <Compile Include="Storage\StorageKey.cs" />
+    <Compile Include="Storage\StringBuilderSegment.cs" />
+    <Compile Include="Surrogates\BuiltinSurrogates.cs" />
+    <Compile Include="Surrogates\SerializationSurrogate.cs" />
+    <Compile Include="Surrogates\TypeSurrogateProvider.cs" />
+    <Compile Include="Synchronization\AsyncEventArgs.cs" />
+    <Compile Include="Synchronization\BlockingQueue.cs" />
+    <Compile Include="Synchronization\CountDownLatch.cs" />
+    <Compile Include="Synchronization\ITaskHandle.cs" />
+    <Compile Include="Synchronization\MonitorWaitHandle.cs" />
+    <Compile Include="Synchronization\TaskMonitor.cs" />
+    <Compile Include="Synchronization\MsReaderWriterLock.cs" />
+    <Compile Include="HelperObjects\CacheHelper.cs" />
+    <Compile Include="HelperObjects\StringUtility.cs" />
+    <Compile Include="HelperObjects\Algorithm.cs" />
+    <Compile Include="HelperObjects\SafeCounter.cs" />
+    <Compile Include="UnitTests\Accessor.cs" />
+    <Compile Include="UnitTests\MSAssert.cs" />
+    <Compile Include="UnitTests\SerializationTests.cs" />
+    <Compile Include="UnitTests\TestAttributeBase.cs" />
+    <Compile Include="UnitTests\TestDecorator.cs" />
+    <Compile Include="UnitTests\UnitTestBase.cs" />
+    <Compile Include="UnitTests\UnitTestHelper.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="_README_.txt" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema targetNamespace="http://myspace.com/EnvironmentMappingsConfig.xsd" elementFormDefault="qualified" xmlns="http://myspace.com/EnvironmentMappingsConfig.xsd" xmlns:mstns="http://myspace.com/EnvironmentMappingsConfig.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element name="EnvironmentMappingsConfig" type="EnvironmentMappingsType" />
+	<xs:complexType name="EnvironmentMappingsType">
+		<xs:sequence>
+			<xs:element name="DefaultEnvironment" type="xs:string" minOccurs ="1" maxOccurs ="1" />
+			<xs:element name="AvailableEnvironments" type="EnvironmentsType" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="EnvironmentMappings" type="EnvironmentMappingType" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="type" type="xs:string"/>
+	</xs:complexType>
+	<xs:complexType name="EnvironmentsType">
+		<xs:sequence>
+			<xs:element name="Environment" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="EnvironmentMappingType">
+		<xs:sequence>
+			<xs:element name="EnvironmentMapping" minOccurs="0" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:attribute name="hostPattern" type="xs:string" />
+					<xs:attribute name="environment" type="xs:string" />
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

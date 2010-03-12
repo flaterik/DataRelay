@@ -1,0 +1,243 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{07B5031F-1EC5-420E-937C-C4D28C5E71B8}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MySpace.DataRelay.RelayComponent.BerkeleyDb</RootNamespace>
+    <AssemblyName>MySpace.DataRelay.RelayComponent.BerkeleyDb</AssemblyName>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkSubset>
+    </TargetFrameworkSubset>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|AnyCPU' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x86' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <PlatformTarget>x86</PlatformTarget>
+    <DefineConstants>TRACE</DefineConstants>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x64' ">
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="$(Platform)!='x64'">
+      <ItemGroup>
+        <Reference Include="MySpace.BerkeleyDb.Configuration.win32, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Configuration.win32.dll</HintPath>
+        </Reference>
+        <Reference Include="MySpace.BerkeleyDb.Facade.win32, Version=1.0.0.1, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Facade.win32.dll</HintPath>
+        </Reference>
+        <Reference Include="MySpace.BerkeleyDb.Wrapper.win32, Version=1.0.2718.25488, Culture=neutral, processorArchitecture=x86">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.win32.dll</HintPath>
+        </Reference>
+      </ItemGroup>
+      <Choose>
+        <When Condition="$(Configuration)!='Debug'">
+          <ItemGroup>
+            <Content Include="..\..\BerkeleyDb\BerkeleyDb.Wrapper\LibDb\libdb47.win32.dll">
+              <Link>libdb47.win32.dll</Link>
+              <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </Content>
+          </ItemGroup>
+        </When>
+        <When Condition="$(Configuration)=='Debug'">
+          <ItemGroup>
+            <Content Include="..\..\BerkeleyDb\BerkeleyDb.Wrapper\LibDb.Debug\libdb47.Debug.win32.dll">
+              <Link>libdb47.Debug.win32.dll</Link>
+              <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </Content>
+          </ItemGroup>
+        </When>
+      </Choose>
+    </When>
+    <When Condition="$(Platform)=='x64'">
+      <ItemGroup>
+        <Reference Include="MySpace.BerkeleyDb.Configuration.x64, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Configuration.x64.dll</HintPath>
+        </Reference>
+        <Reference Include="MySpace.BerkeleyDb.Facade.x64, Version=1.0.0.1, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Facade.x64.dll</HintPath>
+        </Reference>
+        <Reference Include="MySpace.BerkeleyDb.Wrapper.x64, Version=1.0.2718.25488, Culture=neutral, processorArchitecture=x64">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.x64.dll</HintPath>
+        </Reference>
+      </ItemGroup>
+      <Choose>
+        <When Condition="$(Configuration)!='Debug'">
+          <ItemGroup>
+            <Content Include="..\..\BerkeleyDb\BerkeleyDb.Wrapper\LibDb\libdb47.x64.dll">
+              <Link>libdb47.x64.dll</Link>
+              <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </Content>
+          </ItemGroup>
+        </When>
+        <When Condition="$(Configuration)=='Debug'">
+          <ItemGroup>
+            <Content Include="..\..\BerkeleyDb\BerkeleyDb.Wrapper\LibDb.Debug\libdb47.Debug.x64.dll">
+              <Link>libdb47.Debug.x64.dll</Link>
+              <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </Content>
+          </ItemGroup>
+        </When>
+      </Choose>
+    </When>
+  </Choose>
+  <ItemGroup>
+    <Reference Include="Microsoft.Ccr.Core, Version=2.0.913.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\Microsoft.Ccr.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.ResourcePool, Version=1.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.ResourcePool.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml" />
+    <Reference Include="MySpace.DataRelay.Common, Version=1.3.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.DataRelay.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.DataRelay.NodeFactory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.DataRelay.NodeFactory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Configuration.Install, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\Windows\Microsoft.NET\Framework\v2.0.50727\System.Configuration.Install.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BerkeleyDbComponent.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BerkeleyDbCounters.cs" />
+    <Compile Include="CounterInstaller.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CounterInstaller.Designer.cs">
+      <DependentUpon>CounterInstaller.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MatchMaker.cs" />
+    <Compile Include="ThrottledQueue.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{B4F97281-0DBD-4835-9ED8-7DFB966E87FF}" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <PropertyGroup>
+    <PostBuildEvent>IF NOT EXIST "$(ProjectDir)..\..\..\_drop\" MKDIR "$(ProjectDir)..\..\..\_drop\"
+copy /Y "$(TargetDir)$(TargetName).*" "$(ProjectDir)..\..\..\_drop\"
+</PostBuildEvent>
+  </PropertyGroup>
+</Project>
