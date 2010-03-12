@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("MySpace")]
 [assembly: AssemblyProduct("Shared Libraries")]
 [assembly: AssemblyCopyright("MySpace")]
-[assembly: AssemblyTrademark("")]
+[assembly: AssemblyTrademark("Copyright © MySpace 2010")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
