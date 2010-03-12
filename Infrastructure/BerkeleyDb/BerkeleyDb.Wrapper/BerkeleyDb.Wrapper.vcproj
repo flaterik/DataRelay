@@ -503,7 +503,7 @@
 	<References>
 		<ProjectReference
 			ReferencedProjectIdentifier="{7C93D02B-ACA3-473A-BF7A-CE327F4DBD8D}"
-			RelativePathToProject=".\Infrastructure\BerkeleyDb\BerkeleyDb.Wrapper.Common\BerkeleyDb.Wrapper.Common.vcproj"
+			RelativePathToProject="..\BerkeleyDb.Wrapper.Common\BerkeleyDb.Wrapper.Common.vcproj"
 		/>
 		<AssemblyReference
 			RelativePath="System.dll"
@@ -522,7 +522,7 @@
 		/>
 		<ProjectReference
 			ReferencedProjectIdentifier="{2A0673C5-BEF2-42EF-9A30-096487BE1C0F}"
-			RelativePathToProject=".\Infrastructure\BerkeleyDb\BerkeleyDb.Configuration\BerkeleyDb.Configuration.csproj"
+			RelativePathToProject="..\BerkeleyDb.Configuration\BerkeleyDb.Configuration.csproj"
 		/>
 		<AssemblyReference
 			RelativePath="..\..\..\_drop\MySpace.Logging.dll"
