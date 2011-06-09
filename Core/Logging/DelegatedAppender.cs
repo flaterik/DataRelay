@@ -113,7 +113,7 @@ namespace MySpace.Logging
 		public static DelegatedAppender GetAppender()
 		{
 			// get log4net config objects
-			log4net.Config.XmlConfigurator.Configure();
+			new LogWrapper(); // Needed to initialize log4net
 			foreach (var repository in LogManager.GetAllRepositories())
 			{
 				foreach (var appender in repository.GetAppenders())
@@ -181,8 +181,7 @@ namespace MySpace.Logging
 
 			public void Dispose()
 			{
-				var handler = Interlocked.Exchange(ref _handler, null);
-				if (handler != null) _appender.Logged -= handler;
+				_appender.Logged -= _handler;
 			}
 
 			#endregion
