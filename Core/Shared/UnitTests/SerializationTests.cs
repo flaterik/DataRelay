@@ -72,7 +72,7 @@ namespace MySpace.Common.UnitTests
 
 		private static MemoryStream GetStreamFromDB(string typeName)
 		{
-			//SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["TestAssistants"].ConnectionString);
+            //SqlConnection conn = new SqlConnection(MySpace.Configuration.ConnectionStringProvider.ConnectionStrings["TestAssistants"].ConnectionString);
 			SqlConnection conn = new SqlConnection(@"server=devsrv\sql2005;database=TestAssistants;uid=ASPADONet;pwd=12345;Connect Timeout=20;Integrated Security=false;");
 
 			System.Data.SqlClient.SqlCommand sqlCommand = new System.Data.SqlClient.SqlCommand();
@@ -106,7 +106,7 @@ namespace MySpace.Common.UnitTests
 		private static void SaveStreamToDB(string className, MemoryStream stream)
 		{
 
-			//SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["TestAssistants"].ConnectionString);
+            //SqlConnection conn = new SqlConnection(MySpace.Configuration.ConnectionStringProvider.ConnectionStrings["TestAssistants"].ConnectionString);
 			SqlConnection conn = new SqlConnection(@"server=devsrv\sql2005;database=TestAssistants;uid=ASPADONet;pwd=12345;Connect Timeout=20;Integrated Security=false;");
 
 			System.Data.SqlClient.SqlCommand sqlCommand = new System.Data.SqlClient.SqlCommand();

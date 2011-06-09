@@ -502,29 +502,7 @@ namespace MySpace.Common.CompactSerialization.IO
 		/// </remarks>
 		public int ReadVarInt32()
 		{
-			unchecked
-			{
-				int part = stream.ReadByte();
-				if (part == -1)
-				{
-					throw new InvalidDataException("Unexpected end of stream");
-				}
-				bool negative = (part & 0x40) == 0x40;
-				uint value = (byte)part & 0x3FU;
-				int bitsRead = 6;
-
-				while ((part & 0x80) == 0x80)
-				{
-					if (bitsRead > 0x20)
-					{
-						throw new InvalidDataException("Inavlid VarInt32");
-					}
-					part = stream.ReadByte();
-					value |= ((byte)part & 0x7FU) << bitsRead;
-					bitsRead += 7;
-				}
-				return negative ? -(int)value : (int)value;
-			}
+			return BaseStream.ReadVarInt32();
 		}
 
 		/// <summary>

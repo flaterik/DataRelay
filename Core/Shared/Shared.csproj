@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -10,12 +10,31 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>MySpace.Common</RootNamespace>
     <AssemblyName>MySpace.Shared</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>SAK</SccProjectName>
     <SccLocalPath>SAK</SccLocalPath>
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <UpgradeBackupLocation />
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -26,6 +45,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -35,70 +55,175 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <OutputPath>..\..\_drop\</OutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>TRACE;DEBUG</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <OutputPath>..\..\_drop\</OutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <DefineConstants>TRACE</DefineConstants>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
-  <Choose>
-    <When Condition="$(PlatformName)==IMPersistence OR $(PlatformName)==x64 OR $(Platform)==x64">
-      <ItemGroup>
-        <Reference Include="ManagedZLib.x64, Version=1.0.2754.20352, Culture=neutral, PublicKeyToken=null">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\_drop\ManagedZLib.x64.dll</HintPath>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="$(PlatformName)!=IMPersistence AND $(PlatformName)!=x64 AND $(Platform)!=x64">
-      <ItemGroup>
-        <Reference Include="ManagedZLib.x86, Version=1.0.2754.20409, Culture=neutral, PublicKeyToken=null">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\_drop\ManagedZLib.x86.dll</HintPath>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
   <ItemGroup>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="Mono.Cecil, Version=0.6.9.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="MySpace.ManagedZLib.x64.CLR35, Version=1.0.2754.20409, Culture=neutral, processorArchitecture=AMD64">
+      <ExecutableExtension>.exe</ExecutableExtension>
+    </Reference>
+    <Reference Include="MySpace.ManagedZLib.x86.CLR35, Version=1.0.2754.20409, Culture=neutral, processorArchitecture=x86">
+      <ExecutableExtension>.exe</ExecutableExtension>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.configuration" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Web" />
-    <Reference Include="System.Xml.Linq">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="System.Data.DataSetExtensions">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\_drop\MySpace.Logging.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="PowerCollections, Version=1.0.2141.24679, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\_drop\PowerCollections.dll</HintPath>
+      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Barf\AssertArgs.cs" />
+    <Compile Include="Barf\BarfDeserializationArgs.cs" />
+    <Compile Include="Barf\BarfErrors.cs" />
+    <Compile Include="Barf\BarfException.cs" />
+    <Compile Include="Barf\BarfExtensions.cs" />
+    <Compile Include="Barf\BarfFormatter.cs" />
+    <Compile Include="Barf\BarfInstrumenter.cs" />
+    <Compile Include="Barf\BarfObjectHeader.cs" />
+    <Compile Include="Barf\BarfSerializationArgs.cs" />
+    <Compile Include="Barf\BarfSerializationInfo.cs" />
+    <Compile Include="Barf\BarfSerializationTypeInfo.cs" />
+    <Compile Include="Barf\BarfSerializerBuilder.cs" />
+    <Compile Include="Barf\BarfSerializers.cs" />
+    <Compile Include="Barf\BarfStreamHeader.cs" />
+    <Compile Include="Barf\BarfTesterBuilder.cs" />
+    <Compile Include="Barf\BarfTypeDefinition.cs" />
+    <Compile Include="Barf\BarfTypeTable.cs" />
+    <Compile Include="Barf\BarfSerializer.cs" />
+    <Compile Include="Barf\DefaultPartResolver.cs" />
+    <Compile Include="Barf\FillArgs.cs" />
+    <Compile Include="Barf\FillSettings.cs" />
+    <Compile Include="Barf\FutureData.cs" />
+    <Compile Include="Barf\GenAssertAreEqualContext.cs" />
+    <Compile Include="Barf\GenContext.cs" />
+    <Compile Include="Barf\GenDeserializeContext.cs" />
+    <Compile Include="Barf\GenFillContext.cs" />
+    <Compile Include="Barf\GenSerializeContext.cs" />
+    <Compile Include="Barf\HeaderFlags.cs" />
+    <Compile Include="Barf\IBarfSerializer.cs" />
+    <Compile Include="Barf\IBarfTester.cs" />
+    <Compile Include="Barf\IForwardSerializable.cs" />
+    <Compile Include="Barf\IPartBuilder.cs" />
+    <Compile Include="Barf\IPartResolver.cs" />
+    <Compile Include="Barf\ITypeMetadata.cs" />
+    <Compile Include="Barf\MemberResolver.cs" />
+    <Compile Include="Barf\NotSupportedBehavior.cs" />
+    <Compile Include="Barf\PartDefinition.cs" />
+    <Compile Include="Barf\PartFlags.cs" />
+    <Compile Include="Barf\PartFormatter.cs" />
+    <Compile Include="Barf\PartResolver.cs" />
+    <Compile Include="Barf\Parts\ArrayPartBuilder.cs" />
+    <Compile Include="Barf\Parts\BinaryFormatterPartBuilder.cs" />
+    <Compile Include="Barf\Parts\CollectionPartBuilder.cs" />
+    <Compile Include="Barf\Parts\CustomPartBuilder.cs" />
+    <Compile Include="Barf\Parts\CustomSerializablePartBuilder.cs" />
+    <Compile Include="Barf\Parts\DeferredPartBuilder.cs" />
+    <Compile Include="Barf\Parts\EnumPartBuilder.cs" />
+    <Compile Include="Barf\Parts\GuidPartBuilder.cs" />
+    <Compile Include="Barf\Parts\KeyValuePairPartBuilder.cs" />
+    <Compile Include="Barf\Parts\NullablePartBuilder.cs" />
+    <Compile Include="Barf\Parts\PrimitiveExtensionPartBuilder.cs" />
+    <Compile Include="Barf\Parts\PrimitivePartBuilder.cs" />
+    <Compile Include="Barf\Parts\SerializableStructPartBuilder.cs" />
+    <Compile Include="Barf\Parts\VersionSerializablePartBuilder.cs" />
+    <Compile Include="Collections\CountBoundStack.cs" />
+    <Compile Include="Collections\MinimumPriorityQueue.cs" />
+    <Compile Include="Collections\MultiValueDictionary.cs" />
+    <Compile Include="Configuration\ConfigurationLoader.cs" />
+    <Compile Include="Configuration\ConfigurationSectionBase.cs" />
+    <Compile Include="Configuration\ConfigurationSectionNameAttribute.cs" />
+    <Compile Include="Configuration\ConfigurationSectionRefreshedEventHandler.cs" />
     <Compile Include="Configuration\EnvironmentManager.cs" />
     <Compile Include="Configuration\EnvironmentMappingsConfig.cs">
       <DependentUpon>EnvironmentMappingsConfig.xsd</DependentUpon>
     </Compile>
+    <Compile Include="Threading\TaskScheduler.cs" />
     <None Include="Configuration\EnvironmentMappingsConfig.xsd" />
     <Compile Include="Configuration\XmlSerializerSectionHandler.cs" />
+    <Compile Include="Dynamic\CecilCilWriter.cs" />
+    <Compile Include="Dynamic\CecilExtensions.cs" />
+    <Compile Include="Dynamic\CecilTranslator.cs" />
+    <Compile Include="Dynamic\BinaryOperator.cs" />
+    <Compile Include="Dynamic\DynamicExtensions.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Dynamic\DynamicMethods.cs" />
+    <Compile Include="Dynamic\EvaluationStack.cs" />
+    <Compile Include="Dynamic\GenericParameter.cs" />
+    <Compile Include="Dynamic\ICilWriter.cs" />
+    <Compile Include="Dynamic\IInstrumenter.cs" />
+    <Compile Include="Dynamic\ILabel.cs" />
+    <Compile Include="Dynamic\IMapping.cs" />
+    <Compile Include="Dynamic\ItemType.cs" />
+    <Compile Include="Dynamic\IVariableBuilder.cs" />
+    <Compile Include="Dynamic\IVariable.cs" />
+    <Compile Include="Dynamic\LoadOptions.cs" />
+    <Compile Include="Dynamic\Mapper.cs" />
+    <Compile Include="Dynamic\MappingInstructions.cs" />
+    <Compile Include="Dynamic\MethodGenerator.cs" />
+    <Compile Include="Dynamic\MethodHeader.cs" />
+    <Compile Include="Dynamic\MethodMapping.cs" />
+    <Compile Include="Dynamic\MsilWriter.cs" />
+    <Compile Include="Dynamic\PropertyMapping.cs" />
+    <Compile Include="Dynamic\SimpleLocal.cs" />
+    <Compile Include="Dynamic\SimpleParameter.cs" />
+    <Compile Include="Dynamic\SimpleVariable.cs" />
+    <Compile Include="Dynamic\StackAssert.cs" />
+    <Compile Include="Dynamic\StackItem.cs" />
+    <Compile Include="Dynamic\StackValidationException.cs" />
+    <Compile Include="HelperObjects\ArgumentAssert.cs" />
+    <Compile Include="HelperObjects\CommonExtensions.cs" />
+    <Compile Include="HelperObjects\KeyedLazyInitializer.cs" />
+    <Compile Include="HelperObjects\LazyInitializer.cs" />
+    <Compile Include="HelperObjects\MessageWall.cs" />
+    <Compile Include="HelperObjects\MethodResult.cs" />
+    <Compile Include="HelperObjects\ReadableLazyIndexer.cs" />
+    <Compile Include="IO\ManagedZLibWrapper.cs" />
+    <Compile Include="IO\PrimitiveExtensions.cs" />
+    <Compile Include="IO\SerializationMemoryConfig.cs">
+      <DependentUpon>SerializationMemoryConfig.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="IO\SerializationType.cs" />
+    <Compile Include="IO\SerializerHeaders.cs" />
+    <Compile Include="IO\StreamExtensions.cs" />
+    <Compile Include="Metrics\GenerationTimer.cs" />
+    <Compile Include="Metrics\MinMaxAverage.cs" />
+    <Compile Include="Metrics\RateCount.cs" />
+    <Compile Include="Metrics\RateMinMaxAverage.cs" />
+    <Compile Include="Metrics\SlidingWindowAverage.cs" />
+    <Compile Include="Metrics\SloppyMovingAverage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ChangeNotification\FileModifiedEventArgs.cs" />
     <Compile Include="ChangeNotification\FileStalker.cs" />
@@ -169,6 +294,7 @@
     <Compile Include="IO\DataSource.cs" />
     <Compile Include="IO\CompactBinaryFormatter.cs" />
     <Compile Include="IO\DeserializeMethod.cs" />
+    <None Include="IO\SerializationMemoryConfig.xsd" />
     <None Include="Pooling\PoolConfig.xsd" />
     <Compile Include="Pooling\IPoolItem.cs" />
     <Compile Include="Pooling\Pool.cs">
@@ -187,6 +313,7 @@
     <Compile Include="Storage\PostAccessUnmanagedMemoryCleanup.cs" />
     <Compile Include="Storage\SafeUnmanagedMemoryStream.cs" />
     <Compile Include="Storage\StorageKey.cs" />
+    <Compile Include="Storage\StringBuilderInternalAccessor.cs" />
     <Compile Include="Storage\StringBuilderSegment.cs" />
     <Compile Include="Surrogates\BuiltinSurrogates.cs" />
     <Compile Include="Surrogates\SerializationSurrogate.cs" />
@@ -202,17 +329,39 @@
     <Compile Include="HelperObjects\StringUtility.cs" />
     <Compile Include="HelperObjects\Algorithm.cs" />
     <Compile Include="HelperObjects\SafeCounter.cs" />
-    <Compile Include="UnitTests\Accessor.cs" />
-    <Compile Include="UnitTests\MSAssert.cs" />
-    <Compile Include="UnitTests\SerializationTests.cs" />
-    <Compile Include="UnitTests\TestAttributeBase.cs" />
-    <Compile Include="UnitTests\TestDecorator.cs" />
-    <Compile Include="UnitTests\UnitTestBase.cs" />
-    <Compile Include="UnitTests\UnitTestHelper.cs" />
+    <Compile Include="Threading\AsynchronousExecutionPlan.cs" />
+    <Compile Include="Threading\AsyncResultOperation.cs" />
+    <Compile Include="Threading\ExecuteAsyncOperation.cs" />
+    <Compile Include="Threading\Future.cs" />
+    <Compile Include="Threading\FutureExtensions.cs" />
+    <Compile Include="Threading\FuturePublisher.cs" />
+    <Compile Include="Threading\FutureStatus.cs" />
+    <Compile Include="Threading\IFuture.cs" />
+    <Compile Include="Threading\IFutureReaction.cs" />
+    <Compile Include="Threading\Operation.cs" />
+    <Compile Include="Threading\ParallelAsyncOperation.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="_README_.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -3,36 +3,27 @@ using System.Collections.Generic;
 using System.Text;
 using System.Configuration;
 
+
 namespace MySpace.Common.IO
 {
 	public class UnicodeStringCompressor
 	{
 		public static byte[] Compress(string unicodeString)
 		{
-			byte[] messagebytes = Encoding.Unicode.GetBytes(unicodeString);
+			if (unicodeString == null)
+				return null;
 
-			if (ConfigurationManager.AppSettings["UseManagedZLibForCompress"] == "true")
-			{
-				return ManagedZLib.Compress(messagebytes, 6, true);
-			}
-			else
-			{
-				return MySpace.Common.IO.Compressor.GetInstance().Compress(messagebytes, true);
-			}
+			byte[] messagebytes = Encoding.Unicode.GetBytes(unicodeString);
+			return Compressor.Instance.Compress(messagebytes, true);
+			
 		}
 
 		public static string Decompress(byte[] compressedUnicodeString)
 		{
-			byte[] messagebytes = new byte[0];
-			if (ConfigurationManager.AppSettings["UseManagedZLibForDecompress"] == "true")
-			{
-				messagebytes = ManagedZLib.Decompress(compressedUnicodeString, true);
-			}
-			else
-			{
-				messagebytes = MySpace.Common.IO.Compressor.GetInstance().Decompress(compressedUnicodeString, true);
-			}
+			if (compressedUnicodeString == null)
+				return null;
 
+			byte[] messagebytes = Compressor.Instance.Decompress(compressedUnicodeString, true);
 			return Encoding.Unicode.GetString(messagebytes);
 		}
 	}

@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System.CodeDom.Compiler;
+using System.Diagnostics;
+using System.Runtime.Serialization;
 
 namespace MySpace.Common.UnitTests
 {
@@ -12,6 +14,7 @@ namespace MySpace.Common.UnitTests
 	using MySpace.Common;
 	using MySpace.Common.IO;
 	using System.Threading;
+using System.Xml;
 
 	/// <summary>
 	/// <para>Provides a number of custom assertions for unit tests.</para>
@@ -277,6 +280,24 @@ namespace MySpace.Common.UnitTests
 
 		/// <summary>
 		/// <para>Asserts that the code path encapsulated by <paramref name="dlg"/> throws an
+		/// <see cref="ArgumentOutOfRangeException"/> with parameter name of <paramref name="paramName"/>.</para>
+		/// </summary>
+		/// <param name="paramName">The name of the expected <see langword="null"/> parameter.</param>
+		/// <param name="dlg">The delegate to execute.</param>
+		/// <returns>The caught exception. Never <see langword="null"/>.</returns>
+		/// <exception cref="ArgumentNullException">
+		/// <para><paramref name="paramName"/> is <see langword="null"/>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="dlg"/> is <see langword="null"/>.</para>
+		/// </exception>
+		public static ArgumentOutOfRangeException ThrowsArgumentOutOfRangeException(string paramName, ParameterlessDelegate dlg)
+		{
+			var exc = ThrowsArgumentException<ArgumentOutOfRangeException>(paramName, dlg);
+			return exc;
+		}
+
+		/// <summary>
+		/// <para>Asserts that the code path encapsulated by <paramref name="dlg"/> throws an
 		/// exception of <typeparamref name="T"/> which is a subclass of <see cref="ArgumentException"/>, with
 		/// parameter name of <paramref name="paramName"/>.</para>
 		/// </summary>
@@ -293,6 +314,22 @@ namespace MySpace.Common.UnitTests
 		{
 			var exc = ThrowsException<T>(dlg);
 			Assert.AreEqual(paramName, exc.ParamName, "Incorrect parameter name of " + typeof(T).Name);
+			return exc;
+		}
+
+
+		/// <summary>
+		/// <para>Asserts that the code path encapsulated by <paramref name="dlg"/> throws an
+		/// <see cref="ApplicationException"/>.</para>
+		/// </summary>
+		/// <param name="dlg">The delegate to execute.</param>
+		/// <returns>The caught exception. Never <see langword="null"/>.</returns>
+		/// <exception cref="ArgumentNullException">
+		/// <para><paramref name="dlg"/> is <see langword="null"/>.</para>
+		/// </exception>
+		public static ApplicationException ThrowsApplicationException(ParameterlessDelegate dlg)
+		{
+			var exc = ThrowsException<ApplicationException>(dlg);
 			return exc;
 		}
 
@@ -509,6 +546,175 @@ namespace MySpace.Common.UnitTests
 			if (String.IsNullOrEmpty(str))
 			{
 				Assert.Fail("String is unexpectedly null or empty.");
+			}
+		}
+
+		/// <summary>
+		/// 	<para>Asserts that an XPath query does yield a node in the specified
+		///		XML document.</para>
+		/// </summary>
+		/// <param name="xml">
+		/// 	<para>The XML document on which to run the XPath.</para>
+		/// </param>
+		/// <param name="xpath">
+		/// 	<para>The XPath query to run on the specified XML document.</para>
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		/// 	<para>The argument <paramref name="xml"/> is <see langword="null"/>.</para>
+		/// 	<para>-or-</para>
+		/// 	<para>The argument <paramref name="xpath"/> is <see langword="null"/>.</para>
+		/// </exception>
+		public static void XPathExists(XmlDocument xml, string xpath)
+		{
+			if (xml == null) throw new ArgumentNullException("xml");
+			if (xpath == null) throw new ArgumentNullException("xpath");
+
+			if (xml.SelectSingleNode(xpath) == null)
+			{
+				Assert.Fail(
+					String.Format(
+						"XPath '{0}' failed to yield a node in this XML document: {1}",
+						xpath,
+						xml.InnerXml));
+			}
+		}
+
+		/// <summary>
+		/// 	<para>Asserts that an XPath query does NOT yield a node in the specified
+		///		XML document.</para>
+		/// </summary>
+		/// <param name="xml">
+		/// 	<para>The XML document on which to run the XPath.</para>
+		/// </param>
+		/// <param name="xpath">
+		/// 	<para>The XPath query to run on the specified XML document.</para>
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		/// 	<para>The argument <paramref name="xml"/> is <see langword="null"/>.</para>
+		/// 	<para>-or-</para>
+		/// 	<para>The argument <paramref name="xpath"/> is <see langword="null"/>.</para>
+		/// </exception>
+		public static void XPathDoesNotExist(XmlDocument xml, string xpath)
+		{
+			if (xml == null) throw new ArgumentNullException("xml");
+			if (xpath == null) throw new ArgumentNullException("xpath");
+
+			if (xml.SelectSingleNode(xpath) != null)
+			{
+				Assert.Fail(
+					String.Format(
+						"XPath '{0}' unexpectedly yielded a node in this XML document: {1}",
+						xpath,
+						xml.InnerXml));
+			}
+		}
+
+		[Serializable]
+		class ExceptionInfo
+		{
+			public string ClassName { get; private set; }
+
+			public string Message { get; private set; }
+
+			public string StackTrace { get; private set; }
+
+			public ExceptionInfo InnerInfo { get; private set; }
+
+			public ExceptionInfo(Exception exc)
+			{
+				ClassName = exc.GetType().FullName;
+				Message = exc.Message;
+				StackTrace = exc.StackTrace;
+				if (exc.InnerException != null)
+				{
+					InnerInfo = new ExceptionInfo(exc.InnerException);
+				}
+			}
+
+			private void AddString(IndentedTextWriter writer)
+			{
+				writer.WriteLine("Class: {0}", ClassName);
+				writer.WriteLine("Message: {0}", Message);
+				writer.WriteLine("Stack Trace: {0}", StackTrace);
+				if (InnerInfo != null)
+				{
+					writer.WriteLine("Inner Exception:");
+					++writer.Indent;
+					InnerInfo.AddString(writer);
+				}
+			}
+
+			public override string ToString()
+			{
+				var sbd = new StringBuilder();
+				using(var writer = new IndentedTextWriter(new StringWriter(sbd)))
+				{
+					AddString(writer);
+				}
+				return sbd.ToString();
+			}
+		}
+
+		class TestProxy : MarshalByRefObject
+		{
+			private readonly Action _tests;
+
+			public TestProxy(Action tests)
+			{
+				_tests = tests;
+			}
+
+			public ExceptionInfo PerformTests()
+			{
+				try
+				{
+					_tests();
+				}
+				catch(Exception exc)
+				{
+					return new ExceptionInfo(exc);
+				}
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Performs tests in a new domain.
+		/// </summary>
+		/// <param name="configPath">The <see cref="String"/> path to the
+		/// configuration file to use for this new domain.</param>
+		/// <param name="tests"><see cref="Action"/> of tests.</param>
+		/// <exception cref="ArgumentNullException">
+		/// <para><paramref name="configPath"/> is null or empty</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="tests"/> is null.</para>
+		/// </exception>
+		public static void PerformTestsInSeparateDomain(string configPath,
+			Action tests)
+		{
+			if (string.IsNullOrEmpty(configPath))
+			{
+				throw new ArgumentNullException("configPath");
+			}
+			if (tests == null)
+			{
+				throw new ArgumentNullException("tests");
+			}
+			var domain = AppDomain.CreateDomain(
+				"PerformTestsInSeparateDomain_domain", null, new AppDomainSetup
+             	{
+             		ApplicationBase = Environment.CurrentDirectory,
+             		ConfigurationFile = Path.Combine(Environment.CurrentDirectory,
+						configPath)
+             	});
+			var proxy = (TestProxy) domain.CreateInstanceAndUnwrap(
+        		typeof (TestProxy).Assembly.FullName, typeof (TestProxy).FullName,
+				false, BindingFlags.Default, null, new object[] {tests}, null,
+				null, null);
+			var info = proxy.PerformTests();
+			if (info != null)
+			{
+				Assert.Fail(info.ToString());
 			}
 		}
 	}

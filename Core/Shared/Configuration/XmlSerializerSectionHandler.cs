@@ -1,5 +1,7 @@
 using System;
 using System.Configuration;
+using System.Linq;
+using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Serialization;
 using System.Xml.XPath;
@@ -9,6 +11,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using MySpace.Common.HelperObjects;
 
 namespace MySpace.Shared.Configuration
 {
@@ -17,15 +20,17 @@ namespace MySpace.Shared.Configuration
 	/// </summary>
 	public class XmlSerializerSectionHandler : IConfigurationSectionHandler
 	{
-		private static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
+		private static readonly Logging.LogWrapper log = new Logging.LogWrapper();
 		public const int ReloadEventDelayMs = 5000;
 		private static readonly Dictionary<string, object> configInstances = new Dictionary<string, object>();
 		private static readonly List<FileSystemWatcher> watchers = new List<FileSystemWatcher>();
 		private static readonly List<string> pendingConfigReloads = new List<string>();
 		private static readonly object configLoadLock = new object();
-		private static Dictionary<Type, List<EventHandler>> reloadDelegates = new Dictionary<Type, List<EventHandler>>();
-		private static readonly object reloadDelegatesLock = new object();
-		private static System.Threading.Timer reloadTimer;
+		private static readonly Dictionary<Type, List<EventHandler>> reloadDelegates = new Dictionary<Type, List<EventHandler>>();
+
+		private static readonly MsReaderWriterLock reloadDelegatesLock =
+			new MsReaderWriterLock(System.Threading.LockRecursionPolicy.NoRecursion);
+		private static Timer reloadTimer;
 
 		public object Create(object parent, object configContext, XmlNode section)
 		{
@@ -33,7 +38,7 @@ namespace MySpace.Shared.Configuration
 
 			try
 			{
-				System.Configuration.Configuration config = null;
+				System.Configuration.Configuration config;
 
 				//if the app is hosted you should be able to load a web.config.
 				if (System.Web.Hosting.HostingEnvironment.IsHosted)
@@ -74,13 +79,18 @@ Example: <ConfigurationFile type=""MySpace.Configuration.ConfigurationFile, MySp
 					"'.  Please ensure this is a valid type string.", section);
 
 			bool configAndXmlAttributeMatch = false;
-
+			bool useDataContractSerialization = false;
 			try
 			{
 				XmlRootAttribute[] attributes = t.GetCustomAttributes(typeof(XmlRootAttribute), false) as XmlRootAttribute[];
 
 				if (null == attributes || attributes.Length == 0)
 				{
+					useDataContractSerialization = t.GetCustomAttributes(typeof(DataContractAttribute), false)
+						.OfType<DataContractAttribute>()
+						.Take(1)
+						.Count() > 0;
+
 					if (log.IsErrorEnabled) log.ErrorFormat(
 @"Type ""{0}"" does not have an XmlRootAttribute applied.
 Please declare an XmlRootAttribute with the proper namespace ""{1}""
@@ -121,40 +131,44 @@ Please look at http://mywiki.corp.myspace.com/index.php/XmlSerializerSectionHand
 			System.Diagnostics.Stopwatch watch = null;
 			try
 			{
-				/*
-				 * This log statement was added by Jeremy Custenborder to flush out all of the XmlSerialization based config files. 
-				 * XmlSerialized configs are a big part of our startup problem. This should not cause issues but if it does contact 
-				 * Jeremy before removing. Again this should not cause issues unless the log file is created once per request or 
-				 * something like that. If that is the case we have an issue anyway and this will hopefully flush it out under a StageDev1. 
-				 * */
-
-
-
-				XmlSerializer ser = null;
-				watch = System.Diagnostics.Stopwatch.StartNew();
-				if (configAndXmlAttributeMatch)
+				if(log.IsDebugEnabled)
+					watch = System.Diagnostics.Stopwatch.StartNew();
+				
+				if (useDataContractSerialization)
 				{
-					if (log.IsInfoEnabled) log.InfoFormat("Creating XmlSerializer for Type = \"{0}\" inferring namespace from Type", t.AssemblyQualifiedName);
-					ser = new XmlSerializer(t);
+					if (log.IsDebugEnabled) log.DebugFormat("Creating DataContractSerializer for Type = \"{0}\" inferring namespace from Type", t.AssemblyQualifiedName);
+					return new DataContractSerializer(t).ReadObject(new XmlNodeReader(section));
 				}
 				else
 				{
-					if (log.IsInfoEnabled) log.InfoFormat("Creating XmlSerializer for Type = \"{0}\" with Namespace =\"{1}\"", t.AssemblyQualifiedName, nav.NamespaceURI);
-					ser = new XmlSerializer(t, nav.NamespaceURI);
-				}
+					XmlSerializer ser;
+					if (configAndXmlAttributeMatch)
+					{
+						if (log.IsDebugEnabled) log.DebugFormat("Creating XmlSerializer for Type = \"{0}\" inferring namespace from Type", t.AssemblyQualifiedName);
+						ser = new XmlSerializer(t);
+					}
+					else
+					{
+						if (log.IsDebugEnabled) log.DebugFormat("Creating XmlSerializer for Type = \"{0}\" with Namespace =\"{1}\"", t.AssemblyQualifiedName, nav.NamespaceURI);
+						ser = new XmlSerializer(t, nav.NamespaceURI);
+					}
 
-				return ser.Deserialize(new XmlNodeReader(section));
+					return ser.Deserialize(new XmlNodeReader(section));
+				}
 			}
 			catch (Exception ex)
 			{
 				if (ex.InnerException != null)
 					throw ex.InnerException;
-				throw ex;
+				throw;
 			}
 			finally
 			{
-				watch.Stop();
-				if (log.IsInfoEnabled) log.InfoFormat("Took {0} to Create XmlSerializer and Deserialize for Type = \"{1}\"", watch.Elapsed, t.AssemblyQualifiedName);
+				if (log.IsDebugEnabled && watch != null)
+				{
+					watch.Stop();
+					log.DebugFormat("Took {0} to Create and Deserialize Type = \"{1}\"", watch.Elapsed, t.AssemblyQualifiedName);
+				}
 			}
 		}
 
@@ -166,17 +180,25 @@ Please look at http://mywiki.corp.myspace.com/index.php/XmlSerializerSectionHand
 			{
 				return Path.GetFullPath(confFile.FilePath);
 			}
-			else
+			string directoryName = Path.GetDirectoryName(confFile.FilePath);
+			if (directoryName == null)
 			{
-				return Path.Combine(Path.GetDirectoryName(confFile.FilePath), configSource);
+				log.ErrorFormat("Could not get directory name from config file path {0}", confFile.FilePath);
+				return null;
 			}
+			return Path.Combine(directoryName, configSource);
+			
 		}
 
 		private static void SetupWatcher(System.Configuration.Configuration config, ConfigurationSection configSection, object configInstance)
 		{
 			string filePath = GetConfigFilePath(config, configSection);
 			string fileName = Path.GetFileName(filePath);
-
+			if (fileName == null)
+			{
+				log.ErrorFormat("Could not get file name from config file path {0}", filePath);
+				return;
+			}
 			if (configInstances.ContainsKey(fileName))
 				return;
 
@@ -223,36 +245,61 @@ Please look at http://mywiki.corp.myspace.com/index.php/XmlSerializerSectionHand
 
 		internal static void ReloadConfig(string configFilePath)
 		{
-			XmlDocument doc = new XmlDocument();
-			doc.Load(configFilePath);
-
-			//refresh the section in case anyone else uses it
-			ConfigurationManager.RefreshSection(doc.DocumentElement.Name);
-
-			object newSettings = GetConfigInstance(doc.DocumentElement);
-			object configInstance = configInstances[Path.GetFileName(configFilePath)];
-
-			if (newSettings.GetType() != configInstance.GetType())
-				return;
-			Type newSettingsType = newSettings.GetType();
-			PropertyInfo[] props = newSettingsType.GetProperties();
-			foreach (PropertyInfo prop in props)
+			if (string.IsNullOrEmpty(configFilePath))
 			{
-				if (prop.CanRead && prop.CanWrite)
-					prop.SetValue(configInstance, prop.GetValue(newSettings, null), null);
+				log.Error("Attempted to reload null or empty config file path.");
+				return;
 			}
 
-			List<EventHandler> delegateMethods;
-
-			if (reloadDelegates.TryGetValue(newSettingsType, out delegateMethods))
+			try
 			{
-				if (delegateMethods != null)
+				XmlDocument doc = new XmlDocument();
+				doc.Load(configFilePath);
+
+				if (doc.DocumentElement == null)
 				{
-					foreach (EventHandler delegateMethod in delegateMethods)
-					{
-						delegateMethod(newSettings, EventArgs.Empty);
-					}
+					log.ErrorFormat("Got a null document element when reloading config file with path {0}", configFilePath);
+					return;
 				}
+
+				//refresh the section in case anyone else uses it
+				ConfigurationManager.RefreshSection(doc.DocumentElement.Name);
+
+				object newSettings = GetConfigInstance(doc.DocumentElement);
+				string fileName = Path.GetFileName(configFilePath);
+				if (fileName == null)
+				{
+					log.ErrorFormat("Got null file name for config file path {0}", configFilePath);
+					return;
+				}
+				object configInstance = configInstances[fileName];
+
+				if (newSettings.GetType() != configInstance.GetType())
+					return;
+				Type newSettingsType = newSettings.GetType();
+				PropertyInfo[] props = newSettingsType.GetProperties();
+				foreach (PropertyInfo prop in props)
+				{
+					if (prop.CanRead && prop.CanWrite)
+						prop.SetValue(configInstance, prop.GetValue(newSettings, null), null);
+				}
+
+				reloadDelegatesLock.Read(() =>
+				                         	{
+				                         		List<EventHandler> delegateMethods;
+				                         		if (reloadDelegates.TryGetValue(newSettingsType, out delegateMethods)
+				                         		    && delegateMethods != null)
+				                         		{
+				                         			foreach (EventHandler delegateMethod in delegateMethods)
+				                         			{
+				                         				delegateMethod(newSettings, EventArgs.Empty);
+				                         			}
+				                         		}
+				                         	});
+			}
+			catch (Exception e)
+			{
+				log.ErrorFormat("Exception reloading config with path {0}: {1}", configFilePath, e);
 			}
 		}
 
@@ -264,35 +311,41 @@ Please look at http://mywiki.corp.myspace.com/index.php/XmlSerializerSectionHand
 		/// <param name="delegateMethod">Delegate method to call.</param>
 		public static void RegisterReloadNotification(Type type, EventHandler delegateMethod)
 		{
-			lock (reloadDelegatesLock)
+			reloadDelegatesLock.Write(() =>
 			{
-				// We have to re-build everything w/ new collections
-				// because other code in this class reads
-				// reloadDelegates and the EventHandler lists
-				// contained by reloadDelegates without
-				// aquiring reloadDelegatesLock
-
-				var newReloadDelegates = new Dictionary<Type, List<EventHandler>>();
-				bool added = false;
-
-				foreach (var pair in reloadDelegates)
+				List<EventHandler> eventHandlerList;
+				if (reloadDelegates.TryGetValue(type, out eventHandlerList) && 
+					eventHandlerList != null)
 				{
-					var newHandlers = new List<EventHandler>(pair.Value);
-					newReloadDelegates.Add(pair.Key, newHandlers);
-					if (pair.Key == type)
+					if (!eventHandlerList.Contains(delegateMethod))
 					{
-						newHandlers.Add(delegateMethod);
-						added = true;
+						eventHandlerList.Add(delegateMethod);
 					}
 				}
-
-				if (!added)
+				else
 				{
-					newReloadDelegates.Add(type, new List<EventHandler> { delegateMethod });
+					reloadDelegates.Add(type, new List<EventHandler> { delegateMethod });
 				}
-				Thread.MemoryBarrier();
-				reloadDelegates = newReloadDelegates;
-			}
+			});
+		}
+		/// <summary>
+		/// If you have registered for an event, you should call this to unregister when your 
+		/// class is ready to be disposed, because otherwise a reference will be held to it by the
+		/// delegate and it will never be fully garbage collected.
+		/// </summary>
+		/// <param name="type">Type used to register for notification</param>
+		/// <param name="delegateMethod">Delegate that was registered</param>
+		public static void UnregisterReloadNotification(Type type, EventHandler delegateMethod)
+		{
+			reloadDelegatesLock.Write(() =>
+			{
+				List<EventHandler> eventHandlerList;
+				if (reloadDelegates.TryGetValue(type, out eventHandlerList) && 
+					eventHandlerList != null)
+				{
+					eventHandlerList.Remove(delegateMethod);
+				}
+			});
 		}
 	}
 

@@ -34,5 +34,11 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: InternalsVisibleTo("MySpace.Configuration")]
 [assembly: InternalsVisibleTo("MySpace.Common.Test")]
+[assembly: InternalsVisibleTo("MySpace.Shared.Test")]
 [assembly: InternalsVisibleTo("MySpace.Configuration.Test")]
+[assembly: InternalsVisibleTo("MySpace.FlexCache.Test")]
+[assembly: InternalsVisibleTo("MySpace.FlexCache.Server")]
+[assembly: InternalsVisibleTo("MySpace.FlexCache")]
+

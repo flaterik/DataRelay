@@ -369,6 +369,13 @@ namespace MySpace.Common.IO
 				| BindingFlags.Instance
 				| BindingFlags.Public
 				| BindingFlags.NonPublic;
+
+			if (targetType.IsArray && targetType.GetArrayRank() == 1 && ctorParams.Length == 1 && ctorParams[0] == typeof(int))
+			{
+				il.Emit(OpCodes.Newarr, targetType.GetElementType());
+				il.Emit(OpCodes.Stloc, local);
+				return;
+			}
             
             var ctor = targetType.GetConstructor(flags, null, ctorParams, null);
             if (ctor == null)

@@ -287,30 +287,7 @@ namespace MySpace.Common.CompactSerialization.IO
 		/// </remarks>
 		public void WriteVarInt32(int value)
 		{
-			unchecked
-			{
-				uint val = (uint)(value < 0 ? -value : value);
-
-				byte part = (byte)
-				(
-					(val >= 0x40 ? 0x80 : 0)
-					| (value < 0 ? 0x40 : 0)
-					| (val & 0x3F)
-				);
-				writer.Write(part);
-				val >>= 6;
-
-				if (val > 0)
-				{
-					while (val >= 0x80)
-					{
-						part = (byte)(0x80 | val);
-						writer.Write(part);
-						val >>= 7;
-					}
-					writer.Write((byte)val);
-				}
-			}
+			BaseStream.WriteVarInt32(value);
 		}
 
 		/// <summary>

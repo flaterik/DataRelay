@@ -11,7 +11,7 @@ using MySpace.Logging;
 namespace MySpace.Common.IO
 {
 	/// <summary>
-	/// 	<para>Provies a global type id definition.</para>
+	/// 	<para>Provides a global type id definition.</para>
 	/// </summary>
 	public sealed class TypeInfo
 	{
