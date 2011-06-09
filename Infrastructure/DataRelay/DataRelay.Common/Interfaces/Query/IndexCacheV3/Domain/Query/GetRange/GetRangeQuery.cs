@@ -1,119 +1,39 @@
 ﻿using System;
 using MySpace.Common.IO;
 using MySpace.Common;
-using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
     public class GetRangeQuery : IRelayMessageQuery, IPrimaryQueryId
     {
         #region Data Members
-        private byte[] indexId;
-        public byte[] IndexId
-        {
-            get
-            {
-                return indexId;
-            }
-            set
-            {
-                indexId = value;
-            }
-        }
 
-        private int offset;
-        public int Offset
-        {
-            get
-            {
-                return offset;
-            }
-            set
-            {
-                offset = value;
-            }
-        }
+        public byte[] IndexId { get; set; }
 
-        private int itemNum;
-        public int ItemNum
-        {
-            get
-            {
-                return itemNum;
-            }
-            set
-            {
-                itemNum = value;
-            }
-        }
+        public int Offset { get; set; }
 
-        private string targetIndexName;
-        public string TargetIndexName
-        {
-            get
-            {
-                return targetIndexName;
-            }
-            set
-            {
-                targetIndexName = value;
-            }
-        }
+        public int ItemNum { get; set; }
 
-        private bool excludeData;
-        public bool ExcludeData
-        {
-            get
-            {
-                return excludeData;
-            }
-            set
-            {
-                excludeData = value;
-            }
-        }
+        public string TargetIndexName { get; set; }
 
-        private bool getMetadata;
-        public bool GetMetadata
-        {
-            get
-            {
-                return getMetadata;
-            }
-            set
-            {
-                getMetadata = value;
-            }
-        }
+        public bool ExcludeData { get; set; }
 
-        private Filter filter;
-        public Filter Filter
-        {
-            get
-            {
-                return filter;
-            }
-            set
-            {
-                filter = value;
-            }
-        }
+        public bool GetMetadata { get; set; }
 
-        private FullDataIdInfo fullDataIdInfo;
-        public FullDataIdInfo FullDataIdInfo
-        {
-            get
-            {
-                return fullDataIdInfo;
-            }
-            set
-            {
-                fullDataIdInfo = value;
-            }
-        }
+        public Filter Filter { get; set; }
+
+        public FullDataIdInfo FullDataIdInfo { get; set; }
+
+        public TagSort TagSort { get; set; }
+
+        public IndexCondition IndexCondition { get; set; }
+
+        public DomainSpecificProcessingType DomainSpecificProcessingType { get; set; }
+
         #endregion
 
         #region Ctors
+
         public GetRangeQuery()
         {
             Init(null, -1, -1, null, false, false, null);
@@ -138,17 +58,19 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
         private void Init(byte[] indexId, int offset, int itemNum, string targetIndexName, bool excludeData, bool getMetadata, FullDataIdInfo fullDataIdInfo)
         {
-            this.indexId = indexId;
-            this.offset = offset;
-            this.itemNum = itemNum;
-            this.targetIndexName = targetIndexName;
-            this.excludeData = excludeData;
-            this.getMetadata = getMetadata;
-            this.fullDataIdInfo = fullDataIdInfo;
+            IndexId = indexId;
+            Offset = offset;
+            ItemNum = itemNum;
+            TargetIndexName = targetIndexName;
+            ExcludeData = excludeData;
+            GetMetadata = getMetadata;
+            FullDataIdInfo = fullDataIdInfo;
         }
+
         #endregion
 
         #region IRelayMessageQuery Members
+
         public byte QueryId
         {
             get
@@ -156,68 +78,105 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return (byte)QueryTypes.GetRangeQuery;
             }
         }
+
         #endregion
 
         #region IPrimaryQueryId Members
+
         private int primaryId;
         public int PrimaryId
         {
             get
             {
-                return primaryId > 0 ? primaryId : IndexCacheUtils.GeneratePrimaryId(indexId);
+                return primaryId > 0 ? primaryId : IndexCacheUtils.GeneratePrimaryId(IndexId);
             }
             set
             {
                 primaryId = value;
             }
         }
+
         #endregion
 
         #region IVersionSerializable Members
+
         public void Serialize(IPrimitiveWriter writer)
         {
             //IndexId
-            if (indexId == null || indexId.Length == 0)
+            if (IndexId == null || IndexId.Length == 0)
             {
                 writer.Write((ushort)0);
             }
             else
             {
-                writer.Write((ushort)indexId.Length);
-                writer.Write(indexId);
+                writer.Write((ushort)IndexId.Length);
+                writer.Write(IndexId);
             }
 
             //Offset
-            writer.Write(offset);
+            writer.Write(Offset);
 
             //ItemNum
-            writer.Write(itemNum);
+            writer.Write(ItemNum);
 
             //TargetIndexName
-            writer.Write(targetIndexName);
+            writer.Write(TargetIndexName);
 
             //Write a byte to account for deprecated CriterionList
             writer.Write((byte)0);
 
             //ExcludeData
-            writer.Write(excludeData);
+            writer.Write(ExcludeData);
 
             //GetMetadata
-            writer.Write(getMetadata);
+            writer.Write(GetMetadata);
 
             //Filter
-            if (filter == null)
+            if (Filter == null)
             {
                 writer.Write((byte)0);
             }
             else
             {
-                writer.Write((byte)filter.FilterType);
-                Serializer.Serialize(writer.BaseStream, filter);
+                writer.Write((byte)Filter.FilterType);
+                Serializer.Serialize(writer.BaseStream, Filter);
             }
 
             //FullDataIdInfo
-            Serializer.Serialize(writer.BaseStream, fullDataIdInfo);
+            if (FullDataIdInfo == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, FullDataIdInfo);
+            }
+
+            //TagSort
+            if (TagSort == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, TagSort);
+            }
+
+            //IndexCondition
+            if (IndexCondition == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, IndexCondition);
+            }
+
+            //DomainSpecificProcessingType
+            writer.Write((byte)DomainSpecificProcessingType);
         }
 
         public void Deserialize(IPrimitiveReader reader, int version)
@@ -226,26 +185,26 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             ushort len = reader.ReadUInt16();
             if (len > 0)
             {
-                indexId = reader.ReadBytes(len);
+                IndexId = reader.ReadBytes(len);
             }
 
             //Offset
-            offset = reader.ReadInt32();
+            Offset = reader.ReadInt32();
 
             //ItemNum
-            itemNum = reader.ReadInt32();
+            ItemNum = reader.ReadInt32();
 
             //TargetIndexName
-            targetIndexName = reader.ReadString();
+            TargetIndexName = reader.ReadString();
 
             //Read a byte to account for deprecated CriterionList
             reader.ReadByte();
 
             //ExcludeData
-            excludeData = reader.ReadBoolean();
+            ExcludeData = reader.ReadBoolean();
 
             //GetMetadata
-            getMetadata = reader.ReadBoolean();
+            GetMetadata = reader.ReadBoolean();
 
             if (version >= 2)
             {
@@ -254,19 +213,52 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 if (b != 0)
                 {
                     FilterType filterType = (FilterType)b;
-                    filter = FilterFactory.CreateFilter(reader, filterType);
+                    Filter = FilterFactory.CreateFilter(reader, filterType);
                 }
             }
 
-            if(version >= 3)
+            if (version == 3)
             {
                 //FullDataIdInfo
-                fullDataIdInfo = new FullDataIdInfo();
-                Serializer.Deserialize(reader.BaseStream, fullDataIdInfo);
+                FullDataIdInfo = new FullDataIdInfo();
+                Serializer.Deserialize(reader.BaseStream, FullDataIdInfo);
+            }
+            
+            if (version >= 4)
+            {
+                //FullDataIdInfo
+                if (reader.ReadBoolean())
+                {
+                    FullDataIdInfo = new FullDataIdInfo();
+                    Serializer.Deserialize(reader.BaseStream, FullDataIdInfo);
+                }
+
+                //TagSort
+                if (reader.ReadBoolean())
+                {
+                    TagSort = new TagSort();
+                    Serializer.Deserialize(reader.BaseStream, TagSort);
+                }
+            }
+
+            if (version >= 5)
+            {
+                //IndexCondition
+                if (reader.ReadBoolean())
+                {
+                    IndexCondition = new IndexCondition();
+                    Serializer.Deserialize(reader.BaseStream, IndexCondition);
+                }
+            }
+
+            if (version >= 6)
+            {
+                //DomainSpecificProcessingType
+                DomainSpecificProcessingType = (DomainSpecificProcessingType)reader.ReadByte();
             }
         }
 
-        private const int CURRENT_VERSION = 3;
+        private const int CURRENT_VERSION = 6;
         public int CurrentVersion
         {
             get
@@ -282,13 +274,16 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return false;
             }
         }
+
         #endregion
 
         #region ICustomSerializable Members
+
         public void Deserialize(IPrimitiveReader reader)
         {
             reader.Response = SerializationResponse.Unhandled;
         }
+
         #endregion
     }
 }

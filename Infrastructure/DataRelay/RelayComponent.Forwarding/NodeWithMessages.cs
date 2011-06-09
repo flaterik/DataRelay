@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace MySpace.DataRelay.RelayComponent.Forwarding
 {
 	internal class NodeWithMessages
@@ -9,7 +11,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		
 		internal NodeWithInfo NodeWithInfo;
 		internal SerializedMessageList Messages = new SerializedMessageList();
-		
+	    internal List<Node> AttemptedNodes = new List<Node>();
 	}
-
 }

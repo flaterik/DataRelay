@@ -35,6 +35,7 @@ namespace MySpace.SocketTransport
 		private static readonly ObjectDisposedException _disposedException = new ObjectDisposedException(typeof(SocketChannel).Name);
 
 		private static readonly LogWrapper _log = new LogWrapper();
+		private static int _nextRequestId;
 
 		private readonly EndPoint _endpoint;
 		private readonly int _connectTimeout;
@@ -60,6 +61,7 @@ namespace MySpace.SocketTransport
 		private bool _responseReceived;
 		private Action<OneWayAsyncEventArgs> _oneWayResultAction;
 		private Action<RoundTripAsyncEventArgs> _roundTripResultAction;
+		private int _currentRequestId;
 
 		/// <summary>
 		/// 	<para>Initializes a new instance of the <see cref="SocketChannel"/> class.</para>
@@ -102,7 +104,7 @@ namespace MySpace.SocketTransport
 		/// </param>
 		/// <param name="resultAction">
 		///	<para>The method that will be called when the host acknowledges that the data was
-		///	recieved, the operation fails, or the operation times out.</para>
+		///	received, the operation fails, or the operation times out.</para>
 		/// </param>
 		/// <exception cref="ArgumentNullException">
 		///	<para><paramref name="sendData"/> is <see langword="null"/>.</para>
@@ -113,6 +115,8 @@ namespace MySpace.SocketTransport
 			Action<OneWayAsyncEventArgs> resultAction)
 		{
 			if (sendData == null) throw new ArgumentNullException("sendData");
+
+			_currentRequestId = Interlocked.Increment(ref _nextRequestId);
 
 			var task = new AsyncSocketTask(this);
 
@@ -150,6 +154,8 @@ namespace MySpace.SocketTransport
 			Action<RoundTripAsyncEventArgs> resultAction)
 		{
 			if (sendData == null) throw new ArgumentNullException("sendData");
+
+			_currentRequestId = Interlocked.Increment(ref _nextRequestId);
 
 			var task = new AsyncSocketTask(this);
 
@@ -342,17 +348,20 @@ namespace MySpace.SocketTransport
 
 			if (_state == State.Uninitialized)
 			{
+				LogDebugStep("Connecting...");
 				_state = State.Connecting;
 				var connectTimeoutHandle = TaskMonitor.RegisterMonitor(_connectTimeout, _timeoutHandler, null);
 				if (_socket.ConnectAsync(_socketArgs)) yield return false;
 				if (!connectTimeoutHandle.TrySetComplete())
 				{
+					LogDebugStep("Failed to set connection timeout handle complete.");
 					SetError(SocketError.TimedOut);
 					yield break;
 				}
 				if (!ValidateCompletedEvent(_socketArgs, SocketAsyncOperation.Connect)) yield break;
 
 				_state = State.Connected;
+				LogDebugStep("Connected.");
 
 				ThreadPool.UnsafeQueueUserWorkItem(o =>
 				{
@@ -366,6 +375,13 @@ namespace MySpace.SocketTransport
 			Debug.Assert(_sendData != null, "_sendData was not set prior to starting the send enumerator.");
 			_socketArgs.SetBuffer(_sendData.Item.GetBuffer(), (int)_sendData.Item.Position, (int)_sendData.Item.Length);
 			_timeoutHandle = TaskMonitor.RegisterMonitor(timeout, _timeoutHandler, null);
+			// note - it seems this is necessary because of a bug in the SendAsync function
+			// see - http://social.msdn.microsoft.com/Forums/en-IE/ncl/thread/40fe397c-b1da-428e-a355-ee5a6b0b4d2c
+			Thread.MemoryBarrier();
+			if (_log.IsDebugEnabled)
+			{
+				LogDebugStep(string.Format("Sending {0:###,###,###,##0} bytes", _sendData.Item.Length - _sendData.Item.Position));
+			}
 			if (_socket.SendAsync(_socketArgs)) yield return false;
 			if (!ValidateCompletedEvent(_socketArgs, SocketAsyncOperation.Send)) yield break;
 
@@ -376,50 +392,73 @@ namespace MySpace.SocketTransport
 		{
 			_receiveArgs.UserToken = callback;
 
-			while (true)
+			try
 			{
-				if (_socket.ReceiveAsync(_receiveArgs)) yield return false;
-				if (!ValidateCompletedEvent(_receiveArgs, SocketAsyncOperation.Receive)) yield break;
+				while (true)
+				{
+					if (_error != null) yield break;
+					// note - it seems this is necessary because of a bug in the SendAsync function
+					// see - http://social.msdn.microsoft.com/Forums/en-IE/ncl/thread/40fe397c-b1da-428e-a355-ee5a6b0b4d2c
+					Thread.MemoryBarrier();
+					LogDebugStep("Receiving...");
+					yield return !_socket.ReceiveAsync(_receiveArgs);
+					LogDebugStep("Receive Complete.");
+					if (!ValidateCompletedEvent(_receiveArgs, SocketAsyncOperation.Receive)) yield break;
 
-				if (_receiveArgs.BytesTransferred == 0)
-				{
-					SetError(SocketError.ConnectionReset);
-					yield break;
-				}
-
-				if (_operationType != OperationType.RoundTrip)
-				{
-					SetError(new InvalidOperationException("Received data when no round trip operation was pending."));
-					yield break;
-				}
-
-				int position = _receiveArgs.Offset;
-				int count = _receiveArgs.BytesTransferred;
-				if (!_responseHeader.IsComplete)
-				{
-					position += _responseHeader.Read(_receiveArgs.Buffer, position, count - position);
-					if (!_responseHeader.IsComplete || count == position) continue;
-				}
-				if (_responseData == null) _responseData = AsyncSocketClient.MemoryPool.Borrow();
-				int countAvailable = count - position;
-				int countNeeded = _responseHeader.MessageDataLength - (int)_responseData.Item.Length;
-				if (countNeeded <= countAvailable)
-				{
-					_responseData.Item.Write(_receiveArgs.Buffer, position, countNeeded);
-					_responseData.Item.Seek(0, SeekOrigin.Begin);
-					if (_responseHeader.MessageLength == ServerMessage.EmptyReplyMessageLength
-						&& ServerMessage.IsEmptyMessage(_responseData.Item.GetBuffer(), (int)_responseData.Item.Position, (int)_responseHeader.MessageLength))
+					if (_receiveArgs.BytesTransferred == 0)
 					{
-						_responseData.Dispose();
-						_responseData = null;
+						SetError(SocketError.ConnectionReset);
+						yield break;
 					}
-					_responseReceived = true;
+
+					if (_operationType != OperationType.RoundTrip)
+					{
+						SetError(new InvalidOperationException("Received data when no round trip operation was pending."));
+						yield break;
+					}
+
+					int position = _receiveArgs.Offset;
+					int count = _receiveArgs.BytesTransferred;
+					if (!_responseHeader.IsComplete)
+					{
+						position += _responseHeader.Read(_receiveArgs.Buffer, position, count - position);
+						if (!_responseHeader.IsComplete || count == position)
+						{
+							if (_log.IsDebugEnabled)
+							{
+								LogDebugStep(string.Format("Received partial header {0:###,##0} bytes", count - position));
+							}
+							continue;
+						}
+					}
+					if (_responseData == null) _responseData = AsyncSocketClient.MemoryPool.Borrow();
+					int countAvailable = count - position;
+					int countNeeded = _responseHeader.MessageDataLength - (int)_responseData.Item.Length;
+					if (countNeeded <= countAvailable)
+					{
+						_responseData.Item.Write(_receiveArgs.Buffer, position, countNeeded);
+						_responseData.Item.Seek(0, SeekOrigin.Begin);
+						if (_responseHeader.MessageLength == ServerMessage.EmptyReplyMessageLength
+							&& ServerMessage.IsEmptyMessage(_responseData.Item.GetBuffer(), (int)_responseData.Item.Position, _responseHeader.MessageLength))
+						{
+							_responseData.Dispose();
+							_responseData = null;
+						}
+						_responseReceived = true;
+					}
+					else
+					{
+						_responseData.Item.Write(_receiveArgs.Buffer, position, countAvailable);
+					}
+					if (_log.IsDebugEnabled)
+					{
+						LogDebugStep(countAvailable + " of " + countNeeded + " bytes received. " + (countNeeded - countAvailable) + " bytes remaining. Complete=" + IsOperationComplete);
+					}
 				}
-				else
-				{
-					_responseData.Item.Write(_receiveArgs.Buffer, position, countAvailable);
-				}
-				if (IsOperationComplete) yield return true;
+			}
+			finally
+			{
+				LogDebugStep("Receive Loop Ended.");
 			}
 		}
 
@@ -430,12 +469,45 @@ namespace MySpace.SocketTransport
 
 		private void SetError(Exception error)
 		{
-			_error = error;
-			Close();
+			if (_error == null)
+			{
+				_error = error;
+				Close();
+				if (_log.IsDebugEnabled)
+				{
+					LogDebugStep("SetError called for the first time. Error = " + error + "\r\n\r\nCaller stack = " + Environment.StackTrace);
+				}
+			}
+			else
+			{
+				if (_log.IsDebugEnabled)
+				{
+					LogDebugStep("SetError called more than once. Error = " + error + "\r\n\r\nCaller stack = " + Environment.StackTrace);
+				}
+			}
+		}
+
+		private void LogDebugStep(string message)
+		{
+			if (_log.IsDebugEnabled)
+			{
+				var ipEndpoint = _state == State.Disposed ? null :  _socket.LocalEndPoint as IPEndPoint;
+				var ephemeralPort = ipEndpoint != null ? ipEndpoint.Port.ToString() : "?";
+				var header = string.Format("{0} (Session={1},EphemeralPort={2}) - ", _endpoint, _currentRequestId, ephemeralPort);
+				_log.Debug(header + message);
+			}
 		}
 
 		private void Close()
 		{
+			try
+			{
+				_socket.Shutdown(SocketShutdown.Both);
+			}
+			catch (Exception ex)
+			{
+				_log.Error("Failed to shut socket down.", ex);
+			}
 			try
 			{
 				_socket.Close();
@@ -443,6 +515,22 @@ namespace MySpace.SocketTransport
 			catch (Exception ex)
 			{
 				_log.Error("Failed to close socket.", ex);
+			}
+			try
+			{
+				_socketArgs.Dispose();
+			}
+			catch (Exception ex)
+			{
+				_log.Error("Failed to dispose SocketChannel._socketArgs.", ex);
+			}
+			try
+			{
+				_receiveArgs.Dispose();
+			}
+			catch (Exception ex)
+			{
+				_log.Error("Failed to dispose SocketChannel._receiveArgs.", ex);
 			}
 			_state = State.Disposed;
 		}
@@ -575,7 +663,14 @@ namespace MySpace.SocketTransport
 							{
 								try
 								{
-									completion.Complete();
+									if (continueSynchronously)
+									{
+										ThreadPool.UnsafeQueueUserWorkItem(o => ((ICompletion)o).Complete(), completion);
+									}
+									else
+									{
+										completion.Complete();
+									}
 								}
 								finally
 								{

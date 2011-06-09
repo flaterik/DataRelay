@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using MySpace.Common.CompactSerialization.IO;
+using MySpace.Common.IO;
 using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.PerfCounters;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
+using MySpace.DataRelay.Client;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 {
@@ -28,6 +30,18 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 {
                     IndexTypeMapping indexTypeMapping =
                         storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection[messageContext.TypeId];
+
+                    //Note: Get rid of this when all GraphSpace clients are updated
+                    #region GraphSpace Specific HACK
+
+                    string typeName = RelayClient.Instance.GetTypeSetting(messageContext.TypeId).TypeName;
+                    if (typeName.Length >= 18 && String.Equals(typeName.Substring(0, 18), "MySpace.GraphSpace", StringComparison.OrdinalIgnoreCase))
+                    {
+                        cacheIndex.Metadata = null;
+                        LoggingUtil.Log.DebugFormat("CacheIndex.Metadata nulled for Type: {0}", typeName);
+                    }
+
+                    #endregion
 
                     #region Extract CacheIndex and Validate from incoming message
 
@@ -54,6 +68,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     List<CacheIndexInternal> internalIndexList = new List<CacheIndexInternal>();
                     List<IndexItem> cappedDeleteItemList = new List<IndexItem>();
                     CacheIndexInternal internalIndex;
+                    MetadataPropertyCollection metadataPropertyCollection = null;
+                    byte[] metadata = null;
 
                     #endregion
 
@@ -85,7 +101,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                     indexInfo.PrimarySortInfo,
                                     indexInfo.LocalIdentityTagList,
                                     indexInfo.StringHashCodeDictionary,
-                                    null);
+                                    null,
+                                    indexInfo.IsMetadataPropertyCollection,
+                                    null,
+                                    DomainSpecificProcessingType.None,
+                                    null,
+                                    null,
+                                    null,
+                                    true);
 
                                 if (internalIndex != null)
                                 {
@@ -99,20 +122,29 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                 if (internalIndex == null || cacheIndex.ReplaceFullIndex) //CacheIndexInternal does not exists or is to be discarded
                                 {
                                     internalIndex = new CacheIndexInternal
-                                                        {
-                                                            InDeserializationContext = new InDeserializationContext
-                                                                                           {
-                                                                                               TypeId = messageContext.TypeId,
-                                                                                               TagHashCollection = storeContext.TagHashCollection,
-                                                                                               IndexId = cacheIndex.IndexId,
-                                                                                               IndexName = kvp.Key,
-                                                                                               InclusiveFilter = true,
-                                                                                               PrimarySortInfo = indexInfo.PrimarySortInfo,
-                                                                                               LocalIdentityTagNames = indexInfo.LocalIdentityTagList,
-                                                                                               StringHashCollection = storeContext.StringHashCollection,
-                                                                                               StringHashCodeDictionary = indexInfo.StringHashCodeDictionary
-                                                                                           }
-                                                        };
+                                    {
+                                        InDeserializationContext = new InDeserializationContext(0,
+                                                                           kvp.Key,
+                                                                           cacheIndex.IndexId,
+                                                                           messageContext.TypeId,
+                                                                           null,
+                                                                           true,
+                                                                           storeContext.TagHashCollection,
+                                                                           false,
+                                                                           false,
+                                                                           indexInfo.PrimarySortInfo,
+                                                                           indexInfo.LocalIdentityTagList,
+                                                                           storeContext.StringHashCollection,
+                                                                           indexInfo.StringHashCodeDictionary,
+                                                                           null,
+                                                                           null,
+                                                                           indexInfo.IsMetadataPropertyCollection,
+                                                                           null,
+                                                                           DomainSpecificProcessingType.None,
+                                                                           null,
+                                                                           null,
+                                                                           null)
+                                    };
                                 }
 
                                 internalIndexList.Add(internalIndex);
@@ -141,7 +173,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                 indexInfo.PrimarySortInfo,
                                 indexInfo.LocalIdentityTagList,
                                 indexInfo.StringHashCodeDictionary,
-                                null);
+                                null,
+                                indexInfo.IsMetadataPropertyCollection,
+                                null,
+                                DomainSpecificProcessingType.None,
+                                null,
+                                null,
+                                null,
+                                true);
 
                             if (internalIndex != null)
                             {
@@ -156,18 +195,27 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                             {
                                 internalIndex = new CacheIndexInternal
                                 {
-                                    InDeserializationContext = new InDeserializationContext
-                                                                             {
-                                                                                 TypeId = messageContext.TypeId,
-                                                                                 TagHashCollection = storeContext.TagHashCollection,
-                                                                                 IndexId = cacheIndex.IndexId,
-                                                                                 IndexName = cacheIndex.TargetIndexName,
-                                                                                 InclusiveFilter = true,
-                                                                                 PrimarySortInfo = indexInfo.PrimarySortInfo,
-                                                                                 LocalIdentityTagNames = indexInfo.LocalIdentityTagList,
-                                                                                 StringHashCollection = storeContext.StringHashCollection,
-                                                                                 StringHashCodeDictionary = indexInfo.StringHashCodeDictionary
-                                                                             }
+                                    InDeserializationContext = new InDeserializationContext(0,
+                                        cacheIndex.TargetIndexName,
+                                        cacheIndex.IndexId,
+                                        messageContext.TypeId,
+                                        null,
+                                        true,
+                                        storeContext.TagHashCollection,
+                                        false,
+                                        false,
+                                        indexInfo.PrimarySortInfo,
+                                        indexInfo.LocalIdentityTagList,
+                                        storeContext.StringHashCollection,
+                                        indexInfo.StringHashCodeDictionary,
+                                        null,
+                                        null,
+                                        indexInfo.IsMetadataPropertyCollection,
+                                        null,
+                                        DomainSpecificProcessingType.None,
+                                        null,
+                                        null,
+                                        null)
                                 };
                             }
 
@@ -189,9 +237,59 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         }
                         #endregion
 
-                        #region Process Delete and Add List
+                        #region Process MetadataPropertyCollection
+
+                        if (cacheIndex.MetadataPropertyCollectionUpdate != null)
+                        {
+                            if (cacheIndex.UpdateMetadata)
+                            {
+                                // Replace the existing MetadataPropertyCollection
+                                metadataPropertyCollection = new MetadataPropertyCollection();
+                            }
+                            else
+                            {
+                                // Update the existing MetadataPropertyCollection
+                                if (indexTypeMapping.MetadataStoredSeperately)
+                                {
+                                    IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping,
+                                        messageContext.TypeId,
+                                        messageContext.PrimaryId,
+                                        messageContext.ExtendedId,
+                                        storeContext,
+                                        out metadata,
+                                        out metadataPropertyCollection);
+                                }
+                                else
+                                {
+                                    IndexServerUtils.GetMetadataStoredWithIndex(indexTypeMapping,
+                                        internalIndexList,
+                                        out metadata,
+                                        out metadataPropertyCollection);
+                                }
+
+                                if (metadataPropertyCollection == null)
+                                {
+                                    metadataPropertyCollection = new MetadataPropertyCollection();
+                                }
+                            }
+                            metadataPropertyCollection.Process(cacheIndex.MetadataPropertyCollectionUpdate);
+                        }
+
+                        #endregion
+
+
+                        #region Process Update, Delete and Add List
                         try
                         {
+                            #region Process Update List
+
+                            if (cacheIndex.UpdateList != null && cacheIndex.UpdateList.Count > 0)
+                            {
+                                ProcessUpdateList(internalIndexList, cacheIndex, storeContext, indexTypeMapping);
+                            }
+
+                            #endregion
+
                             #region Process Delete List
 
                             if (cacheIndex.DeleteList.Count > 0 && !cacheIndex.ReplaceFullIndex)
@@ -205,7 +303,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                             if (cacheIndex.AddList.Count > 0 || cacheIndex.UpdateMetadata)
                             {
-                                ProcessAddList(internalIndexList, cappedDeleteItemList, cacheIndex, storeContext, indexTypeMapping);
+                                ProcessAddList(internalIndexList, cappedDeleteItemList, cacheIndex, storeContext, indexTypeMapping, metadataPropertyCollection);
                             }
 
                             #endregion
@@ -242,6 +340,21 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                 throw new Exception("Invalid RelatedTypeId for TypeId - " + messageContext.TypeId);
                             }
 
+                            #region Update Messages
+
+                            if (cacheIndex.UpdateList != null && cacheIndex.UpdateList.Count > 0)
+                            {
+                                FormRelayMessagesForDataSaves(messageContext,
+                                    storeContext,
+                                    cacheIndex.IndexId,
+                                    indexTypeMapping,
+                                    dataStorageMessageList,
+                                    relatedTypeId,
+                                    cacheIndex.UpdateList);
+                            }
+
+                            #endregion
+
                             #region Delete Messages
 
                             foreach (IndexItem indexItem in cacheIndex.DeleteList)
@@ -260,33 +373,13 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                             #region Save Messages
 
-                            foreach (IndexDataItem indexDataItem in cacheIndex.AddList)
-                            {
-                                fullDataId = DataTierUtil.GetFullDataId(cacheIndex.IndexId, indexDataItem, indexTypeMapping.FullDataIdFieldList);
-
-                                if (fullDataId != null)
-                                {
-                                    dataStorageMessageList.Add(new RelayMessage(relatedTypeId,
-                                                                    IndexCacheUtils.GeneratePrimaryId(fullDataId),
-                                                                    fullDataId,
-                                                                    DateTime.Now,
-                                                                    indexDataItem.Data ?? new byte[0],
-                                                                    storeContext.GetCompressOption(messageContext.TypeId),
-                                                                    MessageType.Save));
-
-                                    if (indexDataItem.Data == null || indexDataItem.Data.Length == 0)
-                                    {
-
-                                        LoggingUtil.Log.WarnFormat("Saving null data for TypeId: {0}, IndexId: {1}, ItemId: {2}, FullDataId: {3}, PrimaryId: {4}",
-                                                                    relatedTypeId,
-                                                                    IndexCacheUtils.GetReadableByteArray(cacheIndex.IndexId),
-                                                                    IndexCacheUtils.GetReadableByteArray(indexDataItem.ItemId),
-                                                                    IndexCacheUtils.GetReadableByteArray(fullDataId),
-                                                                    IndexCacheUtils.GeneratePrimaryId(fullDataId));
-                                    }
-
-                                }
-                            }
+                            FormRelayMessagesForDataSaves(messageContext,
+                                storeContext,
+                                cacheIndex.IndexId,
+                                indexTypeMapping,
+                                dataStorageMessageList,
+                                relatedTypeId,
+                                cacheIndex.AddList);
 
                             #endregion
 
@@ -347,26 +440,41 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                                                                    indexInfo.PrimarySortInfo,
                                                                                    indexInfo.LocalIdentityTagList,
                                                                                    indexInfo.StringHashCodeDictionary,
-                                                                                   null);
+                                                                                   null,
+                                                                                   indexInfo.IsMetadataPropertyCollection,
+                                                                                   null,
+                                                                                   DomainSpecificProcessingType.None,
+                                                                                   null,
+                                                                                   null,
+                                                                                   null,
+                                                                                   true);
 
                             if (internalIndex == null)
                             {
                                 internalIndex = new CacheIndexInternal
-                                                    {
-                                                        InDeserializationContext = new InDeserializationContext
-                                                                                            {
-                                                                                                TypeId = messageContext.TypeId,
-                                                                                                TagHashCollection = storeContext.TagHashCollection,
-                                                                                                IndexId = cacheIndex.IndexId,
-                                                                                                IndexName = kvp.Key,
-                                                                                                InclusiveFilter = true,
-                                                                                                DeserializeHeaderOnly = true,
-                                                                                                PrimarySortInfo = indexInfo.PrimarySortInfo,
-                                                                                                LocalIdentityTagNames = indexInfo.LocalIdentityTagList,
-                                                                                                StringHashCollection = storeContext.StringHashCollection,
-                                                                                                StringHashCodeDictionary = indexInfo.StringHashCodeDictionary
-                                                                                            }
-                                                    };
+                                {
+                                    InDeserializationContext = new InDeserializationContext(0,
+                                        kvp.Key,
+                                        cacheIndex.IndexId,
+                                        messageContext.TypeId,
+                                        null,
+                                        true,
+                                        storeContext.TagHashCollection,
+                                        true,
+                                        false,
+                                        indexInfo.PrimarySortInfo,
+                                        indexInfo.LocalIdentityTagList,
+                                        storeContext.StringHashCollection,
+                                        indexInfo.StringHashCodeDictionary,
+                                        null,
+                                        null,
+                                        indexInfo.IsMetadataPropertyCollection,
+                                        null,
+                                        DomainSpecificProcessingType.None,
+                                        null,
+                                        null,
+                                        null)
+                                };
                             }
                             else
                             {
@@ -385,33 +493,68 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                     #region Index storage relay messages for each CacheIndexInternal
 
+                    bool isCompress = storeContext.GetCompressOption(messageContext.TypeId);
+
                     #region Metadata
 
-                    if (indexTypeMapping.MetadataStoredSeperately && cacheIndex.UpdateMetadata)
+                    if (indexTypeMapping.MetadataStoredSeperately)
                     {
-                        indexStorageMessageList.Add(new RelayMessage(messageContext.TypeId,
-                                                         cacheIndex.PrimaryId,
-                                                         cacheIndex.IndexId,
-                                                         DateTime.Now,
-                                                         cacheIndex.Metadata ?? new byte[0],
-                                                         storeContext.GetCompressOption(messageContext.TypeId),
-                                                         MessageType.Save));
+                        PayloadStorage bdbEntryHeader;
+                        byte[] payloadBytes = null;
+
+                        bdbEntryHeader = new PayloadStorage
+                        {
+                            Compressed = isCompress,
+                            TTL = -1,
+                            LastUpdatedTicks = DateTime.Now.Ticks,
+                            ExpirationTicks = -1,
+                            Deactivated = false
+                        };
+
+                        if (indexTypeMapping.IsMetadataPropertyCollection)
+                        {
+                            payloadBytes = Serializer.Serialize(metadataPropertyCollection, isCompress);
+                        }
+                        else if (cacheIndex.UpdateMetadata)
+                        {
+                            payloadBytes = cacheIndex.Metadata ?? new byte[0];
+                        }
+
+                        BinaryStorageAdapter.Save(
+                                storeContext.MemoryPool,
+                                storeContext.IndexStorageComponent,
+                                messageContext.TypeId,
+                                cacheIndex.PrimaryId,
+                                cacheIndex.IndexId,
+                                bdbEntryHeader,
+                                payloadBytes);
                     }
 
                     #endregion
 
-                    #region Index(es)
+                    #region Indexes
 
                     byte[] payload;
                     CompactBinaryWriter writer;
                     RelayMessage indexStorageMessage;
                     byte[] extendedId;
 
+                    PayloadStorage bdbEntryHeaed = new PayloadStorage
+                    {
+                        Compressed = isCompress,
+                        TTL = -1,
+                        LastUpdatedTicks = DateTime.Now.Ticks,
+                        ExpirationTicks = -1,
+                        Deactivated = false
+                    };
+
                     foreach (CacheIndexInternal cacheIndexInternal in internalIndexList)
                     {
                         extendedId = IndexServerUtils.FormExtendedId(
                             cacheIndex.IndexId,
                             indexTypeMapping.IndexCollection[cacheIndexInternal.InDeserializationContext.IndexName].ExtendedIdSuffix);
+
+                        isCompress = storeContext.GetCompressOption(messageContext.TypeId);
 
                         // This mess is required until Moods 2.0 migrated to have IVersionSerializable version of CacheIndexInternal
                         // ** TBD - Should be removed later
@@ -422,33 +565,25 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                             payload = new byte[writer.BaseStream.Length];
                             writer.BaseStream.Position = 0;
                             writer.BaseStream.Read(payload, 0, payload.Length);
-
-                            indexStorageMessage = new RelayMessage(messageContext.TypeId,
-                                 cacheIndex.PrimaryId,
-                                 extendedId,
-                                 DateTime.Now,
-                                 payload,
-                                 storeContext.GetCompressOption(messageContext.TypeId),
-                                 MessageType.Save);
                         }
                         else
                         {
-                            indexStorageMessage = RelayMessage.GetSaveMessageForObject(messageContext.TypeId,
-                                cacheIndex.PrimaryId,
-                                extendedId,
-                                DateTime.Now,
-                                cacheIndexInternal,
-                                storeContext.GetCompressOption(messageContext.TypeId));
+                            payload = Serializer.Serialize<CacheIndexInternal>(cacheIndexInternal, isCompress, RelayMessage.RelayCompressionImplementation);
                         }
 
-                        indexStorageMessageList.Add(indexStorageMessage);
+                        BinaryStorageAdapter.Save(
+                                storeContext.MemoryPool,
+                                storeContext.IndexStorageComponent,
+                                messageContext.TypeId,
+                                cacheIndex.PrimaryId,
+                                extendedId,
+                                bdbEntryHeaed,
+                                payload);
                     }
 
                     #endregion
 
                     #region Send relay mesaages to index storage
-
-                    storeContext.IndexStorageComponent.HandleMessages(indexStorageMessageList);
 
                     #endregion
 
@@ -460,14 +595,51 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     throw new Exception("TypeId " + messageContext.TypeId + " -- Error processing save message.", ex);
                 }
             }
+        }
 
+        private static void FormRelayMessagesForDataSaves(MessageContext messageContext,
+            IndexStoreContext storeContext,
+            byte[] indexId,
+            IndexTypeMapping indexTypeMapping,
+            List<RelayMessage> dataStorageMessageList,
+            short relatedTypeId,
+            List<IndexDataItem> indexDataItemList)
+        {
+            byte[] fullDataId;
+            foreach (IndexDataItem indexDataItem in indexDataItemList)
+            {
+                fullDataId = DataTierUtil.GetFullDataId(indexId, indexDataItem, indexTypeMapping.FullDataIdFieldList);
+
+                if (fullDataId != null)
+                {
+                    dataStorageMessageList.Add(new RelayMessage(relatedTypeId,
+                                                                IndexCacheUtils.GeneratePrimaryId(fullDataId),
+                                                                fullDataId,
+                                                                DateTime.Now,
+                                                                indexDataItem.Data ?? new byte[0],
+                                                                storeContext.GetCompressOption(messageContext.TypeId),
+                                                                MessageType.Save));
+
+                    if (indexDataItem.Data == null || indexDataItem.Data.Length == 0)
+                    {
+
+                        LoggingUtil.Log.WarnFormat("Saving null data for TypeId: {0}, IndexId: {1}, ItemId: {2}, FullDataId: {3}, PrimaryId: {4}",
+                                                   relatedTypeId,
+                                                   IndexCacheUtils.GetReadableByteArray(indexId),
+                                                   IndexCacheUtils.GetReadableByteArray(indexDataItem.ItemId),
+                                                   IndexCacheUtils.GetReadableByteArray(fullDataId),
+                                                   IndexCacheUtils.GeneratePrimaryId(fullDataId));
+                    }
+                }
+            }
         }
 
         private static void ProcessAddList(List<CacheIndexInternal> internalIndexList,
             List<IndexItem> cappedDeleteItemList,
             CacheIndex clientIndex,
             IndexStoreContext storeContext,
-            IndexTypeMapping indexTypeMapping)
+            IndexTypeMapping indexTypeMapping,
+            MetadataPropertyCollection metadataPropertyCollection)
         {
             #region Add new items to each internalIndex
 
@@ -514,9 +686,46 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 }
 
                 //Update metadata
-                if (clientIndex.UpdateMetadata && indexTypeMapping.IndexCollection[cacheIndexInternal.InDeserializationContext.IndexName].MetadataPresent)
+                if (indexInfo.MetadataPresent)
                 {
-                    cacheIndexInternal.Metadata = clientIndex.Metadata;
+                    if (indexInfo.IsMetadataPropertyCollection && clientIndex.MetadataPropertyCollectionUpdate != null)
+                    {
+                        cacheIndexInternal.MetadataPropertyCollection = metadataPropertyCollection;
+                    }
+                    else if (clientIndex.UpdateMetadata)
+                    {
+                        cacheIndexInternal.Metadata = clientIndex.Metadata;
+                    }
+                }
+            }
+
+            #endregion
+        }
+
+        private static void ProcessUpdateList(List<CacheIndexInternal> internalIndexList,
+            CacheIndex clientIndex,
+            IndexStoreContext storeContext,
+            IndexTypeMapping indexTypeMapping)
+        {
+            #region Update items in each internalIndex
+
+            Index indexInfo;
+            InternalItemComparer comparer;
+            int searchIndex;
+
+            PerformanceCounters.Instance.SetCounterValue(PerformanceCounterEnum.UpdateList, indexTypeMapping.TypeId, clientIndex.AddList.Count);
+
+            foreach (CacheIndexInternal cacheIndexInternal in internalIndexList)
+            {
+                indexInfo = indexTypeMapping.IndexCollection[cacheIndexInternal.InDeserializationContext.IndexName];
+                comparer = new InternalItemComparer(indexInfo.PrimarySortInfo.IsTag, indexInfo.PrimarySortInfo.FieldName, indexInfo.PrimarySortInfo.SortOrderList);
+                foreach (IndexDataItem updateItem in clientIndex.UpdateList)
+                {
+                    searchIndex = cacheIndexInternal.Search(updateItem);
+                    if (searchIndex > -1)
+                    {
+                        UpdateExistingIndexItem(clientIndex, cacheIndexInternal, indexInfo, updateItem, searchIndex, storeContext, comparer);
+                    }
                 }
             }
 
@@ -580,12 +789,29 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// <param name="comparer">The comparer.</param>
         private static void AddNewItem(CacheIndex clientIndex,
             CacheIndexInternal cacheIndexInternal,
-            Index indexInfo, IndexDataItem addItem,
+            Index indexInfo,
+            IndexDataItem addItem,
             IndexStoreContext storeContext,
             InternalItemComparer comparer)
         {
             int searchIndex;
             List<KeyValuePair<int, byte[]>> kvpList;
+            byte[] sortTag;
+
+            //Set default value for the sort tag
+            if (indexInfo.PrimarySortInfo.IsTag)
+            {
+                addItem.TryGetTagValue(indexInfo.PrimarySortInfo.FieldName, out sortTag);
+                if (sortTag == null && indexInfo.PrimarySortInfo.DefaultSortTagValueBytes != null)
+                {
+                    if (addItem.Tags == null)
+                    {
+                        addItem.Tags = new Dictionary<string, byte[]>(1);
+                    }
+                    addItem.Tags[indexInfo.PrimarySortInfo.FieldName] = indexInfo.PrimarySortInfo.DefaultSortTagValueBytes;
+                }
+            }
+
             searchIndex = cacheIndexInternal.GetInsertPosition(addItem, indexInfo.PrimarySortInfo.SortOrderList[0].SortBy, comparer);
 
             //Add item to CacheIndexInternal
@@ -628,7 +854,13 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// <param name="searchIndex">Index to search.</param>
         /// <param name="storeContext">The store context.</param>
         /// <param name="comparer">The comparer.</param>
-        private static void UpdateExistingIndexItem(CacheIndex clientIndex, CacheIndexInternal cacheIndexInternal, Index indexInfo, IndexDataItem addItem, int searchIndex, IndexStoreContext storeContext, InternalItemComparer comparer)
+        private static void UpdateExistingIndexItem(CacheIndex clientIndex,
+            CacheIndexInternal cacheIndexInternal,
+            Index indexInfo,
+            IndexDataItem addItem,
+            int searchIndex,
+            IndexStoreContext storeContext,
+            InternalItemComparer comparer)
         {
             InternalItem internalItem = cacheIndexInternal.InternalItemList[searchIndex];
             if (clientIndex.TargetIndexName != null) //Save to single index

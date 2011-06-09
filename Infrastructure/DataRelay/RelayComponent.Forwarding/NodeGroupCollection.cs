@@ -9,19 +9,49 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 {
 	internal class NodeGroupCollection : KeyedCollection<string, NodeGroup>
 	{
-
-
 		private static readonly LogWrapper _log = new LogWrapper();
+
+		private NodeGroup[] _groupsByTypeId;
 
 		internal NodeGroupCollection()
 		{ }
 
-		internal NodeGroupCollection(RelayNodeGroupDefinitionCollection groupDefinitions, RelayNodeConfig nodeConfig, ForwardingConfig forwardingConfig) : base()
+		internal NodeGroup this[short typeId]
+		{
+			get
+			{
+				if (typeId >= _groupsByTypeId.Length || typeId < 0) return null; //bounds check
+				return _groupsByTypeId[typeId];
+			}
+		}
+		
+		internal NodeGroupCollection(IEnumerable<RelayNodeGroupDefinition> groupDefinitions, RelayNodeConfig nodeConfig, ForwardingConfig forwardingConfig)
 		{
 			foreach (RelayNodeGroupDefinition groupDefinition in groupDefinitions)
 			{
 				Add(new NodeGroup(groupDefinition, nodeConfig, forwardingConfig));
 			}
+
+			_groupsByTypeId = GenerateGroupsByTypeId(nodeConfig.TypeSettings);
+		}
+
+		private NodeGroup[] GenerateGroupsByTypeId(TypeSettings typeSettings)
+		{
+			NodeGroup[] groups = new NodeGroup[typeSettings.MaxTypeId + 1];
+			for (short typeId = 1; typeId <= typeSettings.MaxTypeId; typeId++)
+			{
+				string groupName = typeSettings.TypeSettingCollection.GetGroupNameForId(typeId);
+				if (string.IsNullOrEmpty(groupName) || !Contains(groupName))
+				{
+					groups[typeId] = null;
+				}
+				else
+				{
+					groups[typeId] = this[groupName];
+				}
+			}
+
+			return groups;
 		}
 
 		internal void ReloadMapping(RelayNodeConfig newConfig, ForwardingConfig forwardingConfig)
@@ -60,7 +90,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				}
 			} while (removedOne);
 
-
+			_groupsByTypeId = GenerateGroupsByTypeId(newConfig.TypeSettings);
 		}
 
 		protected override string GetKeyForItem(NodeGroup item)
@@ -68,7 +98,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			return item.GroupName;
 		}
 
-		internal void PopulateQueues(Dictionary<string, Dictionary<string, MessageQueue>> errorQueues, bool incrementCounter)
+		internal void PopulateQueues(Dictionary<string, Dictionary<string, ErrorQueue>> errorQueues, bool incrementCounter)
 		{
 			if (errorQueues != null)
 			{

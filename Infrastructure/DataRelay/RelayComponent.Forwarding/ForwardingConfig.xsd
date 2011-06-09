@@ -10,6 +10,10 @@
               <xs:element name="MaxCount" type="xs:int" nillable="true" minOccurs="0" maxOccurs="1" />
               <xs:element name="ItemsPerDequeue" type="xs:int" nillable="true" minOccurs="0" maxOccurs="1"/>
               <xs:element name="DequeueIntervalSeconds" type="xs:int" nillable="true" minOccurs="0" maxOccurs="1"/>
+              <xs:element name="MaxQueuePolicy" type="xs:string" nillable="true" minOccurs="0" maxOccurs="1" />
+              <xs:element name="PersistenceFolder" type="xs:string" nillable="true" minOccurs="0" maxOccurs="1" />
+              <xs:element name="PersistenceFileSize" type="xs:int" nillable="true" minOccurs="0" maxOccurs="1" />
+              <xs:element name="MaxPersistedMB" type="xs:int" nillable="true" minOccurs="0" maxOccurs="1" />
             </xs:sequence>
           </xs:complexType>
         </xs:element>
@@ -20,8 +24,7 @@
         <xs:element name="MessageBurstTimeout" type="xs:int"  nillable="true" minOccurs="0" maxOccurs="1"/>
         <xs:element name="MaximumTaskQueueDepth" type="xs:int"  nillable="true" minOccurs="0" maxOccurs="1"/>
         <xs:element name="EnableAsyncBulkGets" type="xs:boolean"  nillable="true" minOccurs="0" maxOccurs="1"/>
-        <xs:element name="RepostMessageLists" type="xs:boolean"  nillable="true" minOccurs="0" maxOccurs="1"/>
-		    <xs:element name="MapNetwork" type="xs:boolean"  nillable="true" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="RepostMessageLists" type="xs:boolean"  nillable="true" minOccurs="0" maxOccurs="1"/>		    
 		    <xs:element name="WriteMessageTrace" type="xs:boolean"  nillable="true" minOccurs="0" maxOccurs="1"/>
 		    <xs:element name="WriteCallingMethod" type="xs:boolean"  nillable="true" minOccurs="0" maxOccurs="1"/>
         <xs:element name="TraceSettings" minOccurs="0" maxOccurs="1" nillable="true">
@@ -38,6 +41,13 @@
                 </xs:complexType>
               </xs:element>
               <xs:element name="TracedMessageTypeIds" minOccurs="0" maxOccurs="1" nillable="true">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="MessageTypeId" type="xs:short" minOccurs="0" maxOccurs="unbounded" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="DecodeExtendedIdTypeIds" minOccurs="0" maxOccurs="1" nillable="true">
                 <xs:complexType>
                   <xs:sequence>
                     <xs:element name="MessageTypeId" type="xs:short" minOccurs="0" maxOccurs="unbounded" />

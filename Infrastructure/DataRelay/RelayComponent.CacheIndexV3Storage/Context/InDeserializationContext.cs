@@ -1,11 +1,59 @@
 ﻿using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
 using System.Collections.Generic;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config;
+using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.DomainSpecificConfigs;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
 {
     internal class InDeserializationContext
     {
+        internal InDeserializationContext(int maxItemsPerIndex,
+            string indexName,
+            byte[] indexId,
+            short typeId,
+            Filter filter,
+            bool inclusiveFilter,
+            TagHashCollection tagHashCollection,
+            bool deserializeHeaderOnly,
+            bool collectFilteredItems,
+            PrimarySortInfo primarySortInfo,
+            List<string> localIdentityTagNames,
+            StringHashCollection stringHashCollection,
+            Dictionary<int, bool> stringHashCodeDictionary,
+            IndexCondition indexCondition,
+            CapCondition capCondition,
+            bool isMetadataPropertyCollection,
+            MetadataPropertyCollection metadataPropertyCollection,
+            DomainSpecificProcessingType domainSpecificProcessingType,
+            DomainSpecificConfig domainSpecificConfig,
+            string getDistinctValuesFieldName,
+            GroupBy groupBy)
+        {
+            MaxItemsPerIndex = maxItemsPerIndex;
+            IndexName = indexName;
+            IndexId = indexId;
+            TypeId = typeId;
+            Filter = filter;
+            InclusiveFilter = inclusiveFilter;
+            TagHashCollection = tagHashCollection;
+            DeserializeHeaderOnly = deserializeHeaderOnly;
+            CollectFilteredItems = collectFilteredItems;
+            PrimarySortInfo = primarySortInfo;
+            LocalIdentityTagNames = localIdentityTagNames;
+            StringHashCollection = stringHashCollection;
+            StringHashCodeDictionary = stringHashCodeDictionary;
+            IndexCondition = indexCondition;
+            CapCondition = capCondition;
+            IsMetadataPropertyCollection = isMetadataPropertyCollection;
+            MetadataPropertyCollection = metadataPropertyCollection;
+            DomainSpecificProcessingType = domainSpecificProcessingType;
+            DomainSpecificConfig = domainSpecificConfig;
+            GetDistinctValuesFieldName = getDistinctValuesFieldName;
+            GroupBy = groupBy;
+
+            SetEnterExitCondition();
+        }
+
         #region Data members
         
         /// <summary>
@@ -138,11 +186,6 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             get; set;
         }
 
-        /// <summary>
-        /// Flag to indicate whether Enter and Exit conditions are set or not
-        /// </summary>
-        private bool isEnterExitConditionSet;
-
         private Condition enterCondition;
         /// <summary>
         /// Gets the enter condition.
@@ -152,10 +195,6 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         {
             get
             {
-                if (!isEnterExitConditionSet)
-                {
-                    SetEnterExitCondition();
-                }
                 return enterCondition;
             }
         }
@@ -169,10 +208,6 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         {
             get
             {
-                if (!isEnterExitConditionSet)
-                {
-                    SetEnterExitCondition();
-                }
                 return exitCondition;
             }
         }
@@ -186,6 +221,62 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             get; set;
         }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether metadata represents an index property collection.
+        /// </summary>
+        /// <value>
+        /// 	<c>true</c> if metadata represents an index property collection; otherwise, <c>false</c>.
+        /// </value>
+        internal bool IsMetadataPropertyCollection
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Gets or sets the metadata property collection.
+        /// </summary>
+        /// <value>The metadata property collection.</value>
+        internal MetadataPropertyCollection MetadataPropertyCollection
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Gets or sets the type of the domain specific processing.
+        /// </summary>
+        /// <value>The type of the domain specific processing.</value>
+        internal DomainSpecificProcessingType DomainSpecificProcessingType
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Gets or sets the domain specific config.
+        /// </summary>
+        /// <value>The domain specific config.</value>
+        internal DomainSpecificConfig DomainSpecificConfig
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Gets or sets the name of the distinct values field.
+        /// </summary>
+        /// <value>The name of the distinct values field.</value>
+        internal string GetDistinctValuesFieldName 
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Gets or sets the GroupBy clause.
+        /// </summary>
+        /// <value>The GroupBy clause.</value>
+        internal GroupBy GroupBy
+        {
+            get; set;
+        }
+
         #endregion
 
         #region Methods
@@ -195,7 +286,6 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         /// </summary>
         private void SetEnterExitCondition()
         {
-            isEnterExitConditionSet = true;
             if (IndexCondition != null)
             {
                 IndexCondition.CreateConditions(PrimarySortInfo.FieldName, 
@@ -203,6 +293,16 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
                     PrimarySortInfo.SortOrderList[0],
                     out enterCondition,
                     out exitCondition);
+
+                if (enterCondition != null)
+                {
+                    IndexCacheUtils.ProcessMetadataPropertyCondition(enterCondition, MetadataPropertyCollection);
+                }
+
+                if (exitCondition != null)
+                {
+                    IndexCacheUtils.ProcessMetadataPropertyCondition(exitCondition, MetadataPropertyCollection);
+                }
             }
         }
 

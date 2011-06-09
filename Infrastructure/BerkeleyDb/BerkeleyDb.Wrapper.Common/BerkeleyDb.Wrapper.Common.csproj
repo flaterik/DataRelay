@@ -1,0 +1,113 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{2DFA0B05-429D-4880-AE7F-7BF881E66B13}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>BerkeleyDbWrapper</RootNamespace>
+    <AssemblyName>MySpace.BerkeleyDb.Wrapper.Common</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.Common.XML</DocumentationFile>
+    <NoWarn>1591</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.Common.XML</DocumentationFile>
+    <NoWarn>1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="MySpace.Logging">
+      <HintPath>..\..\..\_drop\MySpace.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Shared">
+      <HintPath>..\..\..\_drop\MySpace.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BdbException.cs" />
+    <Compile Include="BerkeleyDbMessageEventArgs.cs" />
+    <Compile Include="BerkeleyDbPanicEventArgs.cs" />
+    <Compile Include="Buffers.cs" />
+    <Compile Include="BufferSmallException.cs" />
+    <Compile Include="CacheSize.cs" />
+    <Compile Include="ConcreteFactory.cs" />
+    <Compile Include="Configuration\BerkeleyDbConfig.cs">
+      <DependentUpon>BerkeleyDbConfig.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="Configuration\BerkeleyDbSectionConfig.cs">
+      <DependentUpon>BerkeleyDbSectionConfig.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="Configuration\DatabaseConfig.cs" />
+    <Compile Include="Configuration\DatabaseConfigs.cs" />
+    <Compile Include="Configuration\EnvironmentConfig.cs" />
+    <Compile Include="Configuration\ITimerConfig.cs" />
+    <Compile Include="Configuration\XmlSerializableKeyedCollection.cs" />
+    <Compile Include="Cursor.cs" />
+    <Compile Include="Lengths.cs" />
+    <Compile Include="Database.cs" />
+    <Compile Include="DatabaseEntry.cs" />
+    <Compile Include="DatabaseRecord.cs" />
+    <Compile Include="Environment.cs" />
+    <Compile Include="Enumerations\Errno.cs" />
+    <Compile Include="Enumerations\LibConstants.cs" />
+    <Compile Include="OperationFlags.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Streams.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Enumerations\BerkeleyDb.Wrapper.Common.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Configuration\BerkeleyDbConfig.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Configuration\BerkeleyDbConfig.xsx">
+      <DependentUpon>BerkeleyDbConfig.xsd</DependentUpon>
+    </None>
+    <None Include="Configuration\BerkeleyDbSectionConfig.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Configuration\BerkeleyDbSectionConfig.xsx">
+      <DependentUpon>BerkeleyDbSectionConfig.xsd</DependentUpon>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

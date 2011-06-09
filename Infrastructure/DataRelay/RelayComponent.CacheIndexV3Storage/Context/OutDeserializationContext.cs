@@ -1,4 +1,6 @@
-﻿using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store;
+﻿using System.Collections.Generic;
+using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
+using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
 {
@@ -49,7 +51,16 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
                 readItemCount = value;
             }
         }
-        
+
+        /// <summary>
+        /// Gets or sets the distinct value count mapping.
+        /// </summary>
+        /// <value>The distinct value count mapping.</value>
+        internal Dictionary<byte[], int> DistinctValueCountMapping
+        {
+            get; set;
+        }
+
         #endregion
 
         #region Ctors
@@ -60,6 +71,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         internal OutDeserializationContext()
         {
             FilteredInternalItemList = new InternalItemList();
+            DistinctValueCountMapping = new Dictionary<byte[], int>(new ByteArrayEqualityComparer());
         }
 
         #endregion

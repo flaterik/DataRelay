@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
+using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
@@ -42,6 +43,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// <param name="messageContext">The message context.</param>
         protected override void ValidateQuery(IndexTypeMapping indexTypeMapping, BaseMultiIndexIdQuery<PagedIndexQueryResult> query, MessageContext messageContext)
         {
+            if (string.IsNullOrEmpty(query.TargetIndexName))
+            {
+                query.TargetIndexName = IndexServerUtils.CheckQueryTargetIndexName(indexTypeMapping);
+            }
+
             if (!indexTypeMapping.IndexCollection.Contains(query.TargetIndexName))
             {
                 throw new Exception("Invalid TargetIndexName - " + query.TargetIndexName);
@@ -82,7 +88,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     LoggingUtil.Log.ErrorFormat(
                         "Encountered Potentially Bad Paged Query.  Overriding MaxItemsPerIndex to {0}.  AddressHistory {1}.  Original Query Info: {2}",
                         indexTypeMapping.QueryOverrideSettings.MaxItemsPerIndexThreshold,
-                        FormatAddressHistory(messageContext.AddressHistory),
+                        IndexServerUtils.FormatAddressHistory(messageContext.AddressHistory),
                         FormatQueryInfo(pagedQuery));
                     pagedQuery.MaxItemsPerIndex = indexTypeMapping.QueryOverrideSettings.MaxItemsPerIndexThreshold;
                 }
@@ -92,7 +98,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 {
                     LoggingUtil.Log.InfoFormat(
                         "Configuration rules require overriding PageNum to 1.  AddressHistory {0}.  Original Query Info: {1}",
-                        FormatAddressHistory(messageContext.AddressHistory),
+                        IndexServerUtils.FormatAddressHistory(messageContext.AddressHistory),
                         FormatQueryInfo(pagedQuery));
                     pagedQuery.PageNum = 1;
                 }
@@ -104,20 +110,37 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// </summary>
         /// <param name="query">The query.</param>
         /// <param name="resultItemList">The result item list.</param>
-        protected override void ProcessSubsets(BaseMultiIndexIdQuery<PagedIndexQueryResult> query, ref List<ResultItem> resultItemList)
+        /// <param name="groupByResult">The GroupByResult</param>
+        /// <param name="baseComparer">The BaseComparer</param>
+        protected override void ProcessSubsets(BaseMultiIndexIdQuery<PagedIndexQueryResult> query, 
+            ref List<ResultItem> resultItemList, 
+            ref GroupByResult groupByResult,
+            BaseComparer baseComparer)
         {
             PagedIndexQuery pagedQuery = query as PagedIndexQuery;
             if (!pagedQuery.ClientSideSubsetProcessingRequired && pagedQuery.PageNum != 0)
             {
-                List<ResultItem> pageFilteredResultItemList = new List<ResultItem>();
                 int pageSize = pagedQuery.PageSize;
                 int start = (pagedQuery.PageNum - 1) * pageSize;
                 int end = pagedQuery.PageNum * pageSize;
-                for (int i = start; i < end && i < resultItemList.Count; i++)
+                if (pagedQuery.GroupBy == null)
                 {
-                    pageFilteredResultItemList.Add(resultItemList[i]);
+                    List<ResultItem> pageFilteredResultItemList = new List<ResultItem>();
+                    for (int i = start; i < end && i < resultItemList.Count; i++)
+                    {
+                        pageFilteredResultItemList.Add(resultItemList[i]);
+                    }
+                    resultItemList = pageFilteredResultItemList;
                 }
-                resultItemList = pageFilteredResultItemList;
+                else
+                {
+                    GroupByResult pageGroupByResult = new GroupByResult(baseComparer);
+                    for (int i = start; i < end && i < groupByResult.Count; i++)
+                    {
+                        pageGroupByResult.Add(groupByResult[i].CompositeKey, groupByResult[i]);
+                    }
+                    groupByResult = pageGroupByResult;                    
+                }
             }
         }
 
@@ -129,10 +152,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         protected override string FormatQueryInfo(BaseMultiIndexIdQuery<PagedIndexQueryResult> query)
         {
             PagedIndexQuery pagedQuery = query as PagedIndexQuery;
-            StringBuilder stb = new StringBuilder(base.FormatQueryInfo(query));
-            stb.Append("PageNum: ").Append(pagedQuery.PageNum).Append(", ");
-            stb.Append("PageSize: ").Append(pagedQuery.PageSize);
-            return stb.ToString();
+            return pagedQuery.ToString();
         }
 
         /// <summary>

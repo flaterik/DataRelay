@@ -66,7 +66,8 @@
 					<xs:attribute name="DangerZoneSeconds" type="xs:int" />
 					<xs:attribute name="DangerZoneThreshold" type="xs:int" />
 					<xs:attribute name="RetryCount" type="xs:int" />
-					<xs:attribute name="NodeReselectMinutes" type="xs:int" />
+          <xs:attribute name="RetryPolicy" type="RelayRetryPolicy" default="UnreachableNodesOnly"/>
+          <xs:attribute name="NodeReselectMinutes" type="xs:int" />
 					<xs:attribute name="UseIdRanges" type="xs:boolean" default="false" use="optional" />
 					<xs:attribute name="StartupRepopulateDuration" type="xs:int" use="optional" default="0" />
 					<xs:attribute name="LegacySerialization" type="xs:boolean" use="optional" default="true" />
@@ -89,7 +90,8 @@
 											<xs:attribute name="Activated" type="xs:boolean" />
 											<xs:attribute name="Host" type="xs:string" />
 											<xs:attribute name="Port" type="xs:int" />
-											<xs:attribute name="ServiceType" type="ServiceType" />
+                      <xs:attribute name="PipelinePort" type="xs:int" use="optional" default="0"/>
+                      <xs:attribute name="ServiceType" type="ServiceType" />
 											<xs:attribute name="Zone" type="xs:unsignedShort" />
 											<xs:attribute name="StartupRepopulateDuration" type="xs:int" use="optional" default="0" />
 										</xs:complexType>
@@ -126,6 +128,16 @@
 			<xs:element name="MaxCount" type="xs:int" />
 			<xs:element name="ItemsPerDequeue" type="xs:int" />
 			<xs:element name="DequeueIntervalSeconds" type="xs:int" />
+			<xs:element name="MaxQueuePolicy" type="xs:string" />
+      <xs:element name="PersistenceFolder" type="xs:string" />
+      <xs:element name="PersistenceFileSize" type="xs:int" />
+      <xs:element name="MaxPersistedMB" type="xs:int" />
 		</xs:sequence>
 	</xs:complexType>
+  <xs:simpleType name="RelayRetryPolicy">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="UnreachableNodesOnly"/>
+      <xs:enumeration value="UnreachableNodesOrTimeout"/>
+    </xs:restriction>
+  </xs:simpleType>
 </xs:schema>

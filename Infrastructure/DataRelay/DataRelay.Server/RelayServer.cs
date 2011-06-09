@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
-using MySpace.DataRelay;
 using System.Runtime.InteropServices;
 using System.IO;
 
@@ -24,11 +21,11 @@ namespace MySpace.DataRelay
 
 		#region Fields
 
-		private IRelayNode relayNode = null;
-		private string instanceName = string.Empty;
-		private LoadedAssemblyChangeDelegate nodeChangedDelegate = null;
-		private static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
-		private string assemblyPath;
+		private IRelayNode _relayNode = null;
+		private string _instanceName = string.Empty;
+		private LoadedAssemblyChangeDelegate _nodeChangedDelegate = null;
+		private static readonly MySpace.Logging.LogWrapper _log = new MySpace.Logging.LogWrapper();
+		private string _assemblyPath;
 
 		#endregion
 
@@ -58,8 +55,8 @@ namespace MySpace.DataRelay
 			{
 				assemblyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AssemblyLoader.AssemblyFolderName);
 			}
-			this.assemblyPath = assemblyPath;
-			nodeChangedDelegate = new LoadedAssemblyChangeDelegate(AssemblyChanged);
+			this._assemblyPath = assemblyPath;
+			_nodeChangedDelegate = new LoadedAssemblyChangeDelegate(AssemblyChanged);
 		}
 
 		#endregion
@@ -81,48 +78,48 @@ namespace MySpace.DataRelay
 		/// <exception cref="Exception">Thrown when an error occurs, caller should call <see cref="Stop"/> in this cass.</exception>
 		public void Start(ComponentRunState[] runStates)
 		{
-			bool setDllDirectorySuccess = SetDllDirectory(assemblyPath);
+			bool setDllDirectorySuccess = SetDllDirectory(_assemblyPath);
 
 			if (setDllDirectorySuccess)
 			{
-				if (log.IsInfoEnabled)
-					log.InfoFormat("Set DllDirectory to {0}. Unmanaged dlls will be imported from this folder.", assemblyPath);
+				if (_log.IsInfoEnabled)
+					_log.InfoFormat("Set DllDirectory to {0}. Unmanaged dlls will be imported from this folder.", _assemblyPath);
 			}
 			else
 			{
-				if (log.IsErrorEnabled)
-					log.ErrorFormat("Failed to set DllDirectory to {0}. Components that rely on unmanaged DLLs will not work.", assemblyPath);
+				if (_log.IsErrorEnabled)
+					_log.ErrorFormat("Failed to set DllDirectory to {0}. Components that rely on unmanaged DLLs will not work.", _assemblyPath);
 			}
 
-			if (log.IsInfoEnabled) 
-				log.Info("Getting new node.");
+			if (_log.IsInfoEnabled) 
+				_log.Info("Getting new node.");
 
 			//enable this manually after the server is up an running because on server startup
 			//code that modifies the directory will cause the domain to reload.
 			AssemblyLoader.Instance.EnableRaisingEvents = false;
-			relayNode = AssemblyLoader.Instance.GetRelayNode(nodeChangedDelegate);
+			_relayNode = AssemblyLoader.Instance.GetRelayNode(_nodeChangedDelegate);
 
-			if (relayNode != null)
+			if (_relayNode != null)
 			{
-				if (log.IsInfoEnabled)
+				if (_log.IsInfoEnabled)
 				{
-					log.Info("New node created.");
-					log.Info("Initializing Relay Node Instance");
+					_log.Info("New node created.");
+					_log.Info("Initializing Relay Node Instance");
 				}
-				relayNode.Initialize(runStates);
+				_relayNode.Initialize(runStates);
 
-				if (log.IsInfoEnabled)
-					log.Info("Relay Node Initialized, Starting");
-				relayNode.Start();
-				if (log.IsInfoEnabled)
-					log.Info("Relay Node Started");
+				if (_log.IsInfoEnabled)
+					_log.Info("Relay Node Initialized, Starting");
+				_relayNode.Start();
+				if (_log.IsInfoEnabled)
+					_log.Info("Relay Node Started");
 
 				AssemblyLoader.Instance.EnableRaisingEvents = true;
 			}
 			else
 			{
-				if (log.IsErrorEnabled)
-					log.Error("Error starting Relay Server: No Relay Node implemenation found!");
+				if (_log.IsErrorEnabled)
+					_log.Error("Error starting Relay Server: No Relay Node implemenation found!");
 			}
 		}
 
@@ -136,34 +133,52 @@ namespace MySpace.DataRelay
 		/// <exception cref="Exception">Thrown when an error occurs.</exception>
 		public void Stop()
 		{
-			if (relayNode != null)
+			if (_relayNode != null)
 			{
 				try
 				{
-					if (log.IsInfoEnabled)
-						log.Info("Stopping Relay Node.");
-					relayNode.Stop();
-					if (log.IsInfoEnabled)
+					if (_log.IsInfoEnabled)
+						_log.Info("Stopping Relay Node.");
+					_relayNode.Stop();
+					if (_log.IsInfoEnabled)
 					{
-						log.Info("Relay Node Stopped.");
-						log.Info("Releasing old domain.");
+						_log.Info("Relay Node Stopped.");
+						_log.Info("Releasing old domain.");
 					}
 					AssemblyLoader.Instance.ReleaseRelayNode();
-					if (log.IsInfoEnabled)
-						log.Info("Old domain released.");
-					relayNode = null;
+					if (_log.IsInfoEnabled)
+						_log.Info("Old domain released.");
+					_relayNode = null;
 				}
 				catch (Exception ex)
 				{
-					if (log.IsErrorEnabled)
-						log.ErrorFormat("Error shutting down relay node: {0}", ex);
+					if (_log.IsErrorEnabled)
+						_log.ErrorFormat("Error shutting down relay node: {0}", ex);
 				}
 			}
 			else
 			{
-				if (log.IsErrorEnabled)
-					log.Error("No Node To Stop.");
+				if (_log.IsErrorEnabled)
+					_log.Error("No Node To Stop.");
 			}
+		}
+
+		/// <summary>
+		/// Fires before handling a message or batch of messages.
+		/// </summary>
+		public event EventHandler BeforeMessagesHandled
+		{
+			add { _relayNode.BeforeMessagesHandled += value; }
+			remove { _relayNode.BeforeMessagesHandled -= value; }
+		}
+
+		/// <summary>
+		/// Fires after handling a message or batch of messages.
+		/// </summary>
+		public event EventHandler AfterMessagesHandled
+		{
+			add { _relayNode.AfterMessagesHandled += value; }
+			remove { _relayNode.AfterMessagesHandled -= value; }
 		}
 
 		#endregion
@@ -173,16 +188,16 @@ namespace MySpace.DataRelay
 		private ComponentRunState[] GetRunState()
 		{
 			ComponentRunState[] runStates = null;
-			if (relayNode != null)
+			if (_relayNode != null)
 			{
 				try
 				{
-					runStates = relayNode.GetComponentRunStates();
+					runStates = _relayNode.GetComponentRunStates();
 				}
 				catch (Exception ex)
 				{
-					if (log.IsErrorEnabled)
-						log.ErrorFormat("Exception getting run states: {0}", ex);
+					if (_log.IsErrorEnabled)
+						_log.ErrorFormat("Exception getting run states: {0}", ex);
 					runStates = null;
 				}
 			}
@@ -203,11 +218,11 @@ namespace MySpace.DataRelay
 			}
 			catch (Exception ex)
 			{
-				if (log.IsErrorEnabled)
-					log.Error("Exception recycling Relay Node Domain: " + ex.ToString() + Environment.NewLine + "Trying again with no runstate.");
-				relayNode = AssemblyLoader.Instance.GetRelayNode(nodeChangedDelegate);
-				relayNode.Initialize(null);
-				relayNode.Start();
+				if (_log.IsErrorEnabled)
+					_log.Error("Exception recycling Relay Node Domain: " + ex.ToString() + Environment.NewLine + "Trying again with no runstate.");
+				_relayNode = AssemblyLoader.Instance.GetRelayNode(_nodeChangedDelegate);
+				_relayNode.Initialize(null);
+				_relayNode.Start();
 			}
 		}
 

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using MySpace.Common;
 using MySpace.DataRelay.Common.Schemas;
@@ -16,36 +15,36 @@ namespace MySpace.DataRelay.Transports
 	{
 		private static readonly MemoryStreamPool bufferPool = new MemoryStreamPool(1024);
 		private static readonly LogWrapper log = new LogWrapper();
-		private readonly int defaultChunkLength;
-		private readonly RelayNodeDefinition node;
-		private SocketClient socketClient;
-		private AsyncSocketClient asyncSocketClient;
-		private MySpace.SocketTransport.SocketSettings settings;
+		private readonly int _defaultChunkLength;
+		private readonly RelayNodeDefinition _node;
+		private SocketClient _socketClient;
+		private AsyncSocketClient _asyncSocketClient;
+		private MySpace.SocketTransport.SocketSettings _settings;
 
 		public SocketTransportAdapter(RelayNodeDefinition node,
 			RelayNodeGroupDefinition group, int chunkLength)
 		{
-			this.node = node;
-			this.defaultChunkLength = chunkLength;
+			_node = node;
+			_defaultChunkLength = chunkLength;
 			LoadSettings(node, group);
 		}
 
 		public void LoadSettings(RelayNodeDefinition node, RelayNodeGroupDefinition group)
 		{
 			MySpace.SocketTransport.SocketSettings newSettings = BuildSettings(group.SocketSettings);
-			if (newSettings.SameAs(settings)) return;
+			if (newSettings.SameAs(_settings)) return;
 			IDisposable disposableObject = null;
 			try
 			{
-				settings = newSettings;
-				socketClient = new SocketClient(node.IPEndPoint, settings);
-				disposableObject = asyncSocketClient;
-				asyncSocketClient = new AsyncSocketClient(node.IPEndPoint, new SocketPoolConfig
+				_settings = newSettings;
+				_socketClient = new SocketClient(node.IPEndPoint, _settings);
+				disposableObject = _asyncSocketClient;
+				_asyncSocketClient = new AsyncSocketClient(node.IPEndPoint, new SocketPoolConfig
 				{
-					ReceiveTimeout = settings.ReceiveTimeout,
-					NetworkOrdered = settings.UseNetworkOrder,
-					ConnectTimeout = settings.ConnectTimeout,
-					LoanCapacity = settings.PoolSize
+					ReceiveTimeout = _settings.ReceiveTimeout,
+					NetworkOrdered = _settings.UseNetworkOrder,
+					ConnectTimeout = _settings.ConnectTimeout,
+					LoanCapacity = _settings.PoolSize
 				});
 			}
 			finally
@@ -54,7 +53,7 @@ namespace MySpace.DataRelay.Transports
 				{
 					try
 					{
-						asyncSocketClient.Dispose();
+						disposableObject.Dispose();
 					}
 					catch (Exception ex)
 					{
@@ -66,7 +65,7 @@ namespace MySpace.DataRelay.Transports
 
 		public void GetConnectionStats(out int openConnections, out int activeConnections)
 		{
-			socketClient.GetSocketCounts(node.IPEndPoint, settings, out openConnections, out activeConnections);
+			_socketClient.GetSocketCounts(_node.IPEndPoint, _settings, out openConnections, out activeConnections);
 		}
 
 		private static MySpace.SocketTransport.SocketSettings BuildSettings(Common.Schemas.SocketSettings socketSettings)
@@ -114,7 +113,7 @@ namespace MySpace.DataRelay.Transports
 				throw new ApplicationException("Cannot send pre-serialized out message.");
 			}
 
-			socketClient.SendOneWay((int)SocketCommand.HandleOneWayMessage, message.MessageStream);
+			_socketClient.SendOneWay((int)SocketCommand.HandleOneWayMessage, message.MessageStream);
 		}
 
 		public void SendMessage(RelayMessage message)
@@ -128,7 +127,7 @@ namespace MySpace.DataRelay.Transports
 					bufferItem = bufferPool.GetItem();
 					RelayMessageFormatter.WriteRelayMessage(message, bufferItem.Item);
 					bufferItem.Item.Seek(0, SeekOrigin.Begin);
-					replyStream = socketClient.SendSync(
+					replyStream = _socketClient.SendSync(
 						(int)SocketCommand.HandleSyncMessage,
 						bufferItem.Item);
 				}
@@ -156,7 +155,7 @@ namespace MySpace.DataRelay.Transports
 					bufferItem = bufferPool.GetItem();
 					RelayMessageFormatter.WriteRelayMessage(message, bufferItem.Item);
 					bufferItem.Item.Seek(0, SeekOrigin.Begin);
-					socketClient.SendOneWay(
+					_socketClient.SendOneWay(
 						(int)SocketCommand.HandleOneWayMessage,
 						bufferItem.Item);
 				}
@@ -171,7 +170,7 @@ namespace MySpace.DataRelay.Transports
 		{
 			ResourcePoolItem<MemoryStream> pooledBuffer;
 			MemoryStream nextMessageChunk;
-			int chunkLength = defaultChunkLength;
+			int chunkLength = _defaultChunkLength;
 			int cursor = 0;
 			if (messages.Length > 0)
 			{
@@ -202,7 +201,7 @@ namespace MySpace.DataRelay.Transports
 							messages[cursor].MessageStream.WriteTo(nextMessageChunk);
 						}
 
-						socketClient.SendOneWay((int)SocketCommand.HandleOneWayMessages, nextMessageChunk);
+						_socketClient.SendOneWay((int)SocketCommand.HandleOneWayMessages, nextMessageChunk);
 						nextMessageChunk.Seek(0, SeekOrigin.Begin);
 						nextMessageChunk.SetLength(0);
 					}
@@ -218,7 +217,7 @@ namespace MySpace.DataRelay.Transports
 		{
 			ResourcePoolItem<MemoryStream> pooledBuffer;
 			MemoryStream nextMessageChunk;
-			int chunkLength = defaultChunkLength;
+			int chunkLength = _defaultChunkLength;
 			int cursor = 0;
 			if (messages.Count > 0)
 			{
@@ -249,7 +248,7 @@ namespace MySpace.DataRelay.Transports
 							messages[cursor].MessageStream.WriteTo(nextMessageChunk);
 						}
 
-						socketClient.SendOneWay((int)SocketCommand.HandleOneWayMessages, nextMessageChunk);
+						_socketClient.SendOneWay((int)SocketCommand.HandleOneWayMessages, nextMessageChunk);
 						nextMessageChunk.Seek(0, SeekOrigin.Begin);
 						nextMessageChunk.SetLength(0);
 					}
@@ -265,7 +264,7 @@ namespace MySpace.DataRelay.Transports
 		{
 			ResourcePoolItem<MemoryStream> pooledBuffer;
 			MemoryStream nextMessageChunk;
-			int chunkLength = defaultChunkLength;
+			int chunkLength;// = _defaultChunkLength;
 			if (messages.Count > 0)
 			{
 				chunkLength = messages.Count; //chunking is... problematic... for out messages
@@ -279,14 +278,14 @@ namespace MySpace.DataRelay.Transports
 						int currentLocalIndexStart = cursor;
 						nextMessageChunk.Seek(0, SeekOrigin.Begin);
 						cursor += RelayMessageFormatter.WriteRelayMessageList(messages, cursor, chunkLength, nextMessageChunk);
-						MemoryStream replyStream = socketClient.SendSync((int)SocketCommand.HandleSyncMessages, nextMessageChunk);
+						MemoryStream replyStream = _socketClient.SendSync((int)SocketCommand.HandleSyncMessages, nextMessageChunk);
 						if (replyStream != null)
 						{
 							List<RelayMessage> replyMessages = RelayMessageFormatter.ReadRelayMessageList(replyStream);
 							if (replyMessages.Count != messages.Count)
 							{
 								string logMsg = string.Format("Reply messages from {0} has length {1} but request messages has length {2}. Discarding replies.",
-									 node, replyMessages.Count, messages.Count);
+									 _node, replyMessages.Count, messages.Count);
 								log.Error(logMsg);
 #if DEBUG
 								throw new ApplicationException(logMsg);
@@ -316,7 +315,7 @@ namespace MySpace.DataRelay.Transports
 								catch (ArgumentOutOfRangeException)
 								{
 									string errMsg = string.Format("Bad index while processing out message list for {0}. i = {1}. currentLocalIndexStart = {2}. Cursor = {3}. Message count = {4}.",
-										 node, i, currentLocalIndexStart, cursor, messages.Count);
+										 _node, i, currentLocalIndexStart, cursor, messages.Count);
 									log.Error(errMsg);
 									cursor = messages.Count + 1; //break out of while loop as well
 #if DEBUG
@@ -368,7 +367,7 @@ namespace MySpace.DataRelay.Transports
 				// there is not need to check the type, we are FORCING sync handling
 				RelayMessageFormatter.WriteRelayMessage(message, bufferItem.Item);
 				bufferItem.Item.Seek(0, SeekOrigin.Begin);
-				replyStream = socketClient.SendSync((int)SocketCommand.HandleSyncMessage, bufferItem.Item);
+				replyStream = _socketClient.SendSync((int)SocketCommand.HandleSyncMessage, bufferItem.Item);
 			}
 			finally
 			{
@@ -411,7 +410,7 @@ namespace MySpace.DataRelay.Transports
 		{
 			ResourcePoolItem<MemoryStream> pooledBuffer;
 			MemoryStream nextMessageChunk;
-			int chunkLength = defaultChunkLength;
+			int chunkLength = _defaultChunkLength;
 			if (messages.Count > 0)
 			{
 				chunkLength = messages.Count;
@@ -425,14 +424,14 @@ namespace MySpace.DataRelay.Transports
 						int currentLocalIndexStart = cursor;
 						nextMessageChunk.Seek(0, SeekOrigin.Begin);
 						cursor += RelayMessageFormatter.WriteRelayMessageList(messages, cursor, chunkLength, nextMessageChunk);
-						MemoryStream replyStream = socketClient.SendSync((int)SocketCommand.HandleSyncMessages, nextMessageChunk);
+						MemoryStream replyStream = _socketClient.SendSync((int)SocketCommand.HandleSyncMessages, nextMessageChunk);
 						if (replyStream != null)
 						{
 							List<RelayMessage> replyMessages = RelayMessageFormatter.ReadRelayMessageList(replyStream);
 							if (replyMessages.Count != messages.Count)
 							{
 								string errMsg = string.Format("Reply messages from {0} has length {1} but request messages has length {2}. Discarding replies.",
-									 node, replyMessages.Count, messages.Count);
+									 _node, replyMessages.Count, messages.Count);
 								log.Error(errMsg);
 #if DEBUG
 								throw new ApplicationException(errMsg);
@@ -462,7 +461,7 @@ namespace MySpace.DataRelay.Transports
 								catch (ArgumentOutOfRangeException)
 								{
 									string errMsg = string.Format("Bad index while processing out message list for {0}. i = {1}. currentLocalIndexStart = {2}. Cursor = {3}. Message count = {4}.",
-											 node, i, currentLocalIndexStart, cursor, messages.Count);
+											 _node, i, currentLocalIndexStart, cursor, messages.Count);
 									if (log.IsErrorEnabled) log.Error(errMsg);
 									cursor = messages.Count + 1; //break out of while loop as well
 #if DEBUG
@@ -496,7 +495,7 @@ namespace MySpace.DataRelay.Transports
 			}
 
 			var result = new SimpleAsyncResult(callback, state);
-			asyncSocketClient.SendOneWayAsync<MemoryStream>(
+			_asyncSocketClient.SendOneWayAsync<MemoryStream>(
 				(short)SocketCommand.HandleOneWayMessage,
 				message.MessageStream,
 				(messageStream, stream) => stream.Write(
@@ -521,7 +520,7 @@ namespace MySpace.DataRelay.Transports
 				{
 					SentMessage = message
 				};
-				asyncSocketClient.SendRoundTripAsync<RelayMessage>(
+				_asyncSocketClient.SendRoundTripAsync<RelayMessage>(
 					(short)SocketCommand.HandleSyncMessage,
 					message,
 					RelayMessageFormatter.WriteRelayMessage,
@@ -556,7 +555,7 @@ namespace MySpace.DataRelay.Transports
 				var result = new SimpleAsyncResult(callback, state);
 				if (forceRoundTrip)
 				{
-					asyncSocketClient.SendRoundTripAsync<RelayMessage>(
+					_asyncSocketClient.SendRoundTripAsync<RelayMessage>(
 						(short)SocketCommand.HandleSyncMessage,
 						message,
 						RelayMessageFormatter.WriteRelayMessage,
@@ -568,7 +567,7 @@ namespace MySpace.DataRelay.Transports
 				}
 				else
 				{
-					asyncSocketClient.SendOneWayAsync<RelayMessage>(
+					_asyncSocketClient.SendOneWayAsync<RelayMessage>(
 							(short)SocketCommand.HandleOneWayMessage,
 							message,
 							RelayMessageFormatter.WriteRelayMessage,
@@ -638,12 +637,108 @@ namespace MySpace.DataRelay.Transports
 
 		IAsyncResult IAsyncRelayTransport.BeginSendMessageList(List<RelayMessage> messages, AsyncCallback callback, object state)
 		{
-			throw new NotImplementedException();
-		}
+			if (messages == null) throw new ArgumentNullException("messages");
 
+			var result = new RoundTripAsyncResult<List<RelayMessage>>(callback, state)
+			{
+				SentMessage = messages
+			};
+
+			if (messages.Count > 0)
+			{
+				
+				_asyncSocketClient.SendRoundTripAsync<List<RelayMessage>>(
+					(short) SocketCommand.HandleSyncMessages,
+					messages,
+					RelayMessageFormatter.WriteRelayMessageList,
+					args =>
+						{
+							try
+							{
+								if (args.Error != null)
+								{
+									result.Error = args.Error;
+									return;
+								}
+
+								if (args.Response != null)
+								{
+									result.ResponseMessage = RelayMessageFormatter.ReadRelayMessageList(args.Response);
+								}
+							}
+							catch (Exception ex)
+							{
+								result.Error = ex;
+							}
+							finally
+							{
+								result.Complete(args.CompletedSynchronously);
+							}
+						});
+			}
+			else
+			{
+				result.ResponseMessage = messages;
+				result.Complete(true);
+			}
+
+			return result;
+		}
+		
 		void IAsyncRelayTransport.EndSendMessageList(IAsyncResult result)
 		{
-			throw new NotImplementedException();
+			if (result == null) throw new ArgumentNullException("result");
+
+			if (result is RoundTripAsyncResult<List<RelayMessage>>)
+			{
+				if (!result.IsCompleted)
+				{
+					result.AsyncWaitHandle.WaitOne();
+					result.AsyncWaitHandle.Close();
+				}
+
+				var roundTripResult = (RoundTripAsyncResult<List<RelayMessage>>)result;
+
+				if (roundTripResult.Error != null) throw roundTripResult.Error;
+
+				if (roundTripResult.ResponseMessage != null && roundTripResult.SentMessage != null && roundTripResult.ResponseMessage.Count == roundTripResult.SentMessage.Count)
+				{
+					for (int i = 0; i < roundTripResult.SentMessage.Count; i++)
+					{
+						if(roundTripResult.SentMessage[i] != null && roundTripResult.ResponseMessage[i] != null)
+							roundTripResult.SentMessage[i].ExtractResponse(roundTripResult.ResponseMessage[i]);	
+
+					}
+				}
+				else if (roundTripResult.ResponseMessage == null)
+				{
+					log.ErrorFormat("Response for async bulk out messages to node {0} was null", _node);
+				}
+				else if (roundTripResult.SentMessage == null)
+				{
+					log.ErrorFormat("List of async out messages sent to {0} was null", _node);
+				}
+				else //message count mismatch
+				{
+					log.ErrorFormat("Sent {0} out messages to node {1} but only got {2} back", roundTripResult.SentMessage.Count, _node, roundTripResult.ResponseMessage.Count);
+				}
+			}
+			else if (result is SimpleAsyncResult)
+			{
+				if (!result.IsCompleted)
+				{
+					result.AsyncWaitHandle.WaitOne();
+					result.AsyncWaitHandle.Close();
+				}
+
+				var simpleResult = (SimpleAsyncResult)result;
+
+				if (simpleResult.Error != null) throw simpleResult.Error;
+			}
+			else
+			{
+				throw new ArgumentException("result did not come from one of the correct SendMessage overloads.", "result");
+			}
 		}
 
 		#endregion

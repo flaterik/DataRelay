@@ -39,7 +39,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		internal static void WriteDebugInfo(RelayMessage message, SimpleLinkedList<Node> destinations)
+		internal static void WriteDebugInfo(RelayMessage message, LinkedListStack<Node> destinations)
 		{
 			if (WriteMessageTrace && message != null)
 			{
@@ -64,7 +64,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		private static string DescribeDestinations(SimpleLinkedList<Node> destinations)
+		private static string DescribeDestinations(LinkedListStack<Node> destinations)
 		{
 			if (destinations == null || destinations.Count == 0)
 			{
@@ -75,7 +75,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			sb.Append("to ");
 			sb.Append(destinations.Count);
 			sb.Append(" nodes:");
-			List<Node> nodes = destinations.PeekAll();
+			Node[] nodes = destinations.PeekAll();
 
 			foreach (Node node in nodes)
 			{

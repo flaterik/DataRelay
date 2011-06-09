@@ -8,7 +8,19 @@ namespace MySpace.SocketTransport
 	/// </summary>
 	[XmlRoot("SocketClient", Namespace = "http://myspace.com/SocketClientConfig.xsd")]
 	public class SocketClientConfig
-	{
+	{	
+		/// <summary>
+		/// Creates a blank instance of SocketClientConfig
+		/// </summary>
+		public SocketClientConfig()
+		{
+		}
+
+		internal SocketClientConfig(SocketSettings defaultSettings)
+		{
+			DefaultSocketSettings = defaultSettings;
+		}
+
 		/// <summary>
 		/// The default settings used for communication if none are supplied by the user.
 		/// </summary>
@@ -93,6 +105,16 @@ namespace MySpace.SocketTransport
 		/// </summary>
 		[XmlElement("BufferReuses")]
 		public int BufferReuses = 1000;
+		/// <summary>
+		/// Whether to request an acknowledgement of receipt of one way messages from servers that support it
+		/// </summary>
+		[XmlElement("RequestOneWayAck")]
+		public bool RequestOneWayAck = false;
+		/// <summary>
+		/// Whether to request server capabilities on connect
+		/// </summary>
+		[XmlElement("RequestServerCapabilities")]
+		public bool RequestServerCapabilities = false;
 
 		/// <summary>
 		/// Mersenne prime base hash algorithm,
@@ -111,13 +133,13 @@ namespace MySpace.SocketTransport
 							Donald Knuth
 							C.R. Wentsley
 							O. Patashnik
-                      
+					  
 							Produces a hash of n integer items of information in O(n) 
 							wherein O() is equivilent to 3 clocks on an Intel single core 
 							processor, and in 1.5 clocks on a dual core with enabled hyperthreading
-                      
+					  
 							This is a one-way (non-recoverable) hash equivilent to
-                      
+					  
 							SIGMA(0...n) f(x) = { x^31 + x^19 + x^17 + x^13 + x^7 + x^5 + x^3 + x^2 + 1 MOD 2^31-1 }
 			*/
 
@@ -147,7 +169,8 @@ namespace MySpace.SocketTransport
 			hash = ((hash << 5) ^ (hash >> 27)) ^ SocketLifetimeMinutes;
 			hash = ((hash << 5) ^ (hash >> 27)) ^ BufferReuses;
 			if (UseNetworkOrder) { hash = ((hash << 5) ^ (hash >> 27)) ^ 524287; } // 19 bit Mersenne prime
-
+			hash = ((hash << 5) ^ (hash >> 27)) ^ (RequestOneWayAck ? 2 : 3);
+			hash = ((hash << 5) ^ (hash >> 27)) ^ (RequestServerCapabilities ? 2 : 3);
 			hash %= 2147483647; // 31 bit Mersenne prime
 
 			return hash;
@@ -172,16 +195,14 @@ namespace MySpace.SocketTransport
 					SendTimeout != settingsObj.SendTimeout ||
 					SocketLifetimeMinutes != settingsObj.SocketLifetimeMinutes ||
 					UseNetworkOrder != settingsObj.UseNetworkOrder ||
-					BufferReuses != settingsObj.BufferReuses
+					BufferReuses != settingsObj.BufferReuses ||
+					RequestOneWayAck != settingsObj.RequestOneWayAck ||
+					RequestServerCapabilities != settingsObj.RequestServerCapabilities
 					)
 					return false;
-				else
-					return true;
+				return true;
 			}
-			else
-			{
-				return false;
-			}
+			return false;
 		}
 
 		/// <summary>
@@ -194,22 +215,28 @@ namespace MySpace.SocketTransport
 		public SocketSettings Copy()
 		{
 			SocketSettings copy = new SocketSettings();
-			copy.BufferReuses = this.BufferReuses;
-			copy.ConnectTimeout = this.ConnectTimeout;
-			copy.InitialMessageSize = this.InitialMessageSize;
-			copy.MaximumReplyMessageSize = this.MaximumReplyMessageSize;
-			copy.PoolSize = this.PoolSize;
-			copy.PoolType = this.PoolType;
-			copy.ReceiveBufferSize = this.ReceiveBufferSize;
-			copy.ReceiveTimeout = this.ReceiveTimeout;
-			copy.SendBufferSize = this.SendBufferSize;
-			copy.SendTimeout = this.SendTimeout;
-			copy.SocketLifetimeMinutes = this.SocketLifetimeMinutes;
-			copy.UseNetworkOrder = this.UseNetworkOrder;
-
+			copy.BufferReuses = BufferReuses;
+			copy.ConnectTimeout = ConnectTimeout;
+			copy.InitialMessageSize = InitialMessageSize;
+			copy.MaximumReplyMessageSize = MaximumReplyMessageSize;
+			copy.PoolSize = PoolSize;
+			copy.PoolType = PoolType;
+			copy.ReceiveBufferSize = ReceiveBufferSize;
+			copy.ReceiveTimeout = ReceiveTimeout;
+			copy.SendBufferSize = SendBufferSize;
+			copy.SendTimeout = SendTimeout;
+			copy.SocketLifetimeMinutes = SocketLifetimeMinutes;
+			copy.UseNetworkOrder = UseNetworkOrder;
+			copy.RequestOneWayAck = RequestOneWayAck;
+			copy.RequestServerCapabilities = RequestServerCapabilities;
 			return copy;
 		}
 
+		public override string ToString()
+		{
+			return string.Format("Buffer Reuses: {0} Connect Timeout: {1} InitialMessageSize: {2} Maximum Reply Message Size: {3} Pool Size: {4} Pool Type: {5} Receive Buffer Size: {6} Receive Timeout: {7} Send Buffer Size: {8} Send Timeout: {9} Socket Lifetime Minutes: {10} Use Network Order: {11} Request One Way Ack: {12}  Request Server Capabilities: {13}", 
+				BufferReuses, ConnectTimeout, InitialMessageSize, MaximumReplyMessageSize, PoolSize, PoolType, ReceiveBufferSize, ReceiveTimeout, SendBufferSize, SendTimeout, SocketLifetimeMinutes, UseNetworkOrder, RequestOneWayAck, RequestServerCapabilities);
+		}
 		/// <summary>
 		/// Create a new SocketSettings object with hard-coded defaults.
 		/// </summary>

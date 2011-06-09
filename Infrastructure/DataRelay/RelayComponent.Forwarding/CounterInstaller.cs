@@ -47,9 +47,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		{
 			string message = String.Empty;
 			try
-			{
-                if (log.IsInfoEnabled)
-                    log.InfoFormat("Creating performance counter category {0}", ForwardingCounters.PerformanceCategoryName);
+			{   
+                log.InfoFormat("Creating performance counter category {0}", ForwardingCounters.PerformanceCategoryName);
 				Console.WriteLine("Creating performance counter category " + ForwardingCounters.PerformanceCategoryName);
 				CounterCreationDataCollection counterDataCollection = new CounterCreationDataCollection();
 
@@ -58,8 +57,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					counterDataCollection.Add(new CounterCreationData(ForwardingCounters.PerformanceCounterNames[i], ForwardingCounters.PerformanceCounterHelp[i], ForwardingCounters.PerformanceCounterTypes[i]));
 					message = "Creating perfomance counter " + ForwardingCounters.PerformanceCounterNames[i];
 					Console.WriteLine(message);
-                    if (log.IsInfoEnabled)
-                        log.Info(message);
+                    if (log.IsDebugEnabled)
+                        log.Debug(message);
 				}
 
 				PerformanceCounterCategory.Create(ForwardingCounters.PerformanceCategoryName, "Counters for the MySpace Data Relay", PerformanceCounterCategoryType.MultiInstance, counterDataCollection);

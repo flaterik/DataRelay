@@ -5,7 +5,7 @@ using MySpace.Logging;
 
 namespace MySpace.DataRelay.Interfaces.Query.IndexCacheV3
 {
-    public class BaseComparer : IComparer<IItem>, IComparer<byte[]>
+    public class BaseComparer : IComparer<IItem>, IComparer<byte[]>, IComparer<ResultItem>, IComparer<ResultItemBag>
     {
         public readonly bool IsTagPrimarySort;
         public readonly string SortFieldName;
@@ -126,5 +126,23 @@ namespace MySpace.DataRelay.Interfaces.Query.IndexCacheV3
             }
             return retVal;
         }
+
+        #region IComparer<ResultItem> Members
+
+        public int Compare(ResultItem x, ResultItem y)
+        {
+            return Compare((IItem)x, (IItem)y);
+        }
+
+        #endregion
+
+        #region IComparer<ResultItemBag> Members
+
+        public int Compare(ResultItemBag x, ResultItemBag y)
+        {
+            return Compare(x.First, y.First);
+        }
+
+        #endregion
     }
 }

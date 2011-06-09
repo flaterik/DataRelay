@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
+using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context;
 using System.Text;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.PerfCounters;
+using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 {
@@ -41,6 +43,17 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         protected override void ValidateQuery(IndexTypeMapping indexTypeMapping, BaseMultiIndexIdQuery<SpanQueryResult> query, MessageContext messageContext)
         {
             SpanQuery spanQuery = query as SpanQuery;
+
+            if (spanQuery == null)
+            {
+                throw new Exception(string.Format("Invalid span query, failed to cast"));
+            }
+
+            if (string.IsNullOrEmpty(spanQuery.TargetIndexName))
+            {
+                spanQuery.TargetIndexName = IndexServerUtils.CheckQueryTargetIndexName(indexTypeMapping);
+            }
+
             if (!indexTypeMapping.IndexCollection.Contains(query.TargetIndexName))
             {
                 throw new Exception("Invalid TargetIndexName - " + query.TargetIndexName);
@@ -67,21 +80,37 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// </summary>
         /// <param name="query">The query.</param>
         /// <param name="resultItemList">The result item list.</param>
-        protected override void ProcessSubsets(BaseMultiIndexIdQuery<SpanQueryResult> query, ref List<ResultItem> resultItemList)
+        /// <param name="groupByResult">The group by result.</param>
+        /// <param name="baseComparer">The base comparer.</param>
+        protected override void ProcessSubsets(BaseMultiIndexIdQuery<SpanQueryResult> query, 
+            ref List<ResultItem> resultItemList,
+            ref GroupByResult groupByResult,
+            BaseComparer baseComparer)
         {
             SpanQuery spanQuery = query as SpanQuery;
             if (!spanQuery.ClientSideSubsetProcessingRequired && spanQuery.Span != 0)
             {
-                List<ResultItem> spanFilteredResultItemList = new List<ResultItem>();
-
-                if (resultItemList.Count >= spanQuery.Offset)
+                if (spanQuery.GroupBy == null)
                 {
-                    for (int i = spanQuery.Offset - 1; i < resultItemList.Count && spanFilteredResultItemList.Count < spanQuery.Span; i++)
+                    List<ResultItem> spanFilteredResultItemList = new List<ResultItem>();
+                    if (resultItemList.Count >= spanQuery.Offset)
                     {
-                        spanFilteredResultItemList.Add(resultItemList[i]);
+                        for (int i = spanQuery.Offset - 1; i < resultItemList.Count && spanFilteredResultItemList.Count < spanQuery.Span; i++)
+                        {
+                            spanFilteredResultItemList.Add(resultItemList[i]);
+                        }
                     }
+                    resultItemList = spanFilteredResultItemList;
                 }
-                resultItemList = spanFilteredResultItemList;
+                else
+                {
+                    GroupByResult pageGroupByResult = new GroupByResult(baseComparer);
+                    for (int i = spanQuery.Offset - 1; i < groupByResult.Count && pageGroupByResult.Count < spanQuery.Span; i++)
+                    {
+                        pageGroupByResult.Add(groupByResult[i].CompositeKey, groupByResult[i]);
+                    }
+                    groupByResult = pageGroupByResult;
+                }
             }
         }
 
@@ -93,11 +122,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         protected override string FormatQueryInfo(BaseMultiIndexIdQuery<SpanQueryResult> query)
         {
             SpanQuery spanQuery = query as SpanQuery;
-            StringBuilder stb = new StringBuilder(base.FormatQueryInfo(query));
-            stb.Append("Span: ").Append(spanQuery.Span).Append(", ");
-            stb.Append("Offset: ").Append(spanQuery.Offset);
-
-            return stb.ToString();
+            return spanQuery.ToString();
         }
 
         /// <summary>

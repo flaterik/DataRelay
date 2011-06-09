@@ -54,13 +54,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		/// </summary>
 		[XmlElement("RepostMessageLists")]
 		public bool RepostMessageLists;
-		/// <summary>
-		/// If true, determine the number of hops away each node is.
-		/// If false, use zone definitions.
-		/// Only the value at startup is meaningful; changing it after initialization has no effect.
-		/// </summary>
-		[XmlElement("MapNetwork")]
-		public bool MapNetwork; 
+		
 		/// <summary>
 		/// If true, the forwarder will write the message.tostring and destination nodes of all handled RelayMessages to the default Trace.
 		/// </summary>

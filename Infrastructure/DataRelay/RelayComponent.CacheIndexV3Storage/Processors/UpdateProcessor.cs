@@ -17,13 +17,13 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             switch (cacheIndexUpdate.Command.CommandType)
             {
                 case CommandType.FilteredIndexDelete:
-
-                    PerformanceCounters.Instance.IncrementCounter(
-                        PerformanceCounterEnum.FilterDelete,
-                        messageContext.TypeId,
-                        1);
-
+                    PerformanceCounters.Instance.IncrementCounter(PerformanceCounterEnum.FilterDelete, messageContext.TypeId,1);
                     FilteredIndexDeleteProcessor.Process(cacheIndexUpdate.Command as FilteredIndexDeleteCommand, messageContext, storeContext);
+                    break;
+
+                case CommandType.MetadataProperty:
+                    PerformanceCounters.Instance.IncrementCounter(PerformanceCounterEnum.MetadataPropertyUpdate, messageContext.TypeId, 1);
+                    MetadataPropertyProcessor.Process(cacheIndexUpdate.Command as MetadataPropertyCommand, messageContext, storeContext);
                     break;
             }
         }

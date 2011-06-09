@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="EnvironmentConfig"
+	xmlns:tns="http://myspace.com/EnvironmentConfig.xsd" 
+	elementFormDefault="qualified" 
+	targetNamespace="http://myspace.com/EnvironmentConfig.xsd" 
+	xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:import namespace="http://myspace.com/DatabaseConfig.xsd"  schemaLocation="DatabaseConfig.xsd"/>
+	<xs:element name="EnvironmentConfig" nillable="true" type="tns:EnvironmentConfig" />
+	<xs:complexType name="EnvironmentConfig">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="1" name="CacheSize" type="tns:CacheSize" />
+			<!--<xs:element minOccurs="1" maxOccurs="1" name="EnvCreateFlag" type="tns:EnvCreateFlags" />-->
+			<xs:element minOccurs="0" maxOccurs="1" name="ErrorPrefix" type="xs:string" />
+			<xs:element minOccurs="0" maxOccurs="1" name="HomeDirectory" type="xs:string" />
+			<xs:element minOccurs="0" maxOccurs="1" name="EnvOpenFlags" type="tns:EnvOpenFlags" />
+			<xs:element minOccurs="0" maxOccurs="1" name="TempDirectory" type="xs:string" />
+			<xs:element minOccurs="0" maxOccurs="1" name="DatabaseConfigs" type="tns:DatabaseConfigs" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="CacheSize">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="1" name="GigaBytes" type="xs:int" />
+			<xs:element minOccurs="1" maxOccurs="1" name="Bytes" type="xs:int" />
+			<xs:element minOccurs="0" maxOccurs="1" name="NumberCaches" type="xs:int" />
+		</xs:sequence>
+	</xs:complexType>
+	<!--
+	<xs:simpleType name="EnvCreateFlags">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="None" />
+			<xs:enumeration value="RpcClient" />
+		</xs:restriction>
+	</xs:simpleType>-->
+	<xs:simpleType name="EnvOpenFlags">
+		<xs:list>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="None" />
+					<xs:enumeration value="JoinEnv" />
+					<xs:enumeration value="InitCDB" />
+					<xs:enumeration value="InitLock" />
+					<xs:enumeration value="InitLog" />
+					<xs:enumeration value="InitMPool" />
+					<xs:enumeration value="InitRep" />
+					<xs:enumeration value="InitTxn" />
+					<xs:enumeration value="Recover" />
+					<xs:enumeration value="RecoverFatal" />
+					<xs:enumeration value="UseEnviron" />
+					<xs:enumeration value="UseEnvironRoot" />
+					<xs:enumeration value="Create" />
+					<xs:enumeration value="LockDown" />
+					<xs:enumeration value="Private" />
+					<xs:enumeration value="SystemMem" />
+					<xs:enumeration value="ThreadSafe" />
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:list>
+	</xs:simpleType>
+	<xs:complexType name="DatabaseConfigs">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="100" name="DatabaseConfig" 
+			   xmlns:q2="http://myspace.com/DatabaseConfig.xsd" type="q2:DatabaseConfig" />
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

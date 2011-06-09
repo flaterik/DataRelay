@@ -91,6 +91,35 @@
 
         IndexLookupAvgPerRemoteClusteredSpanQuery,
 
+        //TagQuery
+        TagQuery,
+
+        //StringHashQuery
+        StringHashQuery,
+
+        //MultiIndexContainsQuery
+        MultiIndexContainsQuery,
+
+        IndexLookupAvgPerMultiIndexContainsQuery,
+
+        NumOfItemsInIndexPerMultiIndexContainsQuery,
+
+        NumOfItemsReadPerMultiIndexContainsQuery,
+
+        //MetadataPropertyQuery
+        MetadataPropertyQuery,
+
+        //Update Command - MetadataProperty
+        MetadataPropertyUpdate,
+
+        //DistinctQuery
+        DistinctQuery,
+
+        NumOfItemsInIndexPerDistinctQuery,
+
+        NumOfItemsReadPerDistinctQuery,
+
+        UpdateList
         // To add more, start from here
     }
 
@@ -346,9 +375,87 @@
                 "RemoteClusteredSpanQuery - Indexes lookup/query",
                 "NumberOfItems32",
                 "Number of the IndexLookup per RemoteClusteredSpanQuery"
+            },
+
+            //TagQuery
+            {
+                "TagQuery - q/sec",
+                "RateOfCountsPerSecond64",
+                "Number of the TagQuery requests per second"
+            },
+
+            //StringHashQuery
+            {
+                "StringHashQuery - q/sec",
+                "RateOfCountsPerSecond64",
+                "Number of the StringHashQuery requests per second"
+            },        
+
+            //MultiIndexContainsQuery
+            {
+                "MultiIndexContainsQuery - q/sec",
+                "RateOfCountsPerSecond64",
+                "Number of the MultiIndexContainsQuery requests per second"
+            },
+
+            {
+                "MultiIndexContainsQuery - Indexes lookup/query",
+                "NumberOfItems32",
+                "Number of the IndexLookup per MultiIndexContainsQuery"
+            },
+
+            {
+                "MultiIndexContainsQuery - Items in index/query",
+                "NumberOfItems32",
+                "Number of items in index per MultiIndexContainsQuery"
+            },
+
+            {
+                "MultiIndexContainsQuery - Items read/query",
+                "NumberOfItems32",
+                "Number of items read (deserialized) in index per MultiIndexContainsQuery"
+            },
+
+            //MetadataPropertyQuery
+            {
+                "MetadataPropertyQuery - q/sec",
+                "RateOfCountsPerSecond64",
+                "Number of the MetadataPropertyQuery requests per second"
+            },
+
+            //Update Command - MetadataProperty
+            {  
+                "MetadataPropertyUpdate - request/sec",
+                "RateOfCountsPerSecond64",
+                "Number of the Metadata Property Update requests per second"
+            },
+
+            //Distinct Query
+            {
+                "DistinctQuery - q/sec",
+                "RateOfCountsPerSecond64",
+                "Number of the DistinctQuery requests per second"
+            },
+            
+            {
+                "DistinctQuery - Items in index/query",
+                "NumberOfItems32",
+                "Number of items in index per DistinctQuery"
+            },
+            
+            {
+                "DistinctQuery - Items read/query",
+                "NumberOfItems32",
+                "Number of items read (deserialized) in index per DistinctQuery"
+            },
+            
+            {  
+                "Save - Items in UpdateList",
+                "NumberOfItems32",
+                "Number of items in the UpdateList"
             }
 
-            // To add more, start from here                           
+           // To add more, start from here
         };
     }
 }

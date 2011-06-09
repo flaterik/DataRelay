@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using MySpace.Common;
 using MySpace.Common.IO;
 using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
@@ -310,12 +311,52 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             List<SortOrder> sortOrderList, 
             List<string> localIdentityTagNames)
         {
-            if (ResultItemList != null)
+            try
             {
-                IndexDataItemComparer comparer = new IndexDataItemComparer(isTagPrimarySort, sortFieldName, sortOrderList);
-                return ResultItemList.BinarySearch(searchItem, comparer);
+                int searchIndex = -1;
+                if (ResultItemList != null && ResultItemList.Count > 0)
+                {
+                    IndexDataItemComparer comparer = new IndexDataItemComparer(isTagPrimarySort, sortFieldName, sortOrderList);
+                    searchIndex = ResultItemList.BinarySearch(searchItem, comparer);
+
+                    //Look for localIdentity at searchIndex
+                    if (searchIndex > -1 && localIdentityTagNames.Count > 0)
+                    {
+                        if (EqualsLocalId(ResultItemList[searchIndex], searchItem, localIdentityTagNames))
+                        {
+                            return searchIndex;
+                        }
+
+                        //Search to left of the searchIndex
+                        int newIndex = searchIndex - 1;
+                        while (newIndex > -1 && comparer.Compare(ResultItemList[newIndex], searchItem) == 0)
+                        {
+                            if (EqualsLocalId(ResultItemList[newIndex], searchItem, localIdentityTagNames))
+                            {
+                                return newIndex;
+                            }
+                            newIndex--;
+                        }
+
+                        //Search to right of index
+                        newIndex = searchIndex + 1;
+                        while (newIndex < Count && comparer.Compare(ResultItemList[newIndex], searchItem) == 0)
+                        {
+                            if (EqualsLocalId(ResultItemList[newIndex], searchItem, localIdentityTagNames))
+                            {
+                                return newIndex;
+                            }
+                            newIndex++;
+                        }
+                        return -1;
+                    }
+                }
+                return searchIndex;
             }
-            return -1;
+            catch (Exception ex)
+            {
+                throw new Exception("Error in Binary Search", ex);
+            }
         }
         #endregion
     }

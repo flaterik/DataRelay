@@ -1,4 +1,5 @@
 ﻿using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context;
+using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
 using System;
 
@@ -18,28 +19,30 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             {
                 RelayMessage msg;
 
+                short typeId = messageContext.TypeId;
+
                 if (DataTierUtil.ShouldForwardToDataTier(messageContext.RelayTTL,
                     messageContext.SourceZone,
                     storeContext.MyZone,
-                    storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection[messageContext.TypeId].IndexServerMode))
+                    storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection[typeId].IndexServerMode))
                 {
                     // Send DeleteAll to Data Store
                     short relatedTypeId;
-                    if(!storeContext.TryGetRelatedIndexTypeId(messageContext.TypeId, out relatedTypeId))
+                    if (!storeContext.TryGetRelatedIndexTypeId(typeId, out relatedTypeId))
                     {
-                        LoggingUtil.Log.ErrorFormat("Invalid RelatedTypeId for TypeId - {0}", messageContext.TypeId);
-                        throw new Exception("Invalid RelatedTypeId for TypeId - " + messageContext.TypeId);
+                        LoggingUtil.Log.ErrorFormat("Invalid RelatedTypeId for TypeId - {0}", typeId);
+                        throw new Exception("Invalid RelatedTypeId for TypeId - " + typeId);
                     }
                     msg = new RelayMessage(relatedTypeId, 0, MessageType.DeleteAllInType);
                     storeContext.ForwarderComponent.HandleMessage(msg);
                 }
 
                 // Send DeleteAll to local Index storage
-                msg = new RelayMessage(messageContext.TypeId, 0, MessageType.DeleteAllInType);
-                storeContext.IndexStorageComponent.HandleMessage(msg);
+                BinaryStorageAdapter.Clear(storeContext.IndexStorageComponent, typeId);
+
 
                 // Delete hash mapping entries in file
-                storeContext.RemoveType(messageContext.TypeId);
+                storeContext.RemoveType(typeId);
             }
         }
     }

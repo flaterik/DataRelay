@@ -2,18 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
-using System.Xml.Serialization;
 using MySpace.Common;
+using MySpace.Common.Storage;
 using MySpace.DataRelay.Configuration;
 using MySpace.Common.Framework;
 using MySpace.DataRelay.Formatters;
 using MySpace.DataRelay.RelayComponent.Forwarding;
+using MySpace.DataRelay.RelayComponent.FlexForwarding;
 using MySpace.DataRelay.Common.Schemas;
 using System.IO;
 using MySpace.Common.IO;
 using MySpace.DataRelay.Common.Interfaces.Query;
 using MySpace.DataRelay.SocketTransport;
+using MySpace.ResourcePool;
+using System.Linq;
 using MySpace.SocketTransport;
+using MySpace.Storage;
+using MySpace.Storage.Cache;
 
 namespace MySpace.DataRelay.Client
 {
@@ -35,10 +40,12 @@ namespace MySpace.DataRelay.Client
     {
         #region Fields
 
-        private Forwarder _forwarder;
+		internal static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
+
+		private FlexForwarder _flexForwarder;
+		private Forwarder _relayForwarder;
         private RelayNodeConfig _configuration;
 		private static RelayClient _instance = new RelayClient();
-        internal static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
         
         #endregion
 
@@ -64,17 +71,156 @@ namespace MySpace.DataRelay.Client
 		/// </summary>
         private RelayClient()
 		{
-			_forwarder = new Forwarder();
+
 			GetConfig();
+			UpdateCacheLookup();
             if (_configuration != null && _configuration.TypeSettings != null)
             {
                 RelayMessage.SetCompressionImplementation(_configuration.TypeSettings.Compressor);
             }
-			_forwarder.Initialize(_configuration, null);
+
+			_flexForwarder = new FlexForwarder();
+			_flexForwarder.Initialize(_configuration, null);
+
+			_relayForwarder = new Forwarder();
+			_relayForwarder.Initialize(_configuration, null);
         }
         #endregion
 
-        #region Config
+        private void DrainRelay(RelayMessage message)
+        {
+            if (message.IsTwoWayMessage)
+            {
+                if (message.Payload == null)
+                {
+                    // a miss, try Data Relay and transfer the object to FlexCache on success
+                    _relayForwarder.HandleMessage(message);
+
+                    if (message.Payload != null)
+                    {
+                        var deleteMessage = new RelayMessage(message, MessageType.Delete);
+                        var saveMessage = new RelayMessage(message, MessageType.Save);
+                        _flexForwarder.HandleMessage(saveMessage);
+                        _relayForwarder.HandleMessage(deleteMessage);
+                    }
+                }
+            }
+            else
+            {
+                // on all update messages, also send a delete to data relay
+                var deleteMessage = new RelayMessage(message, MessageType.Delete);
+                _relayForwarder.HandleMessage(deleteMessage);
+            }
+        }
+
+        private void ForwardMessage(RelayMessage message)
+		{
+			var typeSetting = GetTypeSetting(message.TypeId);
+            if(typeSetting.FlexCacheMode == FlexCacheMode.Enabled) _flexForwarder.HandleMessage(message);
+            else if(typeSetting.FlexCacheMode == FlexCacheMode.Disabled) _relayForwarder.HandleMessage(message);
+            else if(typeSetting.FlexCacheMode == FlexCacheMode.EnabledWithRelayDrain)
+            {
+                _flexForwarder.HandleMessage(message);
+                DrainRelay(message);
+            }
+            else
+            {
+                log.ErrorFormat("The type setting for {0}, TypeId {1} specified a FlexCacheMode of {2}, which is not supported.  No action will be taken for this message in ForwardMessage().", typeSetting.TypeName, typeSetting.TypeId, typeSetting.FlexCacheMode);
+            }
+		}
+
+    	private void ForwardMessages(IList<RelayMessage> messages)
+		{
+			var classicList = new List<RelayMessage>(messages.Count);
+			var flexList = new List<RelayMessage>(messages.Count);
+
+			foreach (var message in messages)
+			{
+                if (message != null)
+                {
+                    var typeSetting = GetTypeSetting(message.TypeId);
+                    if (typeSetting.FlexCacheMode == FlexCacheMode.Enabled) flexList.Add(message);
+                    else if (typeSetting.FlexCacheMode == FlexCacheMode.Disabled) classicList.Add(message);
+                    else if (typeSetting.FlexCacheMode == FlexCacheMode.EnabledWithRelayDrain) flexList.Add(message);
+                    else
+                    {
+                        log.ErrorFormat(
+                            "The type setting for {0}, TypeId {1} specified a FlexCacheMode of {2}, which is not supported.  No action will be taken for this message in ForwardMessages().",
+                            typeSetting.TypeName, typeSetting.TypeId, typeSetting.FlexCacheMode);
+                    }
+                }
+			}
+
+			if (classicList.Count > 0) _relayForwarder.HandleMessages(classicList);
+			if (flexList.Count > 0)
+			{
+			    _flexForwarder.HandleMessages(flexList);
+                
+			    foreach (var relayMessage in flexList)
+			    {
+                    var typeSetting = GetTypeSetting(relayMessage.TypeId);
+                    if (typeSetting.FlexCacheMode == FlexCacheMode.EnabledWithRelayDrain)
+                    DrainRelay(relayMessage);
+			    }
+			}
+		}
+
+		private IAsyncDataHandler GetForwarder(RelayMessage message)
+		{
+			var typeSetting = GetTypeSetting(message.TypeId);
+			var result = GetForwarder(typeSetting.FlexCacheMode);
+			if (result == null)
+			{
+				log.ErrorFormat("The type setting for {0}, TypeId {1} specified a FlexCacheMode of {2}, which is not supported.  No action will be taken for this message in ForwardMessage().", typeSetting.TypeName, typeSetting.TypeId, typeSetting.FlexCacheMode);
+			}
+			return result;
+		}
+
+		private IAsyncDataHandler GetForwarder(FlexCacheMode mode)
+		{
+			switch (mode)
+			{
+				case FlexCacheMode.Disabled:
+					return _relayForwarder;
+				case FlexCacheMode.Enabled:
+					return _flexForwarder;
+				default:
+					return null;
+			}
+		}
+
+		private Future<RelayMessage> ForwardMessageAsync(RelayMessage message)
+		{
+			var forwarder = GetForwarder(message);
+			if (forwarder == null)
+			{
+				message.SetError(RelayErrorType.Unknown);
+				message.ResultOutcome = RelayOutcome.Error;
+				message.ResultDetails = "Failed to obtain a forwarder. Check the FlexCacheMode setting.";
+				return message;
+			}
+
+			return Future.FromAsyncPattern(
+				ac => forwarder.BeginHandleMessage(message, null, ac),
+				ar => { forwarder.EndHandleMessage(ar); return message; });
+		}
+
+		private Future ForwardMessagesAsync(IEnumerable<RelayMessage> messages)
+		{
+			var q = from message in messages
+					let typeSetting = GetTypeSetting(message.TypeId)
+					group message by typeSetting.FlexCacheMode into messageGroup
+					let forwarder = GetForwarder(messageGroup.Key)
+					where forwarder != null
+					let messageList = messageGroup.ToList()
+					select Future.FromAsyncPattern(
+						ac => forwarder.BeginHandleMessages(messageList, null, ac),
+						ar => forwarder.EndHandleMessages(ar));
+
+			return q.Combine();
+		}
+
+    	#region Config
 
         private RelayNodeConfig GetConfig()
 		{
@@ -82,26 +228,63 @@ namespace MySpace.DataRelay.Client
 			return _configuration;
 		}
 
+    	private Dictionary<short, bool> _useCacheLookup;
+
+		private bool UseCacheLookup(short typeId)
+		{
+			return _useCacheLookup != null && _useCacheLookup[typeId];
+		}
+
 		private void ReloadConfig(object state, EventArgs args)
 		{
-			RelayNodeConfig config = state as RelayNodeConfig;
+			var config = state as RelayNodeConfig;
 			if (config != null)
 			{
-                if (log.IsInfoEnabled)
-                    log.Info("Reloading config");
-				_forwarder.ReloadConfig(config);
-                if (config.TypeSettings != null)
-                {
-                    RelayMessage.SetCompressionImplementation(config.TypeSettings.Compressor);
-                }
-                _configuration = config;				
+				if (log.IsInfoEnabled)
+					log.Info("Reloading config");
+				_relayForwarder.ReloadConfig(config);
+				if (config.TypeSettings != null)
+				{
+					RelayMessage.SetCompressionImplementation(config.TypeSettings.Compressor);
+				}
+				_configuration = config;
 			}
 			else
 			{
-                if (log.IsErrorEnabled)
-                    log.Error("Attempt to reload with null config");
+				if (log.IsErrorEnabled)
+					log.Error("Attempt to reload with null config");
 			}
-        }
+			UpdateCacheLookup();
+		}
+
+		private void UpdateCacheLookup()
+		{
+			if (_configuration != null)
+			{
+				var useCacheLookup = new Dictionary<short, bool>();
+				foreach (var typeSetting in _configuration.TypeSettings.TypeSettingCollection)
+				{
+					useCacheLookup[typeSetting.TypeId] =
+						(typeSetting.LocalCacheTTLSeconds ?? -1) >= 0;
+				}
+				_useCacheLookup = useCacheLookup;
+			} else
+			{
+				_useCacheLookup = null;				
+			}
+		}
+
+		internal int MaximumTypeId
+		{
+	    	get
+	    	{
+	    		if (_configuration != null && _configuration.TypeSettings != null)
+	    		{
+					return _configuration.TypeSettings.MaxTypeId;
+	    		}
+	    		return -1;
+	    	}
+		}
 
         #endregion
 
@@ -264,7 +447,7 @@ namespace MySpace.DataRelay.Client
         {
             List<TypeSetting> typeSettingList;
             List<RelayMessage> messageList = GetQueryMessages<TQuery, TQueryResult>(queryList, out typeSettingList);
-            _forwarder.HandleMessages(messageList);
+			ForwardMessages(messageList);
             return GetQueryResults<TQuery, TQueryResult>(queryList, typeSettingList, messageList);
         }
 
@@ -527,7 +710,7 @@ namespace MySpace.DataRelay.Client
 					{
 						// Submit a single query to a single cluster
 						RelayMessage message = RelayMessage.GetQueryMessageForQuery<TQuery>(typeId, typeSetting.Compress, query);
-						_forwarder.HandleMessage(message);
+						ForwardMessage(message);
 						if (message.Payload != null)
 						{
 							queryResult = new TQueryResult();
@@ -619,7 +802,7 @@ namespace MySpace.DataRelay.Client
             List<RelayMessage> messages = SplitQueryMessages<TQuery, TQueryResult>(query, typeSetting);
 
 		    // Issue the queries
-			_forwarder.HandleMessages(messages);
+			ForwardMessages(messages);
 
 		    return MergeQueryResults<TQueryResult>(query as IMergeableQueryResult<TQueryResult>, messages);			
         }
@@ -627,6 +810,44 @@ namespace MySpace.DataRelay.Client
         #endregion
 
         #region Get...
+
+    	private readonly object _poolLock = new object();
+    	private MemoryStreamPool _memoryPool;
+    	private MemoryStreamPool MemoryPool
+    	{
+    		get
+    		{
+				var memoryPool = _memoryPool;
+				if (memoryPool == null)
+				{
+					lock(_poolLock)
+					{
+						memoryPool = _memoryPool;
+						if (memoryPool == null)
+						{
+							memoryPool = _memoryPool = new MemoryStreamPool();							
+						}
+					}
+				}
+				return memoryPool;
+    		}
+    	}
+
+		private void Copy<T>(T source, T destination)
+		{
+			if (!ReferenceEquals(source, destination))
+			{
+				// returned entry instance not the same, so have to
+				// copy
+				using (var item = MemoryPool.GetItem())
+				{
+					var stm = item.Item;
+					Serializer.Serialize(stm, source);
+					stm.Position = 0;
+					Serializer.Deserialize(stm, destination);
+				}
+			}			
+		}
 
 		/// <summary>
 		/// Finds and loads the given <see cref="ICacheParameter"/> object from the transport.
@@ -643,16 +864,51 @@ namespace MySpace.DataRelay.Client
 			{
 				return false;
 			}
-
 			try
 			{
+				emptyObject.DataSource = DataSource.Unknown;
 				short typeId;
 				bool useCompression;
 				if (TryGetTypeInfo(emptyObject, out typeId, out useCompression))
-				{	
-					RelayMessage message = RelayMessage.GetGetMessageForObject<T>(typeId, emptyObject);
-					_forwarder.HandleMessage(message);
-                    
+				{
+					var entry = new StorageEntry<T>();
+					var useLocalCaching = UseCacheLookup(typeId);
+					if (useLocalCaching)
+					{
+						// lookup first, providing emptyObject for deserialization if used
+						entry = LocalCache.Get(emptyObject);
+						if (entry.IsFound)
+						{
+							if (entry.Expires > DateTime.Now)
+							{
+								// if found in cache and not expired, then copy
+								// cached state to user object and return
+								Copy(entry.Instance, emptyObject);
+								emptyObject.DataSource = DataSource.Cache;
+								return true;
+							}
+						}
+					}
+					RelayMessage message;
+					if (entry.IsFound)
+					{
+						// object found in cache but expired, so do get message
+						// with cached object updated date as freshness
+						message = RelayMessage.GetConditionalGetMessageForObject(typeId,
+							emptyObject, entry.Updated);												
+					} else
+					{
+						// object not in cache or caching not used
+						message = RelayMessage.GetGetMessageForObject(typeId,
+							emptyObject);						
+					}
+					ForwardMessage(message);
+					if (useLocalCaching)
+					{
+						// checked after forwarder sends since that's when
+						// legacy serialization can be set
+						AssertNoLegacySerialization(message);
+					}
                     bool result = false;
 					try
 					{
@@ -660,11 +916,66 @@ namespace MySpace.DataRelay.Client
                         {
                             emptyObject.DataSource = DataSource.CacheError;
                         }
-                        else if(message.GetObject<T>(emptyObject))
+                        else if (!entry.IsFound)
 						{
-							emptyObject.DataSource = DataSource.Cache;
-							result = true;
+							// try to read from cache
+							result = message.GetObject(emptyObject);
+							if (result)
+							{
+								emptyObject.DataSource = DataSource.Cache;
+								if (useLocalCaching)
+								{
+									SaveToLocalCache(emptyObject, message);
+								}
+							}
 						}
+						else if (!message.Freshness.HasValue)
+						{
+							// no freshness, try to get cache version
+							result = message.GetObject(emptyObject);
+							if (result)
+							{
+								emptyObject.DataSource = DataSource.Cache;
+								// uses local caching must be true to get here
+								SaveToLocalCache(emptyObject, message);
+							} else
+							{
+								// was deleted on server
+								LocalCache.Delete(emptyObject);								
+							}
+						}
+						else
+						{
+							var cmp = entry.Updated.CompareTo(message.Freshness.Value);
+							if (cmp < 0)
+							{
+								// cache version newer
+								result = message.GetObject(emptyObject);
+								if (result)
+								{
+									emptyObject.DataSource = DataSource.Cache;
+									SaveToLocalCache(emptyObject, message);
+								}
+								else
+								{
+									log.WarnFormat("Got a response with newer freshness but with no payload for an object of type {0} and ID {1}.",
+										typeof(T).FullName, LocalCache.GetKey(emptyObject));
+								}
+							}
+							else
+							{
+								if (cmp > 0)
+								{
+									// server shouldn't have older version than cache
+									log.WarnFormat("Got a response with older freshness for an object of type {0} and ID {1}.",
+										typeof(T).FullName, LocalCache.GetKey(emptyObject));
+								}
+								result = true;
+								Copy(entry.Instance, emptyObject);
+								emptyObject.DataSource = DataSource.Cache;
+								LocalCache.RefreshExpires(entry.Instance);
+							}
+						}									
 					}
 					catch (UnhandledVersionException uve)
 					{
@@ -726,6 +1037,11 @@ namespace MySpace.DataRelay.Client
 				emptyObject.DataSource = DataSource.Unknown;
 				return false;
 			}
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
+			}
 			catch (Exception ex)
 			{
                 if(log.IsErrorEnabled)                    
@@ -733,81 +1049,176 @@ namespace MySpace.DataRelay.Client
 				emptyObject.DataSource = DataSource.CacheError;
 				return false;
 			}			
-		}		
-	
-		public void GetObjects(IList<ICacheParameter> emptyObjects)
+		}
+
+		private DateTime? RefreshLocalCacheExpires(short typeId, ICacheParameter instance)
+		{
+			return LocalCache.RefreshExpires(typeId, LocalCache.GetKey(instance));
+		}
+
+    	public void GetObjects(IList<ICacheParameter> emptyObjects)
 		{
             try
             {
-                List<RelayMessage> messages = new List<RelayMessage>(emptyObjects.Count);
-                short typeId;
+				var paramCount = emptyObjects.Count;
+				var messages = new RelayMessage[paramCount];
+            	var entries = new StorageEntry<ICacheParameter>[paramCount];
+				var typeIds = new short[paramCount];
+				short typeId;
 				bool useCompression;
                 bool gotOne = false;
-                RelayMessage message;
                 DateTime? lastUpdatedDate;
                 byte[] extendedIdBytes;
-                for (int i = 0; i < emptyObjects.Count; i++)
+				var now = DateTime.Now;
+                for (int i = 0; i < paramCount; i++)
                 {
-				    //check for null so exception won't be thrown and the rest of the objects can be retrieved
-                    if ((emptyObjects[i]!=null) && TryGetTypeInfo(emptyObjects[i], out typeId, out useCompression))
+                	var emptyObject = emptyObjects[i];
+					RelayMessage message = null;
+					var entry = StorageEntry<ICacheParameter>.NotFound;
+					//check for null so exception won't be thrown and the rest of the objects can be retrieved
+                    if ((emptyObject!=null) && TryGetTypeInfo(emptyObject, out typeId, out useCompression))
                     {
-                        RelayMessage.GetExtendedInfo(emptyObjects[i], out extendedIdBytes, out lastUpdatedDate);                      
-                        message = new RelayMessage(typeId, emptyObjects[i].PrimaryId, extendedIdBytes, MessageType.Get);
-                        messages.Add(message);
-                        gotOne = true;
-                    }
-                    else
+						emptyObject.DataSource = DataSource.Unknown;
+						var useLocalCaching = UseCacheLookup(typeId);
+						if (useLocalCaching)
+						{
+							entry = LocalCache.Get(typeId, LocalCache.GetKey(
+								emptyObject), () => emptyObject);
+							if (entry.IsFound)
+							{
+								if (entry.Expires > now)
+								{
+									Copy(entry.Instance, emptyObject);
+									emptyObject.DataSource = DataSource.Cache;
+								} else
+								{
+									RelayMessage.GetExtendedInfo(emptyObject, out extendedIdBytes, out lastUpdatedDate);
+									message = new RelayMessage(typeId, emptyObject.PrimaryId, extendedIdBytes, MessageType.Get)
+					              	{
+					              		Freshness = entry.Updated
+					              	};
+								}
+							}
+						}
+						if (!entry.IsFound)
+						{
+							RelayMessage.GetExtendedInfo(emptyObject, out extendedIdBytes, out lastUpdatedDate);
+							message = new RelayMessage(typeId, emptyObject.PrimaryId, extendedIdBytes, MessageType.Get);
+						}
+                    } else
                     {
-                        messages.Add(null);
+                    	typeId = -1;
                     }
+					if (message != null)
+					{
+						gotOne = true;
+					}
+					entries[i] = entry;
+					messages[i] = message;
+					typeIds[i] = typeId;
                 }
                 if (gotOne)
                 {
-                    _forwarder.HandleMessages(messages);
+					ForwardMessages(messages);
                     IList<ICacheParameter> handledVersioned = null;
-                    for (int i = 0; i < emptyObjects.Count; i++)
+					now = DateTime.Now;						
+					for (int i = 0; i < paramCount; i++)
                     {
-                        try
+						var emptyObject = emptyObjects[i];
+						var message = messages[i];
+						typeId = typeIds[i];
+                    	var useLocalCaching = typeId >= 0 && UseCacheLookup(typeId);
+						if (useLocalCaching)
+						{
+							// checked after forwarder sends since that's when
+							// legacy serialization can be set
+							AssertNoLegacySerialization(message);
+						}
+						try
                         {
-                            //check for null so exception won't be thrown and the rest of the objects can be retrieved
-                            if (emptyObjects[i] != null)
+							//check for null so exception won't be thrown and the rest of the objects can be retrieved
+                            if (emptyObject != null)
                             {
-                                if (messages[i] != null)
-                                {
-                                    if (messages[i].ErrorOccurred)
-                                    {
-                                        emptyObjects[i].DataSource = DataSource.CacheError;
-                                    }
-                                    else
-                                    {
-                                        if (messages[i].GetObject(emptyObjects[i]))
-                                        {
-                                            emptyObjects[i].DataSource = DataSource.Cache;
-                                        }
-                                        else
-                                        {
-                                            emptyObjects[i].DataSource = DataSource.Unknown;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    emptyObjects[i].DataSource = DataSource.Unknown;
-                                }
+								if (message != null)
+                            	{
+									var entry = useLocalCaching ? entries[i] :
+										StorageEntry<ICacheParameter>.NotFound;
+									if (message.ErrorOccurred)
+									{
+										emptyObject.DataSource = DataSource.CacheError;
+									}
+									else if (!entry.IsFound)
+									{
+										// try to read from cache
+										if (message.GetObject(emptyObject))
+										{
+											emptyObject.DataSource = DataSource.Cache;
+											if (useLocalCaching)
+											{
+												SaveToLocalCache(typeId, emptyObject, message);
+											}
+										}
+									}
+									else if (!message.Freshness.HasValue)
+									{
+										// no freshness, try to get cache version
+										if (message.GetObject(emptyObject))
+										{
+											emptyObject.DataSource = DataSource.Cache;
+											// uses local caching must be true to get here
+											SaveToLocalCache(typeId, emptyObject, message);
+										}
+										else
+										{
+											// was deleted on server
+											DeleteFromLocalCache(typeId, emptyObject);
+										}
+									}
+									else
+									{
+										var cmp = entry.Updated.CompareTo(message.Freshness.Value);
+										if (cmp < 0)
+										{
+											// cache version newer
+											if (message.GetObject(emptyObject))
+											{
+												emptyObject.DataSource = DataSource.Cache;
+												SaveToLocalCache(typeId, emptyObject, message);
+											}
+											else
+											{
+												log.WarnFormat("Got a response with newer freshness but with no payload for an object of type {0} and ID {1}.",
+													emptyObject.GetType().FullName, LocalCache.GetKey(emptyObject));
+											}
+										}
+										else
+										{
+											if (cmp > 0)
+											{
+												// server shouldn't have older version than cache
+												log.WarnFormat("Got a response with older freshness for an object of type {0} and ID {1}.",
+													emptyObject.GetType().FullName, LocalCache.GetKey(emptyObject));
+											}
+											Copy(entry.Instance, emptyObject);
+											emptyObject.DataSource = DataSource.Cache;
+											RefreshLocalCacheExpires(typeId, entry.Instance);
+										}
+									}									
+                            	}
                             }
                         }
                         catch (UnhandledVersionException uve)
                         {
-                            string typeName = emptyObjects[i].GetType().FullName;
+                            string typeName = emptyObject.GetType().FullName;
 
-                            IVersionSerializable ivs = emptyObjects[i] as IVersionSerializable; //shouldn't throw this exception unless it was IVS, but still...
+                            IVersionSerializable ivs = emptyObject as IVersionSerializable; //shouldn't throw this exception unless it was IVS, but still...
                             if (log.IsWarnEnabled)
                             {
                                 if (ivs != null)
                                 {
                                     log.WarnFormat("Got UnhandledVersionException while getting an object of type {0} and ID {1}. Current version: {2}, Version Expected: {3}, Version Received: {4}",
                                         typeName,
-                                        emptyObjects[i].PrimaryId.ToString("N0"),
+                                        emptyObject.PrimaryId.ToString("N0"),
                                         ivs.CurrentVersion,
                                         uve.VersionExpected,
                                         uve.VersionRecieved
@@ -817,13 +1228,13 @@ namespace MySpace.DataRelay.Client
                                 {
                                     log.WarnFormat("Got UnhandledVersionException while getting a non-IVersionSerializable object of type {0} and ID {1}. Version Expected: {2}, Version Received: {3}",
                                          typeName,
-                                         emptyObjects[i].PrimaryId.ToString("N0"),
+                                         emptyObject.PrimaryId.ToString("N0"),
                                          uve.VersionExpected,
                                          uve.VersionRecieved                                        
                                         );
                                 }
                             }
-                            emptyObjects[i].DataSource = DataSource.Unknown;
+                            emptyObject.DataSource = DataSource.Unknown;
                         }
                         catch (HandledVersionException hve)
                         {
@@ -831,16 +1242,16 @@ namespace MySpace.DataRelay.Client
                             {
                                 handledVersioned = new List<ICacheParameter>();
                             }
-                            string typeName = emptyObjects[i].GetType().FullName;
+                            string typeName = emptyObject.GetType().FullName;
 
-                            IVersionSerializable ivs = emptyObjects[i] as IVersionSerializable; //shouldn't throw this exception unless it was IVS, but still...
+                            IVersionSerializable ivs = emptyObject as IVersionSerializable; //shouldn't throw this exception unless it was IVS, but still...
                             if (log.IsWarnEnabled)
                             {
                                 if (ivs != null)
                                 {
                                     log.WarnFormat("Got HandledVersionException while getting an object of type {0} and ID {1}. Current version: {2}, Version Expected: {3}, Version Handled: {4}. Resaving object.",
                                         typeName,
-                                        emptyObjects[i].PrimaryId.ToString("N0"),
+                                        emptyObject.PrimaryId.ToString("N0"),
                                         ivs.CurrentVersion,
                                         hve.VersionExpected,
                                         hve.VersionHandled
@@ -850,14 +1261,14 @@ namespace MySpace.DataRelay.Client
                                 {
                                     log.WarnFormat("Got HandledVersionException while getting a non-IVersionSerializable object of type {0} and ID {1}. Version Expected: {2}, Version Handled: {3}. Resaving object.",
                                         typeName,
-                                        emptyObjects[i].PrimaryId.ToString("N0"),
+                                        emptyObject.PrimaryId.ToString("N0"),
                                         hve.VersionExpected,
                                         hve.VersionHandled
                                         );
                                 }
                             }
-                            emptyObjects[i].DataSource = DataSource.Cache;
-                            handledVersioned.Add(emptyObjects[i]);
+                            emptyObject.DataSource = DataSource.Cache;
+                            handledVersioned.Add(emptyObject);
                         }
                     }
                     if (handledVersioned != null)
@@ -866,10 +1277,17 @@ namespace MySpace.DataRelay.Client
                     }
                 }
             }
-            catch (Exception ex)
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
+			}
+			catch (Exception ex)
             {
-                if(log.IsErrorEnabled)
+                if (log.IsErrorEnabled)
+                {
                     log.ErrorFormat("Error getting object list: {0}", ex);
+                }
             }
         }
       #endregion
@@ -897,7 +1315,10 @@ namespace MySpace.DataRelay.Client
 			{
 				throw new ArgumentNullException("cacheGetArgs");
 			}
-			RelayResult<T> relayResult;
+			var relayResult = new RelayResult<T>(RelayResultType.NotFound, null,
+				emptyObject);
+			emptyObject.DataSource = DataSource.Unknown;
+			DateTime now;
 			try
 			{
 				short typeId;
@@ -905,20 +1326,116 @@ namespace MySpace.DataRelay.Client
 
 				if (TryGetTypeInfo(emptyObject, out typeId, out useCompression))
 				{
-					RelayMessage message = RelayMessage.GetGetMessageForObject<T>(typeId, emptyObject);
-					_forwarder.HandleMessage(message);
+					var useLocalCaching = UseCacheLookup(typeId);
+					RelayMessage message;
+					var entry = new StorageEntry<T>();
+					if (useLocalCaching)
+					{
+						now = DateTime.Now;
+						// lookup first, providing emptyObject for deserialization if used
+						entry = LocalCache.Get(emptyObject);
+						if (entry.IsFound)
+						{
+							if (entry.Expires > now)
+							{
+								Copy(entry.Instance, emptyObject);
+								emptyObject.DataSource = DataSource.Cache;
+								return new RelayResult<T>(RelayResultType.Success,
+									null, emptyObject);
+							}
+						}
+					}
+					if (entry.IsFound)
+					{
+						message = RelayMessage.GetConditionalGetMessageForObject(typeId,
+							emptyObject, entry.Updated);
+					}
+					else
+					{
+						message = RelayMessage.GetGetMessageForObject(typeId,
+							emptyObject);
+					}
+					ForwardMessage(message);
+					if (useLocalCaching)
+					{
+						// checked after forwarder sends since that's when
+						// legacy serialization can be set
+						AssertNoLegacySerialization(message);
+					}
 					try
 					{
-						if (message.GetObject<T>(emptyObject))
+						if (message.ErrorOccurred)
 						{
-							emptyObject.DataSource = DataSource.Cache;
-							relayResult = new RelayResult<T>(RelayResultType.Success, null, emptyObject);
+							emptyObject.DataSource = DataSource.CacheError;
+							relayResult = new RelayResult<T>(RelayResultType.Error,
+								new RelayException(message.ErrorType), emptyObject);
+
+						}
+						else if (!entry.IsFound)
+						{
+							// try to read from cache
+							if (message.GetObject(emptyObject))
+							{
+								emptyObject.DataSource = DataSource.Cache;
+								relayResult = new RelayResult<T>(RelayResultType.Success,
+									null, emptyObject);
+								if (useLocalCaching)
+								{
+									SaveToLocalCache(emptyObject, message);
+								}
+							}
+						}
+						else if (!message.Freshness.HasValue)
+						{
+							// no freshness, try to get cache version
+							if (message.GetObject(emptyObject))
+							{
+								emptyObject.DataSource = DataSource.Cache;
+								relayResult = new RelayResult<T>(RelayResultType.Success,
+									null, emptyObject);
+								// uses local caching must be true to get here
+								SaveToLocalCache(emptyObject, message);
+							}
+							else
+							{
+								// was deleted on server
+								LocalCache.Delete(emptyObject);
+							}
 						}
 						else
 						{
-							emptyObject.DataSource = DataSource.Unknown;
-							return new RelayResult<T>(RelayResultType.NotFound, null, emptyObject);
-						}
+							var cmp = entry.Updated.CompareTo(message.Freshness.Value);
+							if (cmp < 0)
+							{
+								// cache version newer
+								if (message.GetObject(emptyObject))
+								{
+									relayResult = new RelayResult<T>(RelayResultType.Success,
+										null, emptyObject);
+									emptyObject.DataSource = DataSource.Cache;
+									SaveToLocalCache(emptyObject, message);
+								}
+								else
+								{
+									log.WarnFormat("Got a response with newer freshness but with no payload for an object of type {0} and ID {1}.",
+										typeof(T).FullName, LocalCache.GetKey(emptyObject));
+								}
+							}
+							else
+							{
+								if (cmp > 0)
+								{
+									// server shouldn't have older version than cache
+									log.WarnFormat("Got a response with older freshness for an object of type {0} and ID {1}.",
+										typeof(T).FullName, LocalCache.GetKey(emptyObject));
+								}
+								relayResult = new RelayResult<T>(RelayResultType.Success,
+									null, emptyObject);
+								Copy(entry.Instance, emptyObject);
+								emptyObject.DataSource = DataSource.Cache;
+								LocalCache.RefreshExpires(entry.Instance);
+							}
+						}									
 					}
 					catch (UnhandledVersionException uve)
 					{
@@ -981,13 +1498,17 @@ namespace MySpace.DataRelay.Client
 						this.SaveObject<T>(emptyObject);
 						relayResult = new RelayResult<T>(RelayResultType.Success, hve, emptyObject);
 					}
-					
 					return relayResult;
 				}
 				else
 				{
 					return new RelayResult<T>(RelayResultType.Error, new ApplicationException("TypeInfo not found."), emptyObject);
 				}
+			}
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1031,60 +1552,166 @@ namespace MySpace.DataRelay.Client
 			try
 			{
 				relayResults = new RelayResults();
-				List<RelayMessage> messages = new List<RelayMessage>(emptyObjects.Count);
+				var paramCount = emptyObjects.Count;
+				var messages = new RelayMessage[paramCount];
+				var entries = new StorageEntry<ICacheParameter>[paramCount];
+				var typeIds = new short[paramCount];
 
 				short typeId;
 				bool useCompression;
 				bool gotOne = false;
-				RelayMessage message;
 				DateTime? lastUpdatedDate;
 				byte[] extendedIdBytes;
+				var now = DateTime.Now;
 				for (int i = 0; i < emptyObjects.Count; i++)
 				{
 					ICacheParameter emptyObject = emptyObjects[i];
+					RelayMessage message = null;
+					var entry = StorageEntry<ICacheParameter>.NotFound;
 					if ((emptyObject != null) && TryGetTypeInfo(emptyObject, out typeId, out useCompression))
 					{
-						RelayMessage.GetExtendedInfo(emptyObject, out extendedIdBytes, out lastUpdatedDate);
-						message = new RelayMessage(typeId, emptyObject.PrimaryId, extendedIdBytes, MessageType.Get);
-						messages.Add(message);
-						gotOne = true;
-					}
-					else
-					{
-						messages.Add(null);
-					}
-				}
-				if (gotOne)
-				{
-					_forwarder.HandleMessages(messages);
-					IList<ICacheParameter> unhandledVersioned = null, handledVersioned = null;
-					RelayMessage relayMessage = null;
-					for (int i = 0; i < emptyObjects.Count; i++)
-					{
-						ICacheParameter emptyObject = emptyObjects[i];
-						relayMessage = messages[i];
-						try
+						emptyObject.DataSource = DataSource.Unknown;
+						if (UseCacheLookup(typeId))
 						{
-							if (relayMessage != null)
+							entry = LocalCache.Get(typeId, LocalCache.GetKey(
+								emptyObject), () => emptyObject);
+							if (entry.IsFound)
 							{
-								if (relayMessage.ErrorOccurred)
+								if (entry.Expires > now)
 								{
-									emptyObject.DataSource = DataSource.CacheError;
-									relayResults.Add(new RelayResult<ICacheParameter>(RelayResultType.Error, new ApplicationException("ErrorOccurred."), emptyObject));
+									Copy(entry.Instance, emptyObject);
+									emptyObject.DataSource = DataSource.Cache;
 								}
 								else
 								{
-									if (relayMessage.GetObject(emptyObject))
+									RelayMessage.GetExtendedInfo(emptyObject, out extendedIdBytes, out lastUpdatedDate);
+									message = new RelayMessage(typeId, emptyObject.PrimaryId, extendedIdBytes, MessageType.Get);
+									message.Freshness = entry.Updated;
+								}
+							}
+						}
+						if (!entry.IsFound)
+						{
+							RelayMessage.GetExtendedInfo(emptyObject, out extendedIdBytes, out lastUpdatedDate);
+							message = new RelayMessage(typeId, emptyObject.PrimaryId, extendedIdBytes, MessageType.Get);
+						}
+					}
+					else
+					{
+						typeId = -1;
+					}
+					if (message != null)
+					{
+						gotOne = true;
+					}
+					messages[i] = message;
+					entries[i] = entry;
+					typeIds[i] = typeId;
+				}
+				if (gotOne)
+				{
+					ForwardMessages(messages);
+					IList<ICacheParameter> unhandledVersioned = null, handledVersioned = null;
+					now = DateTime.Now;
+					for (int i = 0; i < emptyObjects.Count; i++)
+					{
+						typeId = typeIds[i];
+						var useLocalCaching = typeId >= 0 && UseCacheLookup(typeId);
+						ICacheParameter emptyObject = emptyObjects[i];
+						var message = messages[i];
+						if (useLocalCaching)
+						{
+							// checked after forwarder sends since that's when
+							// legacy serialization can be set
+							AssertNoLegacySerialization(message);
+						}
+						try
+						{
+							if (message != null)
+							{
+								var entry = useLocalCaching ? entries[i] :
+									StorageEntry<ICacheParameter>.NotFound;
+								if (message.ErrorOccurred)
+								{
+									emptyObject.DataSource = DataSource.CacheError;
+									relayResults.Add(new RelayResult<ICacheParameter>(
+										RelayResultType.Error, new RelayException(
+										message.ErrorType), emptyObject));
+
+								}
+								else if (!entry.IsFound)
+								{
+									// try to read from cache
+									if (message.GetObject(emptyObject))
 									{
 										emptyObject.DataSource = DataSource.Cache;
-										relayResults.Add(new RelayResult<ICacheParameter>(RelayResultType.Success, null, emptyObject));
+										relayResults.Add(new RelayResult<ICacheParameter>(
+											RelayResultType.Success, null, emptyObject));
+										if (useLocalCaching)
+										{
+											SaveToLocalCache(typeId, emptyObject, message);
+										}
+									} else
+									{
+										relayResults.Add(new RelayResult<ICacheParameter>(
+											RelayResultType.NotFound, null, emptyObject));
+									}
+								}
+								else if (!message.Freshness.HasValue)
+								{
+									// no freshness, try to get cache version
+									if (message.GetObject(emptyObject))
+									{
+										emptyObject.DataSource = DataSource.Cache;
+										relayResults.Add(new RelayResult<ICacheParameter>(
+											RelayResultType.Success, null, emptyObject));
+										// uses local caching must be true to get here
+										SaveToLocalCache(typeId, emptyObject, message);
 									}
 									else
 									{
-										emptyObject.DataSource = DataSource.Unknown;
-										relayResults.Add(new RelayResult<ICacheParameter>(RelayResultType.NotFound, null, emptyObject));
+										// was deleted on server
+										DeleteFromLocalCache(typeId, emptyObject);
+										relayResults.Add(new RelayResult<ICacheParameter>(
+											RelayResultType.NotFound, null, emptyObject));
 									}
 								}
+								else
+								{
+									var cmp = entry.Updated.CompareTo(message.Freshness.Value);
+									if (cmp < 0)
+									{
+										// cache version newer
+										if (message.GetObject(emptyObject))
+										{
+											relayResults.Add(new RelayResult<ICacheParameter>(
+												RelayResultType.Success, null, emptyObject));
+											emptyObject.DataSource = DataSource.Cache;
+											SaveToLocalCache(typeId, emptyObject, message);
+										}
+										else
+										{
+											log.WarnFormat("Got a response with newer freshness but with no payload for an object of type {0} and ID {1}.",
+												emptyObject.GetType().FullName, LocalCache.GetKey(emptyObject));
+											relayResults.Add(new RelayResult<ICacheParameter>(
+												RelayResultType.NotFound, null, emptyObject));
+										}
+									}
+									else
+									{
+										if (cmp > 0)
+										{
+											// server shouldn't have older version than cache
+											log.WarnFormat("Got a response with older freshness for an object of type {0} and ID {1}.",
+												emptyObject.GetType().FullName, LocalCache.GetKey(emptyObject));
+										}
+										relayResults.Add(new RelayResult<ICacheParameter>(
+											RelayResultType.Success, null, emptyObject));
+										Copy(entry.Instance, emptyObject);
+										emptyObject.DataSource = DataSource.Cache;
+										RefreshLocalCacheExpires(typeId, emptyObject);
+									}
+								}									
 							}
 							else
 							{
@@ -1092,7 +1719,7 @@ namespace MySpace.DataRelay.Client
 								{
 									relayResults.Add(new RelayResult<ICacheParameter>(RelayResultType.Error, new System.ArgumentNullException("emptyObject"), emptyObject));
 								}
-								else
+								else if (!useLocalCaching)
 								{
 									emptyObject.DataSource = DataSource.Unknown;
 									relayResults.Add(new RelayResult<ICacheParameter>(RelayResultType.Error, new ApplicationException("TypeInfo not found."), emptyObject));
@@ -1220,9 +1847,14 @@ namespace MySpace.DataRelay.Client
 					{
 						//Type not found
 						relayResults.Add(new RelayResult<ICacheParameter>(RelayResultType.Error,
-																						  new ApplicationException("TypeInfo not found."), emptyObjects[i]));
+							new ApplicationException("TypeInfo not found."), emptyObjects[i]));
 					}
 				}
+			}
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1267,18 +1899,34 @@ namespace MySpace.DataRelay.Client
 
             try
 			{
-				RelayMessage message = GetUpdateMessage<T>(obj);
+				var message = GetUpdateMessage(obj);
 				if (message != null)
 				{
-					_forwarder.HandleMessage(message);
+					var useLocalCaching = UseCacheLookup(message.TypeId);
+					if (useLocalCaching)
+					{
+						SaveToLocalCache(obj, message);
+					}
+					ForwardMessage(message);
+					if (useLocalCaching)
+					{
+						// checked after forwarder sends since that's when
+						// legacy serialization can be set
+						AssertNoLegacySerialization(message);
+					}					
 				}
-            }
+			}
 			catch (SyncRelayOperationException) 
 			{
 				// pass this on to the caller
 				throw;
 			}
-            catch (Exception ex)
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
+			}
+			catch (Exception ex)
             {
                 if(log.IsErrorEnabled)
                     log.ErrorFormat("Error updating object of type {0} and id {1}: {2}",
@@ -1321,24 +1969,50 @@ namespace MySpace.DataRelay.Client
                 bool useCompression = false;                
                 byte[] extendedIdBytes;
                 DateTime? lastUpdatedDate;
-                RelayMessage message;
-                for (int i = 0; i < objects.Count; i++)
+				var now = DateTime.Now;
+				RelayMessage message;
+            	var count = objects.Count;
+            	var useCacheLookups = new bool[count];
+				var gotOne = false;
+                for (int i = 0; i < count; i++)
                 {
-                    if (TryGetTypeInfo(objects[i], out typeId, out useCompression))
+					var obj = objects[i];
+					if (TryGetTypeInfo(obj, out typeId, out useCompression))
                     {
-                        RelayMessage.GetExtendedInfo(objects[i], out extendedIdBytes, out lastUpdatedDate);                        
-                        message = RelayMessage.GetUpdateMessageForObject(typeId, objects[i].PrimaryId, extendedIdBytes, lastUpdatedDate, objects[i], useCompression);
-                        messages.Add(message);
+						RelayMessage.GetExtendedInfo(obj, out extendedIdBytes, out lastUpdatedDate);
+						message = RelayMessage.GetUpdateMessageForObject(typeId, obj.PrimaryId, extendedIdBytes, lastUpdatedDate, obj, useCompression);
+                    	var useCacheLookup = useCacheLookups[i] = UseCacheLookup(typeId);
+						if (useCacheLookup)
+						{
+							gotOne = true;
+							SaveToLocalCache(typeId, obj, message);
+						}
+						messages.Add(message);
                     }
                 }
-                _forwarder.HandleMessages(messages);
+				ForwardMessages(messages);
+				if (gotOne)
+				{
+					for (int i = 0; i < count; i++)
+					{
+						if (useCacheLookups[i])
+						{
+							AssertNoLegacySerialization(messages[i]);
+						}
+					}					
+				}
             }
 			catch (SyncRelayOperationException) 
 			{
 				// pass this on to the caller
 				throw;
 			}
-            catch (Exception ex)
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
+			}
+			catch (Exception ex)
             {
                 if (log.IsErrorEnabled)
                     log.ErrorFormat("Error updating object list: {0}", ex);
@@ -1348,6 +2022,19 @@ namespace MySpace.DataRelay.Client
         #endregion
 
         #region Save...
+
+		private static StorageEntry<T> SaveToLocalCache<T>(T instance,
+			RelayMessage message) where T : ICacheParameter
+		{
+			return LocalCache.Save(instance, message.Payload.LastUpdatedDate);
+		}
+
+		private static StorageEntry<ICacheParameter> SaveToLocalCache(short typeId,
+			ICacheParameter instance, RelayMessage message)
+		{
+			return LocalCache.Save(typeId, instance, new LocalCacheOptions
+				{Updated = message.Payload.LastUpdatedDate});
+		}
 
 		/// <summary>
 		/// Adds an item to the cache.
@@ -1376,21 +2063,34 @@ namespace MySpace.DataRelay.Client
             {
                 return;
             }
-
-            try
+			try
             {
-                RelayMessage message = GetSaveMessage<T>(obj);
-                if (message != null)
-                {
-                    _forwarder.HandleMessage(message);
-                }
-            }
+				var message = GetSaveMessage(obj);
+				if (message != null)
+				{
+					var useCacheLookup = UseCacheLookup(message.TypeId);
+					if (useCacheLookup)
+					{
+						SaveToLocalCache(obj, message);
+					}
+					ForwardMessage(message);
+					if (useCacheLookup)
+					{
+						AssertNoLegacySerialization(message);
+					}					
+				}
+			}
 			catch (SyncRelayOperationException) 
 			{
 				// pass this on to the caller
 				throw;
 			}
-            catch (Exception ex)
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
+			}
+			catch (Exception ex)
             {
                 if (log.IsErrorEnabled)
                     log.ErrorFormat("Error saving object of type {0} and id {1}: {2}",
@@ -1398,7 +2098,7 @@ namespace MySpace.DataRelay.Client
                         obj.PrimaryId.ToString("N0"),
                         ex);
             }
-        }
+		}
 
 		/// <summary>
 		/// Adds multiple items to the cache.
@@ -1434,31 +2134,57 @@ namespace MySpace.DataRelay.Client
                 RelayMessage message;
                 byte[] extendedIdBytes;
                 DateTime? lastUpdatedDate;
-                for (int i = 0; i < objects.Count; i++)
+				var now = DateTime.Now;
+				var count = objects.Count;
+				var useCacheLookups = new bool[count];
+				var gotOne = false;
+				for (int i = 0; i < count; i++)
                 {
+					var obj = objects[i];
                     //Check for null because if exception is thrown the rest of the list will not get saved.
-                    if (objects[i] == null)
+                    if (obj == null)
                     {
                         if (log.IsWarnEnabled)
                         {
                             log.Warn("Null passed into SaveObjects list");
                         }
                     }
-                    else if (TryGetTypeInfo(objects[i], out typeId, out useCompression))
+					else if (TryGetTypeInfo(obj, out typeId, out useCompression))
                     {
-                        RelayMessage.GetExtendedInfo(objects[i], out extendedIdBytes, out lastUpdatedDate);
-                        message = RelayMessage.GetSaveMessageForObject(typeId, objects[i].PrimaryId, extendedIdBytes, lastUpdatedDate, objects[i], useCompression);
+						RelayMessage.GetExtendedInfo(obj, out extendedIdBytes, out lastUpdatedDate);
+						message = RelayMessage.GetSaveMessageForObject(typeId, obj.PrimaryId, extendedIdBytes, lastUpdatedDate, obj, useCompression);
+						var useCacheLookup = useCacheLookups[i] = UseCacheLookup(typeId);
+						if (useCacheLookup)
+						{
+							gotOne = true;
+							SaveToLocalCache(typeId, obj, message);
+						}
                         messages.Add(message);
                     }
                 }
-                _forwarder.HandleMessages(messages);
-            }
+				ForwardMessages(messages);
+				if (gotOne)
+				{
+					for (int i = 0; i < count; i++)
+					{
+						if (useCacheLookups[i])
+						{
+							AssertNoLegacySerialization(messages[i]);
+						}
+					}
+				}
+			}
 			catch (SyncRelayOperationException) 
 			{
 				// pass this on to the caller
 				throw;
 			}
-            catch (Exception ex)
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
+			}
+			catch (Exception ex)
             {
                 if (log.IsErrorEnabled)
                     log.ErrorFormat("Error saving object list: {0}", ex);
@@ -1469,6 +2195,10 @@ namespace MySpace.DataRelay.Client
 
         #region Delete...
 
+		private static bool DeleteFromLocalCache(short typeId, ICacheParameter instance)
+		{
+			return LocalCache.Delete(typeId, LocalCache.GetKey(instance));
+		}
 
         public void DeleteObject<T>(T obj) where T : ICacheParameter
         {
@@ -1476,11 +2206,40 @@ namespace MySpace.DataRelay.Client
             {
                 return;
             }
-            int primaryId;
+            int primaryId = obj.PrimaryId;
             byte[] extendedIdBytes = null;
             string typeName;
-            GetIdInfoForObject(obj, out typeName, out primaryId, out extendedIdBytes);
-            DeleteObject(primaryId, extendedIdBytes,typeName);                        
+        	short typeId;
+			typeName = GetTypeName(obj);
+			DateTime? lastUpdatedDate;
+            RelayMessage.GetExtendedInfo(obj, out extendedIdBytes, out lastUpdatedDate);
+			var useLocalCaching = false;
+			if (TryGetTypeId(typeName, out typeId))
+			{
+				useLocalCaching = UseCacheLookup(typeId);				
+			}
+			if (useLocalCaching)
+			{
+				var key = LocalCache.GetKey(obj);
+				switch(key.Key.Type)
+				{
+					case DataBufferType.Int32:
+						DeleteObject(key.PartitionId, typeName);
+						break;
+					case DataBufferType.String:
+						DeleteObject(key.PartitionId, key.Key.ToString(), typeName);
+						break;
+					case DataBufferType.ByteArraySegment:
+						DeleteObject(key.PartitionId, extendedIdBytes, typeName);
+						break;
+					default:
+						throw new NotSupportedException(string.Format(
+							"Key type {0} not supported", key.Key.Type));
+				}
+			} else
+			{
+				DeleteObject(primaryId, extendedIdBytes, typeName);		
+			}
         }
 
         
@@ -1586,9 +2345,23 @@ namespace MySpace.DataRelay.Client
 
 				if (TryGetTypeId(typeName, out typeId))
 				{
+					var useCacheLookup = UseCacheLookup(typeId);
+					if (useCacheLookup)
+					{
+						LocalCache.Delete(typeId, primaryId);
+					}
 					RelayMessage message = new RelayMessage(typeId, primaryId, MessageType.Delete);
-					_forwarder.HandleMessage(message);
+					ForwardMessage(message);
+					if (useCacheLookup)
+					{
+						AssertNoLegacySerialization(message);
+					}
 				}
+			}
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1621,10 +2394,24 @@ namespace MySpace.DataRelay.Client
 
 				if (TryGetTypeId(typeName, out typeId))
 				{
+					var useCacheLookup = UseCacheLookup(typeId);
+					if (useCacheLookup)
+					{
+						LocalCache.Delete(typeId, new StorageKey(extendedId, primaryId));
+					}
                     byte[] extendedIdBytes = RelayMessage.GetStringBytes(extendedId);
 					RelayMessage message = new RelayMessage(typeId, primaryId, extendedIdBytes, MessageType.Delete);
-					_forwarder.HandleMessage(message);
+					ForwardMessage(message);
+					if (useCacheLookup)
+					{
+						AssertNoLegacySerialization(message);
+					}
 				}
+			}
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1657,12 +2444,26 @@ namespace MySpace.DataRelay.Client
                 short typeId;
 
                 if (TryGetTypeId(typeName, out typeId))
-                {                    
-                    RelayMessage message = new RelayMessage(typeId, primaryId, extendedIdBytes, MessageType.Delete);
-                    _forwarder.HandleMessage(message);
-                }
+                {
+					var useCacheLookup = UseCacheLookup(typeId);
+					if (useCacheLookup)
+					{
+						LocalCache.Delete(typeId, new StorageKey(extendedIdBytes, primaryId));
+					}
+					RelayMessage message = new RelayMessage(typeId, primaryId, extendedIdBytes, MessageType.Delete);
+					ForwardMessage(message);
+					if (useCacheLookup)
+					{
+						AssertNoLegacySerialization(message);
+					}
+				}
             }
-            catch (Exception ex)
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
+			}
+			catch (Exception ex)
             {
                 if (log.IsErrorEnabled)
                     log.ErrorFormat("Error deleting object of type {0} and id {1} and raw extended Id {2}: {3}",
@@ -1693,10 +2494,24 @@ namespace MySpace.DataRelay.Client
                 primaryId = MySpace.Common.HelperObjects.StringUtility.GetStringHash(extendedId);
 				if (TryGetTypeId(typeName, out typeId))
 				{
+					var useCacheLookup = UseCacheLookup(typeId);
+					if (useCacheLookup)
+					{
+						LocalCache.Delete(typeId, new StorageKey(extendedId, primaryId));
+					}
                     byte[] extendedIdBytes = RelayMessage.GetStringBytes(extendedId);
 					RelayMessage message = new RelayMessage(typeId, primaryId, extendedIdBytes, MessageType.Delete);
-					_forwarder.HandleMessage(message);
+					ForwardMessage(message);
+					if (useCacheLookup)
+					{
+						AssertNoLegacySerialization(message);
+					}
 				}
+			}
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1712,40 +2527,80 @@ namespace MySpace.DataRelay.Client
             {
                 List<RelayMessage> messages = new List<RelayMessage>(objects.Count);
                 short typeId;
-				    bool useCompression;
+				bool useCompression;
                 RelayMessage message;
                 
                 byte[] extendedIdBytes;
                 DateTime? lastupdatedDate;
+            	var count = objects.Count;
+            	var useCacheLookups = new bool[count];
+				var gotOne = false;
 
-                for (int i = 0; i < objects.Count; i++)
+                for (int i = 0; i < count; i++)
                 {
-						  //check for null in objects list so other items in the list can still be deleted
-                    if (objects[i]!=null && TryGetTypeInfo(objects[i], out typeId, out useCompression))
+                	var obj = objects[i];
+					//check for null in objects list so other items in the list can still be deleted
+                    if (obj!=null && TryGetTypeInfo(obj, out typeId, out useCompression))
                     {
-                        RelayMessage.GetExtendedInfo(objects[i], out extendedIdBytes, out lastupdatedDate);
-                       
-                        message = new RelayMessage(typeId, objects[i].PrimaryId, extendedIdBytes, MessageType.Delete);
+                        RelayMessage.GetExtendedInfo(obj, out extendedIdBytes, out lastupdatedDate);
+                    	var useCacheLookup = useCacheLookups[i] = UseCacheLookup(typeId);
+						if (useCacheLookup)
+						{
+							gotOne = true;
+							DeleteFromLocalCache(typeId, obj);
+						}                       
+                        message = new RelayMessage(typeId, obj.PrimaryId, extendedIdBytes, MessageType.Delete);
                         messages.Add(message);
                     }
                 }
-                _forwarder.HandleMessages(messages);
+				ForwardMessages(messages);
+				if (gotOne)
+				{
+					for (int i = 0; i < count; i++)
+					{
+						if (useCacheLookups[i])
+						{
+							AssertNoLegacySerialization(messages[i]);
+						}
+					}
+				}
             }
-            catch (Exception ex)
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
+			}
+			catch (Exception ex)
             {
                 if (log.IsErrorEnabled)
                     log.ErrorFormat("Error deleting object list: {0}", ex);
             }
 		}
 
+		private void DeleteObjectInAllTypes(StorageKey key)
+		{
+			var typeSettings = _configuration.TypeSettings.TypeSettingCollection;
+			var maxId = typeSettings.MaxTypeId;
+			for(short id = 0; id <= maxId; ++id)
+			{
+				var typeSetting = typeSettings[id];
+				if (typeSetting == null) continue;
+				if (UseCacheLookup(typeSetting.TypeId))
+				{
+					LocalCache.Delete(typeSetting.TypeId, key);
+				}
+			}
+		}
+
 		public void DeleteObjectInAllTypes(int objectId)
 		{
 			try
-			{							
+			{
+				DeleteObjectInAllTypes(new StorageKey(objectId, objectId));
 				RelayMessage message = new RelayMessage();
 				message.MessageType = MessageType.DeleteInAllTypes;
 				message.Id = objectId;
-				_forwarder.HandleMessage(message);
+				ForwardMessage(message);
 			}
 			catch (Exception ex)
 			{
@@ -1758,11 +2613,12 @@ namespace MySpace.DataRelay.Client
 		{
 			try
 			{
+				DeleteObjectInAllTypes(new StorageKey(extendedId, objectId));
 				RelayMessage message = new RelayMessage();
 				message.MessageType = MessageType.DeleteInAllTypes;
 				message.Id = objectId;
                 message.ExtendedId = RelayMessage.GetStringBytes(extendedId);
-				_forwarder.HandleMessage(message);
+				ForwardMessage(message);
 			}
 			catch (Exception ex)
 			{
@@ -1775,11 +2631,12 @@ namespace MySpace.DataRelay.Client
         {
             try
             {
-                RelayMessage message = new RelayMessage();
+				DeleteObjectInAllTypes(new StorageKey(extendedId, objectId));
+				RelayMessage message = new RelayMessage();
                 message.MessageType = MessageType.DeleteInAllTypes;
                 message.Id = objectId;
                 message.ExtendedId = extendedId;
-                _forwarder.HandleMessage(message);
+				ForwardMessage(message);
             }
             catch (Exception ex)
             {
@@ -1801,11 +2658,25 @@ namespace MySpace.DataRelay.Client
 			{
 				if (TryGetTypeId(typeName, out typeId))
 				{
-					RelayMessage message = new RelayMessage();
+					var useCacheLookup = UseCacheLookup(typeId);
+					if (useCacheLookup)
+					{
+						LocalCache.Clear(typeId);
+					}
+					var message = new RelayMessage();
 					message.TypeId = typeId;
 					message.MessageType = MessageType.DeleteAllInType;
-					_forwarder.HandleMessage(message);
+					ForwardMessage(message);
+					if (useCacheLookup)
+					{
+						AssertNoLegacySerialization(message);
+					}
 				}
+			}
+			catch (CacheConfigurationException)
+			{
+				// pass this on to the caller
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1818,31 +2689,53 @@ namespace MySpace.DataRelay.Client
         #region Send
         /// <summary>
         /// Sends a message constructed manually by the caller. This method is intended
-        /// for advanced usage only. Behaviour will be synchronous or asynchronous depending
+		/// for advanced usage only. Behavior will be synchronous or asynchronous depending
         /// on the message type.
         /// </summary>
         /// <param name="msg">The message to send</param>
         public void SendMessage(RelayMessage msg)
         {
-            _forwarder.HandleMessage(msg);
+			ForwardMessage(msg);
         }
         
         /// <summary>
         /// Sends a list of messages constructed manually by the caller. This method is intended
-        /// for advanced usage only. Behaviour will be synchronous or asynchronous depending
+		/// for advanced usage only. Behavior will be synchronous or asynchronous depending
         /// on the message type.
         /// </summary>
         /// <param name="msgs">The list of messages to send</param>
         public void SendMessages(IList<RelayMessage> msgs)
         {
-            _forwarder.HandleMessages(msgs);
+			ForwardMessages(msgs);
         }
+
+		/// <summary>
+		/// Sends a message constructed manually by the caller. This method is intended
+		/// for advanced usage only. Behavior will be synchronous or asynchronous depending
+		/// on the message type.
+		/// </summary>
+		/// <param name="msg">The message to send</param>
+		public Future<RelayMessage> SendMessageAsync(RelayMessage msg)
+		{
+			return ForwardMessageAsync(msg);
+		}
+
+		/// <summary>
+		/// Sends a list of messages constructed manually by the caller. This method is intended
+		/// for advanced usage only. Behavior will be synchronous or asynchronous depending
+		/// on the message type.
+		/// </summary>
+		/// <param name="msgs">The list of messages to send</param>
+		public Future SendMessagesAsync(IEnumerable<RelayMessage> msgs)
+		{
+			return ForwardMessagesAsync(msgs);
+		}
 
     	private static SocketClient _socketClient = null;
 		private readonly Object _lock = new Object();
 		/// <summary>
 		/// Sends a message constructed manually by the caller using an <see cref="IPEndPoint"/>. 
-		/// This method is intended for advanced usage only. Behaviour will be synchronous.
+		/// This method is intended for advanced usage only. Behavior will be synchronous.
 		/// </summary>
 		/// <param name="ipEndPoint"><see cref="IPEndPoint"/> to send message to.</param>
 		/// <param name="msg">The message to send.</param>
@@ -1871,7 +2764,7 @@ namespace MySpace.DataRelay.Client
 			stream.Seek(0, SeekOrigin.Begin);
 			MemoryStream memoryStream = _socketClient.SendSync(ipEndPoint,msg.IsTwoWayMessage ? (int)SocketCommand.HandleSyncMessage : (int)SocketCommand.HandleOneWayMessage, stream);
 			RelayMessage replyMessage = RelayMessageFormatter.ReadRelayMessage(memoryStream);
-			msg.Payload = replyMessage.Payload;
+			msg.ExtractResponse(replyMessage);
 		}
         #endregion
 
@@ -1924,7 +2817,7 @@ namespace MySpace.DataRelay.Client
             msg = new RelayMessage(typeID, messageId, MessageType.Invoke);
             msg.QueryData = payload;
             
-            _forwarder.HandleMessage(msg);
+			ForwardMessage(msg);
             
             if ((msg.ErrorOccurred == false) && (msg.Payload != null))
             {
@@ -1940,9 +2833,17 @@ namespace MySpace.DataRelay.Client
 
         #region Helpers
 
+		private static void AssertNoLegacySerialization(RelayMessage message)
+		{
+			if (message != null && message.UsingLegacySerialization)
+			{
+				throw new CacheConfigurationException(message.TypeId);
+			}
+		}
+
         public string GetHtmlStatus()
         {
-            return _forwarder.GetHtmlStatus();
+			return _relayForwarder.GetHtmlStatus();
         }
 
 		/// <summary>
@@ -1954,7 +2855,7 @@ namespace MySpace.DataRelay.Client
 		public RelayInfo GetRelayInformation()
 		{
 			RelayInfo relayInfo = new RelayInfo();
-			relayInfo.ForwarderStatus = _forwarder.GetForwarderStatus();
+			relayInfo.ForwarderStatus = _relayForwarder.GetForwarderStatus();
 			return relayInfo;
 		}
 
@@ -1971,6 +2872,12 @@ namespace MySpace.DataRelay.Client
 			return false;
 		}
 
+		/// <summary>
+		/// Gets the type setting for a given type name.
+		/// </summary>
+		/// <param name="typeName">The <see cref="String"/> type name.</param>
+		/// <returns>The <see cref="TypeSetting"/> for the <paramref name="typeName"/>; null if
+		/// not found.</returns>
 		public TypeSetting GetTypeSetting(string typeName)
 		{
 			if (_configuration == null || _configuration.TypeSettings == null || !_configuration.TypeSettings.TypeSettingCollection.Contains(typeName))
@@ -1979,6 +2886,22 @@ namespace MySpace.DataRelay.Client
 			}
 
 			return _configuration.TypeSettings.TypeSettingCollection[typeName];
+		}
+
+		/// <summary>
+		/// Gets the type setting for a given type id.
+		/// </summary>
+		/// <param name="typeId">The <see cref="Int32"/> type id.</param>
+		/// <returns>The <see cref="TypeSetting"/> for the <paramref name="typeId"/>; null if
+		/// not found.</returns>
+		public TypeSetting GetTypeSetting(int typeId)
+		{
+			if (_configuration == null || _configuration.TypeSettings == null)
+			{
+				return null;
+			}
+
+			return _configuration.TypeSettings.TypeSettingCollection[(short)typeId];
 		}
 
         [Obsolete("This method will not function properly with IVirtualCacheType objects and has been deprecated", false)]
@@ -2016,32 +2939,6 @@ namespace MySpace.DataRelay.Client
 			useCompression = false;
 			return false;
 		}
-
-        private void GetIdInfoForObject(ICacheParameter obj, out string typeName, out int primaryId, out byte[] extendedIdBytes)
-        {
-            typeName = GetTypeName(obj);
-            extendedIdBytes = null;
-            IExtendedRawCacheParameter iercp = obj as IExtendedRawCacheParameter;
-            if (iercp != null)
-            {
-                primaryId = iercp.PrimaryId;
-                extendedIdBytes = iercp.ExtendedId;
-            }
-            else
-            {
-                IExtendedCacheParameter iecp = obj as IExtendedCacheParameter;
-                if (iecp == null)
-                {
-                    primaryId = obj.PrimaryId;
-
-                }
-                else
-                {
-                    primaryId = iecp.PrimaryId;
-                    extendedIdBytes = RelayMessage.GetStringBytes(iecp.ExtendedId);
-                }
-            }
-        }
 
         /// <summary>
         /// Gets the type name to use for the object. If the object defines IVirtualCacheType, then its CacheTypeName will be returned.
@@ -2176,7 +3073,7 @@ namespace MySpace.DataRelay.Client
                 message.MessageType = MessageType.Increment;
                 if (message != null)
                 {
-                    _forwarder.HandleMessage(message);
+                    ForwardMessage(message);
                 }
             }
             catch (SyncRelayOperationException)

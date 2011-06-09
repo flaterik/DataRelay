@@ -1,39 +1,33 @@
 ﻿using MySpace.Common;
+using System.Text;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
 	public class SortOrder:IVersionSerializable
 	{
 		#region Data Members
-		private DataType dataType;
-		public DataType DataType
-		{
-			get
-			{
-				return dataType;
-			}
-			set
-			{
-				dataType = value;
-			}
-		}
 
-		private SortBy sortBy;
-		public SortBy SortBy
-		{
-			get
-			{
-				return sortBy;
-			}
-			set
-			{
-				sortBy = value;
-			}
-		}
-		#endregion
+	    public DataType DataType { get; set; }
 
-		#region Ctors
-		public SortOrder()
+	    public SortBy SortBy { get; set; }
+
+	    #endregion
+
+        #region Methods
+
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            stb.Append("(").Append("DataType: ").Append(DataType.ToString()).Append("),");
+            stb.Append("(").Append("SortBy: ").Append(SortBy.ToString()).Append("),");
+            return stb.ToString();
+        }
+
+        #endregion
+
+        #region Ctors
+
+        public SortOrder()
 		{
 			Init(DataType.Int32, SortBy.DESC);
 		}
@@ -45,19 +39,21 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
 		private void Init(DataType dataType, SortBy sortBy)
 		{
-			this.dataType = dataType;
-			this.sortBy = sortBy;
+			this.DataType = dataType;
+			this.SortBy = sortBy;
 		}
+
 		#endregion
 
 		#region IVersionSerializable Members
+
 		public void Serialize(MySpace.Common.IO.IPrimitiveWriter writer)
 		{
 			//DataType
-			writer.Write((byte)dataType);
+			writer.Write((byte)DataType);
 
 			//SortBy
-			writer.Write((byte)sortBy);
+			writer.Write((byte)SortBy);
 		}
 
 		public void Deserialize(MySpace.Common.IO.IPrimitiveReader reader, int version)
@@ -80,6 +76,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 				return false;
 			}
 		}
+
 		#endregion
 
 		#region ICustomSerializable Members
@@ -87,11 +84,12 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 		public void Deserialize(MySpace.Common.IO.IPrimitiveReader reader)
 		{
 			//DataType
-			dataType = (DataType)reader.ReadByte();
+			DataType = (DataType)reader.ReadByte();
 
 			//SortBy
-			sortBy = (SortBy)reader.ReadByte();
+			SortBy = (SortBy)reader.ReadByte();
 		}
+
 		#endregion
 	}
 }

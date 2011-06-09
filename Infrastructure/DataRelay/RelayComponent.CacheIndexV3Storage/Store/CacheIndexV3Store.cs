@@ -2,15 +2,15 @@
 using System.Collections.Generic;
 using MySpace.Common.IO;
 using MySpace.DataRelay.Common.Interfaces.Query;
-using MySpace.DataRelay.Configuration;
 using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
+using MySpace.DataRelay.Configuration;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.PerfCounters;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
-using CacheIndex=MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3.CacheIndex;
-using PagedIndexQuery=MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3.PagedIndexQuery;
-using PagedIndexQueryResult=MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3.PagedIndexQueryResult;
+using CacheIndex = MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3.CacheIndex;
+using PagedIndexQuery = MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3.PagedIndexQuery;
+using PagedIndexQueryResult = MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3.PagedIndexQueryResult;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
 {
@@ -105,7 +105,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
             switch (message.MessageType)
             {
                 case MessageType.Query:
-                    ProcessQueryMessage(message, messageContext);
+                    ProcessQueryMessage(message, messageContext); 
                     break;
                 case MessageType.Save:
                     // increment performance counter
@@ -172,7 +172,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
             }
             else
             {
-                LoggingUtil.Log.InfoFormat("Miss in CacheIndexStorage for Id :  {0}, ExtendedId : ", message.Id, IndexCacheUtils.GetReadableByteArray(message.ExtendedId));
+                LoggingUtil.Log.InfoFormat("Miss in CacheIndexStorage for Id :  {0}, ExtendedId : {1}", message.Id, IndexCacheUtils.GetReadableByteArray(message.ExtendedId));
             }
         }
 
@@ -241,72 +241,72 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                         PerformanceCounterEnum.PagedIndexQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessPagedIndexQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.RemoteClusteredPagedIndexQuery:
                     // increment performance counter 
                     PerformanceCounters.Instance.IncrementCounter(
                         PerformanceCounterEnum.RemoteClusteredPagedIndexQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessRemoteClusteredPagedIndexQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.ContainsIndexQuery:
                     // increment performance counter
                     PerformanceCounters.Instance.IncrementCounter(
                         PerformanceCounterEnum.ContainsIndexQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessContainsIndexQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.FirstLastQuery:
                     // increment performance counter
                     PerformanceCounters.Instance.IncrementCounter(
                         PerformanceCounterEnum.FirstLastQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessFirstLastQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.GetRangeQuery:
                     // increment performance counter
                     PerformanceCounters.Instance.IncrementCounter(
                         PerformanceCounterEnum.GetRangeQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessGetRangeQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.RandomQuery:
                     // increment performance counter
                     PerformanceCounters.Instance.IncrementCounter(
                         PerformanceCounterEnum.RandomQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessRandomQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.IntersectionQuery:
                     // increment performance counter
                     PerformanceCounters.Instance.IncrementCounter(
                         PerformanceCounterEnum.IntersectionQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessIntersectionQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.RemoteClusteredIntersectionQuery:
                     // increment performance counter
                     PerformanceCounters.Instance.IncrementCounter(
                         PerformanceCounterEnum.RemoteClusteredIntersectionQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessRemoteClusteredIntersectionQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.SpanQuery:
                     // increment performance counter 
                     PerformanceCounters.Instance.IncrementCounter(
@@ -315,18 +315,81 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                         1);
                     ProcessSpanQuery(message, messageContext);
                     break;
+
                 case (byte)QueryTypes.RemoteClusteredSpanQuery:
                     // increment performance counter
                     PerformanceCounters.Instance.IncrementCounter(
                         PerformanceCounterEnum.RemoteClusteredSpanQuery,
                         messageContext.TypeId,
                         1);
-
                     ProcessRemoteClusteredSpanQuery(message, messageContext);
                     break;
+
+                case (byte)QueryTypes.TagQuery:
+                    // increment performance counter
+                    PerformanceCounters.Instance.IncrementCounter(
+                        PerformanceCounterEnum.TagQuery,
+                        messageContext.TypeId,
+                        1);
+                    ProcessTagQuery(message, messageContext);
+                    break;
+
+                case (byte)QueryTypes.StringHashQuery:
+                    // increment performance counter
+                    PerformanceCounters.Instance.IncrementCounter(
+                        PerformanceCounterEnum.StringHashQuery,
+                        messageContext.TypeId,
+                        1);
+                    ProcessStringHashQuery(message, messageContext);
+                    break;
+
+                case (byte)QueryTypes.MultiIndexContainsQuery:
+                    // increment performance counter
+                    PerformanceCounters.Instance.IncrementCounter(
+                        PerformanceCounterEnum.MultiIndexContainsQuery,
+                        messageContext.TypeId,
+                        1);
+                    ProcessMultiIndexContainsQuery(message, messageContext);
+                    break;
+
+                case (byte)QueryTypes.MetadataPropertyQuery:
+                    // increment performance counter
+                    PerformanceCounters.Instance.IncrementCounter(
+                        PerformanceCounterEnum.MetadataPropertyQuery,
+                        messageContext.TypeId,
+                        1);
+                    ProcessMetadataPropertyQuery(message, messageContext);
+                    break;
+
+                case (byte)QueryTypes.DistinctQuery:
+                    // increment performance counter
+                    PerformanceCounters.Instance.IncrementCounter(
+                        PerformanceCounterEnum.DistinctQuery,
+                        messageContext.TypeId,
+                        1);
+                    ProcessDistinctQuery(message, messageContext);
+                    break;
+
                 default:
                     throw new Exception("QueryId +" + (int)message.QueryId + "NOT supported");
             }
+        }
+
+        /// <summary>
+        /// Processes the Distinct Query.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="messageContext">The message context.</param>
+        private void ProcessDistinctQuery(RelayMessage message, MessageContext messageContext)
+        {
+            DistinctQueryResult distinctQueryResult = DistinctQueryProcessor.Process(message.GetQueryObject<DistinctQuery>(),
+                messageContext,
+                storeContext);
+            bool compressOption = storeContext.GetCompressOption(message.TypeId);
+            message.Payload = new RelayPayload(message.TypeId,
+                message.Id,
+                Serializer.Serialize(distinctQueryResult, compressOption),
+                compressOption);
         }
 
         /// <summary>
@@ -458,16 +521,18 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
         /// <param name="messageContext">message context</param>
         private void ProcessRemoteClusteredPagedIndexQuery(RelayMessage message, MessageContext messageContext)
         {
-            PagedIndexQueryResult pagedIndexQueryResult = RemoteClusteredPagedIndexQueryProcessor.Instance.Process(
+            PagedIndexQueryResult result = RemoteClusteredQueryProcessor.Instance.Process<PagedIndexQueryResult, PagedIndexQuery>(
+                PerformanceCounterEnum.IndexLookupAvgPerRemoteClusteredPagedIndexQuery,
                 message.GetQueryObject<RemoteClusteredPagedIndexQuery>(),
                 messageContext,
-                storeContext);
+                storeContext,
+                PagedQueryProcessor.Instance);
 
             bool compressOption = storeContext.GetCompressOption(message.TypeId);
 
             message.Payload = new RelayPayload(message.TypeId,
                 message.Id,
-                Serializer.Serialize(pagedIndexQueryResult, compressOption), 
+                Serializer.Serialize(result, compressOption), 
                 compressOption);
         }
 
@@ -494,19 +559,83 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
         /// <param name="messageContext"></param>
         private void ProcessRemoteClusteredSpanQuery(RelayMessage message, MessageContext messageContext)
         {
-            SpanQueryResult spanQueryResult = RemoteClusteredSpanQueryProcessor.Instance.Process(
+            SpanQueryResult result = RemoteClusteredQueryProcessor.Instance.Process<SpanQueryResult, SpanQuery>(
+                PerformanceCounterEnum.IndexLookupAvgPerRemoteClusteredSpanQuery,
                 message.GetQueryObject<RemoteClusteredSpanQuery>(),
-                messageContext, 
-                storeContext);
+                messageContext,
+                storeContext,
+                SpanQueryProcessor.Instance);
 
             bool compressOption = storeContext.GetCompressOption(message.TypeId);
 
             message.Payload = new RelayPayload(message.TypeId,
                 message.Id,
-                Serializer.Serialize(spanQueryResult, compressOption),
+                Serializer.Serialize(result, compressOption),
                 compressOption);
         }
 
+        /// <summary>
+        /// Processes the TagQuery.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="messageContext">The message context.</param>
+        private void ProcessTagQuery(RelayMessage message, MessageContext messageContext)
+        {
+            TagQueryResult tagQueryResult = TagQueryProcessor.Process(message.GetQueryObject<TagQuery>(), messageContext, storeContext);
+            bool compressOption = storeContext.GetCompressOption(message.TypeId);
+            message.Payload = new RelayPayload(message.TypeId,
+                message.Id,
+                Serializer.Serialize(tagQueryResult, compressOption),
+                compressOption);
+        }
+
+        /// <summary>
+        /// Processes the StringHashQuery.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="messageContext">The message context.</param>
+        private void ProcessStringHashQuery(RelayMessage message, MessageContext messageContext)
+        {
+            StringHashQueryResult stringHashQueryResult = StringHashQueryProcessor.Process(message.GetQueryObject<StringHashQuery>(), messageContext, storeContext);
+            bool compressOption = storeContext.GetCompressOption(message.TypeId);
+            message.Payload = new RelayPayload(message.TypeId,
+                message.Id,
+                Serializer.Serialize(stringHashQueryResult, compressOption),
+                compressOption);
+        }
+
+        /// <summary>
+        /// Processes the MultiIndexContainsQuery.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="messageContext">The message context.</param>
+        private void ProcessMultiIndexContainsQuery(RelayMessage message, MessageContext messageContext)
+        {
+            MultiIndexContainsQueryResult multiIndexContainsQueryResult = MultiIndexContainsQueryProcessor.Process(message.GetQueryObject<MultiIndexContainsQuery>(), 
+                messageContext, storeContext);
+            bool compressOption = storeContext.GetCompressOption(message.TypeId);
+            message.Payload = new RelayPayload(message.TypeId,
+                message.Id,
+                Serializer.Serialize(multiIndexContainsQueryResult, compressOption),
+                compressOption);
+        }
+
+        /// <summary>
+        /// Processes the metadata property query.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="messageContext">The message context.</param>
+        private void ProcessMetadataPropertyQuery(RelayMessage message, MessageContext messageContext)
+        {
+            MetadataPropertyQueryResult metadataPropertyQueryResult = MetadataPropertyQueryProcessor.Process(message.GetQueryObject<MetadataPropertyQuery>(),
+                messageContext,
+                storeContext);
+            bool compressOption = storeContext.GetCompressOption(message.TypeId);
+            message.Payload = new RelayPayload(message.TypeId,
+                message.Id,
+                Serializer.Serialize(metadataPropertyQueryResult, compressOption),
+                compressOption);
+        }
         #endregion
     }
 }

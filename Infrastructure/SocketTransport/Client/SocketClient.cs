@@ -2,8 +2,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.Serialization.Formatters.Binary;
-
 using System.Configuration;
 using System.Threading;
 using MySpace.ResourcePool;
@@ -13,23 +11,36 @@ using MySpace.Shared.Configuration;
 
 namespace MySpace.SocketTransport
 {
-
+	
 	/// <summary>
 	/// Provides a simple, lightweight socket-level transport. 
 	/// Use MySpace.SocketTransport.Server on the other end.
 	/// </summary>
 	public class SocketClient
 	{
-        private static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
-        private BinaryFormatter replyFormatter = new BinaryFormatter();
+		private static readonly Logging.LogWrapper log = new Logging.LogWrapper();
+		internal static SocketClientConfig config { get; private set; }
 
-		private SocketSettings defaultMessageSettings;
+		private readonly SocketSettings mySettings;
+		private readonly Dictionary<IPEndPoint, SocketPool> mySocketPools;
+		
+		private readonly SocketPool mySocketPool;
 
-		private SocketSettings mySettings = null;
-		private Dictionary<IPEndPoint, SocketPool> mySocketPools = null;
-		private IPEndPoint myEndPoint = null;
-		private SocketPool mySocketPool = null;
+		/// <summary>
+		/// Fired when the config changes or is modified.
+		/// </summary>
+		public static event SocketClientConfigChangeMethod ConfigChanged;
 
+		private const int envelopeSize = 13; //size in bytes of the non-message information transmitted with each message
+		private static readonly byte[] doSendReply = BitConverter.GetBytes(true);
+		private static readonly byte[] dontSendReply = BitConverter.GetBytes(false);
+		private static readonly byte[] messageStarterHost = BitConverter.GetBytes(Int16.MaxValue);
+		private static readonly byte[] messageTerminatorHost = BitConverter.GetBytes(Int16.MinValue);
+		private static readonly byte[] messageStarterNetwork = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Int16.MaxValue));
+		private static readonly byte[] messageTerminatorNetwork = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Int16.MinValue));
+
+		internal const short SendAckMessageId = Int16.MinValue;
+		
 		#region Constructors
 
 		/// <summary>
@@ -37,9 +48,6 @@ namespace MySpace.SocketTransport
 		/// </summary>
 		public SocketClient()
 		{
-			LoadConfig();
-			mySettings = defaultMessageSettings;
-			this.mySocketPools = SocketManager.Instance.GetSocketPools(defaultMessageSettings);
 		}
 
 		/// <summary>
@@ -48,19 +56,20 @@ namespace MySpace.SocketTransport
 		/// <param name="settings"></param>
 		public SocketClient(SocketSettings settings)
 		{
-			LoadConfig();
 			mySettings = settings;
-			this.mySocketPools = SocketManager.Instance.GetSocketPools(settings);
+			mySocketPools = SocketManager.Instance.GetSocketPools(settings);
 		}
 
 		/// <summary>
 		/// Create a new SocketClient with a default connection to destination, using the default settings.
 		/// </summary>		
 		public SocketClient(IPEndPoint destination)
-			: this()
 		{
-			myEndPoint = destination;
-			mySocketPool = GetSocketPool(destination);
+			//ideally if the default settings are changed, then this reference should be as well
+			//but there is no way to do this without a delegate, and previous users of socket client
+			//can't be expected to start using a dispose method, so this functionality will have to
+			//not exist. 
+			mySocketPool = SocketManager.Instance.GetSocketPool(destination);
 		}
 
 		/// <summary>
@@ -68,144 +77,56 @@ namespace MySpace.SocketTransport
 		/// </summary>		
 		public SocketClient(IPEndPoint destination, SocketSettings settings)
 		{
-			LoadConfig();
 			mySettings = settings;
-			myEndPoint = destination;
-			this.mySocketPools = SocketManager.Instance.GetSocketPools(settings);
-			this.mySocketPool = GetSocketPool(destination, settings);
+			mySocketPools = SocketManager.Instance.GetSocketPools(settings);
+			mySocketPool = SocketManager.Instance.GetSocketPool(destination, settings);
 		}
-
-		#region Old Constructors
-		/// <summary>
-		/// Create a new SocketClient using the supplied message provider. This can be used to create a custom message envelope.		
-		/// </summary>		
-		//public SocketClient(ISocketMessagingProvider socketMessagingProvider) 
-		//{
-		//    LoadConfig();
-		//    oneWayCallback = new AsyncCallback(OneWaySendCallback);
-		//    this.socketMessagingProvider = socketMessagingProvider;
-		//    this.createSyncMessageDelegate = new CreateSyncMessageDelegate(socketMessagingProvider.CreateSyncMessage);
-		//    this.mySocketPools = SocketManager.Instance.GetSocketPoolHash(defaultMessageSettings, syncUseReceive);
-
-		//}
-
-		//public SocketClient(ISocketMessagingProvider socketMessagingProvider, SocketSettings settings)
-		//{
-		//    LoadConfig();
-		//    oneWayCallback = new AsyncCallback(OneWaySendCallback);
-		//    this.socketMessagingProvider = socketMessagingProvider;
-		//    this.createSyncMessageDelegate = new CreateSyncMessageDelegate(socketMessagingProvider.CreateSyncMessage);
-		//    this.defaultMessageSettings = settings;
-		//    this.mySocketPools = SocketManager.Instance.GetSocketPoolHash(settings, syncUseReceive);			
-		//}
-
-		//public SocketClient(ISocketMessagingProvider socketMessagingProvider, SocketSettings settings, IPEndPoint endPoint)
-		//{
-		//    LoadConfig();
-		//    oneWayCallback = new AsyncCallback(OneWaySendCallback);
-		//    this.socketMessagingProvider = socketMessagingProvider;
-		//    this.createSyncMessageDelegate = new CreateSyncMessageDelegate(socketMessagingProvider.CreateSyncMessage);
-		//    this.defaultMessageSettings = settings;
-		//    this.mySocketPools = SocketManager.Instance.GetSocketPoolHash(settings, syncUseReceive);
-		//    this.mySocketPool = GetSocketPool(endPoint);
-		//}
-
-		//public SocketClient(SocketSettings settings, IPEndPoint endPoint) : this(new SocketMessagingProvider(),settings,endPoint)
-		//{
-
-		//}
+		
 		#endregion
-		#endregion
-
-		private static SocketClientConfig config = null;
-		internal static SocketClientConfig Config
-		{
-			get
-			{
-				if (config == null)
-				{
-					config = GetConfig();
-				}
-				return config;
-			}
-		}
 
 		private static SocketClientConfig GetConfig()
 		{
-			SocketClientConfig config = null;
+			SocketClientConfig newConfig = null;
 			try
 			{
-				config = (SocketClientConfig)ConfigurationManager.GetSection("SocketClient");
+				newConfig = (SocketClientConfig)ConfigurationManager.GetSection("SocketClient");
 			}
 			catch (Exception ex)
 			{
-                if (log.IsErrorEnabled)
-                    log.ErrorFormat("Exception getting socket client config: {0}", ex);
+				if (log.IsErrorEnabled)
+					log.ErrorFormat("Exception getting socket client config: {0}", ex);
 			}
 
-			if (config == null)
+			if (newConfig == null)
 			{
-                if (log.IsWarnEnabled)
-                    log.Warn("No Socket Client Config Found. Using defaults.");
-				config = new SocketClientConfig();
-				config.DefaultSocketSettings = new SocketSettings();
+				if (log.IsWarnEnabled)
+					log.Warn("No Socket Client Config Found. Using defaults.");
+				newConfig = new SocketClientConfig(new SocketSettings());
 			}
 
-			return config;
+			return newConfig;
 		}
-
-		private void LoadConfig()
-		{
-			SocketClientConfig config = Config;
-			this.defaultMessageSettings = config.DefaultSocketSettings;
-			XmlSerializerSectionHandler.RegisterReloadNotification(typeof(SocketClientConfig), new EventHandler(ReloadConfig));
-		}
-
+		
 		static SocketClient()
 		{
-			GetConfig(); //required to load the config so that the event fires.
-			XmlSerializerSectionHandler.RegisterReloadNotification(typeof(SocketClientConfig), (obj, args) =>
-				{
-					var cc = ConfigChanged;
-					if (cc != null)
-					{
-						cc(GetConfig());
-					}
-				});
+			config = GetConfig();
+			XmlSerializerSectionHandler.RegisterReloadNotification(typeof(SocketClientConfig), ReloadConfig);
 		}
 
 		/// <summary>
 		/// Called by XmlSerializationSectionHandler when the config is reloaded.
 		/// </summary>
-		public void ReloadConfig(object sender, EventArgs args)
+		public static void ReloadConfig(object sender, EventArgs args)
 		{
 			SocketClientConfig newConfig = GetConfig();
-			if (mySettings == defaultMessageSettings) //current using defaults, if defaults change we want to change the active socket pool
-			{
-				if (!newConfig.DefaultSocketSettings.SameAs(defaultMessageSettings)) //settings have changed, need to change "mySocketPool(s)" reference
-				{
-                    if (log.IsInfoEnabled)
-                        log.Info("Default socket settings changed, updating default socket pool.");
-
-					mySocketPools = SocketManager.Instance.GetSocketPools(newConfig.DefaultSocketSettings);
-					if (mySocketPool != null && myEndPoint != null)
-					{
-						SocketPool oldDefault = mySocketPool;
-						mySocketPool = GetSocketPool(myEndPoint, newConfig.DefaultSocketSettings);
-						oldDefault.ReleaseAndDisposeAll();
-					}
-				}
-				mySettings = newConfig.DefaultSocketSettings;
-			}
-
-			defaultMessageSettings = newConfig.DefaultSocketSettings;
+			
+			SocketManager.Instance.SetNewConfig(newConfig);
+			
 			config = newConfig;
-		}
 
-		/// <summary>
-		/// Fired when the config changes or is modified.
-		/// </summary>
-		public static event SocketClientConfigChangeMethod ConfigChanged;
+			if (ConfigChanged != null)
+				ConfigChanged(newConfig);
+		}
 
 		/// <summary>
 		/// 	<para>Get a copy of the default socket settings. 
@@ -217,7 +138,7 @@ namespace MySpace.SocketTransport
 		/// </returns>
 		public static SocketSettings GetDefaultSettings()
 		{
-			return Config.DefaultSocketSettings.Copy();
+			return config.DefaultSocketSettings.Copy();
 		}
 
 		/// <summary>
@@ -270,7 +191,7 @@ namespace MySpace.SocketTransport
 
 			SendOneWay(mySocketPool, commandID, messageStream);
 		}
-
+		
 		/// <summary>
 		/// Sends a message to a server that does not expect a reply using the default message settings.
 		/// </summary>
@@ -279,8 +200,27 @@ namespace MySpace.SocketTransport
 		/// <param name="messageStream">The contents of the message for the server to process.</param>
 		public void SendOneWay(IPEndPoint destination, int commandId, MemoryStream messageStream)
 		{
-			SocketPool socketPool = GetSocketPool(destination);
+			//we have the destination, we want to use any settings supplied at instantiation, or if none were
+			//supplied then, the defaults
+
+			SocketPool socketPool = SocketManager.Instance.GetSocketPool(destination, mySettings, mySocketPools);
 			SendOneWay(socketPool, commandId, messageStream);
+		}
+
+		/// <summary>
+		/// Sends a message to a server that does not expect a reply using the process wide default message settings.
+		/// </summary>
+		/// <param name="destination">The server's EndPoint</param>
+		/// <param name="commandId">The Command Identifier to send to the server. The server's IMessageHandler should know about all possible CommandIDs</param>
+		/// <param name="messageStream">The contents of the message for the server to process.</param>
+		public static void SendOneWayDefault(IPEndPoint destination, int commandId, MemoryStream messageStream)
+		{
+			//we have the destination, we want to use any settings supplied at instantiation, or if none were
+			//supplied then, the defaults
+
+			SocketPool socketPool = SocketManager.Instance.GetSocketPool(destination);
+			SendOneWay(socketPool, commandId, messageStream);
+
 		}
 
 		/// <summary>
@@ -292,11 +232,12 @@ namespace MySpace.SocketTransport
 		/// <param name="messageStream">The contents of the message for the server to process.</param>		
 		public void SendOneWay(IPEndPoint destination, SocketSettings messageSettings, int commandID, MemoryStream messageStream)
 		{
-			SocketPool socketPool = GetSocketPool(destination, messageSettings);
+			//we have both destination and settings so just use them
+			SocketPool socketPool = SocketManager.Instance.GetSocketPool(destination, messageSettings);
 			SendOneWay(socketPool, commandID, messageStream);
 		}
 
-		private void SendOneWay(SocketPool pool, int commandID, MemoryStream messageStream)
+		private static void SendOneWay(SocketPool pool, int commandID, MemoryStream messageStream)
 		{
 			ManagedSocket socket = null;
 			ResourcePoolItem<MemoryStream> rebufferedStreamItem = CreateOneWayMessage(commandID, messageStream, pool);
@@ -308,7 +249,23 @@ namespace MySpace.SocketTransport
 				// GetBuffer() should be used in preference to ToArray() where possible
 				// as it does not allocate a new byte[] like ToArray does().
 				byte[] messageBuffer = rebufferedStream.GetBuffer();
-				socket.Send(messageBuffer, (int)rebufferedStream.Length, SocketFlags.None);
+
+				socket.Send(messageBuffer, (int) rebufferedStream.Length, SocketFlags.None);
+				if (socket.ServerSupportsAck && pool.Settings.RequestOneWayAck)
+					try
+					{
+						socket.GetReply(); //make sure we got the ack
+					}
+					catch (SocketException sex)
+					{
+						log.ErrorFormat("Failed to receive ack from {0} with error {1}", pool.Destination, sex.SocketErrorCode);
+						throw;
+					}
+					catch (Exception ex)
+					{
+						log.ErrorFormat("Failed to receive ack from {0} with error {1}", pool.Destination, ex.Message);
+						throw;
+					}
 			}
 			catch (SocketException sex)
 			{
@@ -320,11 +277,19 @@ namespace MySpace.SocketTransport
 			}
 			finally
 			{
+				SocketException backgroundException = null;
 				if (socket != null)
 				{
+					if (socket.LastError != SocketError.Success)
+					{
+						backgroundException = new SocketException((int)socket.LastError);
+					}
 					socket.Release();
 				}
 				rebufferedStreamItem.Release();
+				
+				if (backgroundException != null)
+					throw backgroundException;
 			}
 		}
 
@@ -356,14 +321,23 @@ namespace MySpace.SocketTransport
 		/// <param name="messageStream">The contents of the message for the server to process.</param>
 		/// <returns>The object returned by the server, if any.</returns>
 		public MemoryStream SendSync(IPEndPoint destination, int commandID, MemoryStream messageStream)
+		{	 
+			SocketPool socketPool = SocketManager.Instance.GetSocketPool(destination, mySettings, mySocketPools);
+			MemoryStream replyStream = SendSync(socketPool, commandID, messageStream);
+			return replyStream;
+		}
+
+		/// <summary>
+		/// Sends a message to the server that expects a response, using the process wide default message settings.
+		/// </summary>
+		/// <param name="destination">The server's EndPoint</param>
+		/// <param name="commandID">The Command Identifier to send to the server. The server's IMessageHandler should know about all possible CommandIDs</param>
+		/// <param name="messageStream">The contents of the message for the server to process.</param>
+		/// <returns>The object returned by the server, if any.</returns>
+		public static MemoryStream SendSyncDefault(IPEndPoint destination, int commandID, MemoryStream messageStream)
 		{
-
-			MemoryStream replyStream = null;
-			SocketPool socketPool = GetSocketPool(destination);
-
-			replyStream = SendSync(socketPool, commandID, messageStream);
-
-
+			SocketPool socketPool = SocketManager.Instance.GetSocketPool(destination);
+			MemoryStream replyStream = SendSync(socketPool, commandID, messageStream);
 			return replyStream;
 		}
 
@@ -384,14 +358,14 @@ namespace MySpace.SocketTransport
 			return replyStream;
 		}
 
-		private MemoryStream SendSync(SocketPool pool, int commandID, MemoryStream messageStream)
+		private static MemoryStream SendSync(SocketPool pool, int commandID, MemoryStream messageStream)
 		{
-			short messageId = (short)1; //new async scheme doesn't currently need these.
+			const short messageId = 1; //new async scheme doesn't currently need these.
 			ResourcePoolItem<MemoryStream> rebufferedStreamItem = CreateSyncMessage((short)commandID, messageId, messageStream, pool);
 			MemoryStream rebufferedStream = rebufferedStreamItem.Item;
 
 			ManagedSocket socket = null;
-			MemoryStream replyStream = null;
+			MemoryStream replyStream;
 
 			try
 			{
@@ -432,79 +406,42 @@ namespace MySpace.SocketTransport
 		}
 
 		#endregion
-
-		#region Socket Pools
-		private SocketPool GetSocketPool(IPEndPoint destination)
-		{
-			SocketPool pool;
-			if (mySocketPools.ContainsKey(destination))
-			{
-				pool = mySocketPools[destination];
-			}
-			else
-			{
-				lock (mySocketPools)
-				{
-					if (!mySocketPools.ContainsKey(destination))
-					{
-						pool = BuildSocketPool(destination, mySettings);
-						mySocketPools.Add(destination, pool);
-					}
-					else
-					{
-						pool = mySocketPools[destination];
-					}
-				}
-			}
-
-			return pool;
-		}
-
-		private static SocketPool GetSocketPool(IPEndPoint destination, SocketSettings settings)
-		{
-			return SocketManager.Instance.GetSocketPool(destination, settings);
-		}
-
-		private static SocketPool BuildSocketPool(IPEndPoint destination, SocketSettings settings)
-		{
-			return SocketManager.BuildSocketPool(destination, settings);
-		}
-		#endregion
-
+		
 		#region Message Creation
-		private volatile int envelopeSize = 13; //size in bytes of the non-message information transmitted with each message
-		private byte[] doSendReply = BitConverter.GetBytes(true);
-		private byte[] dontSendReply = BitConverter.GetBytes(false);
-		private byte[] messageStarterHost = BitConverter.GetBytes(Int16.MaxValue);
-		private byte[] messageTerminatorHost = BitConverter.GetBytes(Int16.MinValue);
-		private byte[] messageStarterNetwork = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Int16.MaxValue));
-		private byte[] messageTerminatorNetwork = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Int16.MinValue));
 
-		internal ResourcePoolItem<MemoryStream> CreateOneWayMessage(int commandId, MemoryStream messageStream, SocketPool pool)
+		internal static ResourcePoolItem<MemoryStream> CreateOneWayMessage(int commandId, MemoryStream messageStream, SocketPool pool)
 		{
-			return CreateMessage((short)commandId, 0, messageStream, false, pool);
+			return CreateMessage((short)commandId, pool.Settings.RequestOneWayAck ? SendAckMessageId : (short)0, messageStream, false, pool);
 		}
 
-		internal ResourcePoolItem<MemoryStream> CreateSyncMessage(Int16 commandId, Int16 messageId, MemoryStream messageStream, SocketPool pool)
+		internal static ResourcePoolItem<MemoryStream> CreateSyncMessage(Int16 commandId, Int16 messageId, MemoryStream messageStream, SocketPool pool)
 		{
 			return CreateMessage(commandId, messageId, messageStream, true, pool);
 		}
 
-		private ResourcePoolItem<MemoryStream> CreateMessage(short commandId, short messageId, MemoryStream messageStream, bool isSync, SocketPool pool)
+		private static ResourcePoolItem<MemoryStream> CreateMessage(short commandId, short messageId, MemoryStream messageStream, bool isSync, SocketPool pool)
 		{
-			int messageLength = 0;
+			bool useNetworkOrder = pool.Settings.UseNetworkOrder;
+			ResourcePoolItem<MemoryStream> rebufferedStreamItem = pool.GetPooledStream();
+			WriteMessageToStream(commandId, messageId, messageStream, isSync, useNetworkOrder, rebufferedStreamItem.Item);
+			return rebufferedStreamItem;
+		}
+
+		internal static void WriteMessageToStream(short commandId, short messageId, MemoryStream messageStream, bool isSync, bool useNetworkOrder, MemoryStream rebufferedStream)
+		{
+			int messageLength;
 
 			if (messageStream != null)
 				messageLength = (int)messageStream.Length;
 			else
 				messageLength = 0;
 
-			bool useNetworkOrder = pool.Settings.UseNetworkOrder;
+			
 
 			byte[] length = BitConverter.GetBytes(GetNetworkOrdered(messageLength + envelopeSize, useNetworkOrder));
 			byte[] commandIdBytes;
 			byte[] messageIdBytes = null;
-			//byte[] code = BitConverter.GetBytes(GetNetworkOrdered(commandId, useNetworkOrder));
+			
 			if (messageId != 0)
 			{
 				commandIdBytes = BitConverter.GetBytes(GetNetworkOrdered(commandId, useNetworkOrder));
@@ -515,15 +452,9 @@ namespace MySpace.SocketTransport
 				commandIdBytes = BitConverter.GetBytes(GetNetworkOrdered((int)commandId, useNetworkOrder));
 			}
 
-			//MemoryStream rebufferedStream = new MemoryStream(envelopeSize + messageLength);			
-
-			ResourcePoolItem<MemoryStream> rebufferedStreamItem = pool.GetPooledStream();
-
-			MemoryStream rebufferedStream = rebufferedStreamItem.Item;
-
 			rebufferedStream.Write(GetMessageStarter(useNetworkOrder), 0, 2);
 			rebufferedStream.Write(length, 0, 4);
-			//rebufferedStream.Write(code, 0, 4);
+			
 			if (messageId != 0)
 			{
 				if (useNetworkOrder)
@@ -551,95 +482,42 @@ namespace MySpace.SocketTransport
 			{
 				messageStream.WriteTo(rebufferedStream);
 			}
-			rebufferedStream.Write(GetMessageTerminator(useNetworkOrder), 0, 2);
 
-			return rebufferedStreamItem;
+			rebufferedStream.Write(GetMessageTerminator(useNetworkOrder), 0, 2);
 		}
 
 
 
-		private byte[] GetMessageStarter(bool useNetworkOrder)
+		private static byte[] GetMessageStarter(bool useNetworkOrder)
 		{
 			return (useNetworkOrder ? messageStarterNetwork : messageStarterHost);
 		}
 
-		private byte[] GetMessageTerminator(bool useNetworkOrder)
+		private static byte[] GetMessageTerminator(bool useNetworkOrder)
 		{
 			return (useNetworkOrder ? messageTerminatorNetwork : messageTerminatorHost);
 		}
 
 		#region Network Ordering Methods
 
-		private Int16 GetNetworkOrdered(Int16 number, bool useNetworkOrder)
+		private static Int16 GetNetworkOrdered(Int16 number, bool useNetworkOrder)
 		{
 			if (useNetworkOrder)
 			{
 				return IPAddress.HostToNetworkOrder(number);
 			}
-			else
-			{
-				return number;
-			}
+			
+			return number;
 		}
 
-		private Int32 GetNetworkOrdered(Int32 number, bool useNetworkOrder)
+		private static Int32 GetNetworkOrdered(Int32 number, bool useNetworkOrder)
 		{
 			if (useNetworkOrder)
 			{
 				return IPAddress.HostToNetworkOrder(number);
 			}
-			else
-			{
-				return number;
-			}
-		}
-
-		private Int64 GetNetworkOrdered(Int64 number, bool useNetworkOrder)
-		{
-			if (useNetworkOrder)
-			{
-				return IPAddress.HostToNetworkOrder(number);
-			}
-			else
-			{
-				return number;
-			}
-		}
-
-		private Int16 GetHostOrdered(Int16 number, bool useNetworkOrder)
-		{
-			if (useNetworkOrder)
-			{
-				return IPAddress.NetworkToHostOrder(number);
-			}
-			else
-			{
-				return number;
-			}
-		}
-
-		private Int32 GetHostOrdered(Int32 number, bool useNetworkOrder)
-		{
-			if (useNetworkOrder)
-			{
-				return IPAddress.NetworkToHostOrder(number);
-			}
-			else
-			{
-				return number;
-			}
-		}
-
-		private Int64 GetHostOrdered(Int64 number, bool useNetworkOrder)
-		{
-			if (useNetworkOrder)
-			{
-				return IPAddress.NetworkToHostOrder(number);
-			}
-			else
-			{
-				return number;
-			}
+			
+			return number;
 		}
 
 		#endregion

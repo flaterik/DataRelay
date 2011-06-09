@@ -1,6 +1,8 @@
 ﻿using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
+using MySpace.Common.Storage;
+using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 {
@@ -14,34 +16,24 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// <returns>Raw CacheIndexInternal</returns>
         internal static byte[] Process(MessageContext messageContext, IndexStoreContext storeContext)
         {
-            byte[] payloadByteArray = null;
-            RelayMessage getMsg = new RelayMessage
-                                      {
-                                          MessageType = MessageType.Get,
-                                          Id = IndexCacheUtils.GeneratePrimaryId(messageContext.ExtendedId),
-                                          ExtendedId = IndexServerUtils.FormExtendedId(messageContext.ExtendedId, 0)  // Pull first of the multiple indexes
-                                      };
+            short typeId;
+            short messageTypeId = messageContext.TypeId;
 
-            if (storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection.Contains(messageContext.TypeId))
+            if (storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection.Contains(messageTypeId))
             {
-                getMsg.TypeId = messageContext.TypeId;
+                typeId = messageTypeId;
             }
-            else if (storeContext.RelatedTypeIds.TryGetValue(messageContext.TypeId, out getMsg.TypeId))
+            else if (!storeContext.RelatedTypeIds.TryGetValue(messageTypeId, out typeId))
             {
-            }
-            else
-            {
-                LoggingUtil.Log.InfoFormat("Invalid TypeID for GetMessage {0}", messageContext.TypeId);
-                return payloadByteArray;
+                LoggingUtil.Log.InfoFormat("Invalid TypeID for GetMessage {0}", messageTypeId);
+                return null;
             }
 
-            storeContext.IndexStorageComponent.HandleMessage(getMsg);
-
-            if (getMsg.Payload != null)
-            {
-                payloadByteArray = getMsg.Payload.ByteArray;
-            }
-            return payloadByteArray;
+            return storeContext.IndexStorageComponent.GetBuffer(
+                typeId,
+                new StorageKey(
+                    IndexServerUtils.FormExtendedId(messageContext.ExtendedId, 0),
+                    IndexCacheUtils.GeneratePrimaryId(messageContext.ExtendedId)));
         }
     }
 }

@@ -11,7 +11,8 @@ namespace MySpace.DataRelay
 		#region Counter Definitions
 
 		public static readonly string PerformanceCategoryName = "MySpace DataRelay";
-		private bool nov09CountersExist = false;
+		private bool _nov09CountersExist = false;
+		private bool _july10CountersExist = false;
 		protected PerformanceCounter[] PerformanceCounters;
 		protected enum PerformanceCounterIndexes : int
 		{
@@ -30,10 +31,10 @@ namespace MySpace.DataRelay
 			AvgInputBytesBase = 12,
 			QueuedInMessages = 13,
 			MessagesPerSecond = 14,
-            TotalMessages = 15,
-            AvgMsgLife = 16,
-            AvgMsgLifeBase = 17,
-			SaveWithConfirm = 18,// SaveWithConfirm start added 11/9/09
+			TotalMessages = 15,
+			AvgMsgLife = 16,
+			AvgMsgLifeBase = 17,
+			SaveWithConfirm = 18,		//SaveWithConfirm start added 11/9/09
 			UpdateWithConfirm = 19,
 			DeleteWithConfirm = 20,
 			DeleteInAllTypesWithConfirm = 21,
@@ -44,7 +45,10 @@ namespace MySpace.DataRelay
 			Query = 26,
 			Invoke = 27,
 			Notification = 28,
-			Increment = 29 //end add 11/9/09
+			Increment = 29,				//end add 11/9/09
+			RedirectCount = 30,			//start add 7/20/10
+			RedirectRate = 31,
+			RedirectErrorCount = 32	//end add 7/20/10
 		}
 		
 		public static readonly string[] PerformanceCounterNames = { 
@@ -64,9 +68,9 @@ namespace MySpace.DataRelay
 			"Queued In Message Tasks",
 			"Msg/Sec",
 			"Total Messages Processed",
-            "Avg Message Life",
-            "Avg Message Life Base",
-            @"Msg/Sec - Confirmed Save", 
+			"Avg Message Life",
+			"Avg Message Life Base",
+			@"Msg/Sec - Confirmed Save", 
 			@"Msg/Sec - Confirmed Update",
 			@"Msg/Sec - Confirmed Delete",			
 			@"Msg/Sec - Confirmed Delete In All Types", 
@@ -77,7 +81,10 @@ namespace MySpace.DataRelay
 			@"Msg/Sec - Query", 
 			@"Msg/Sec - Invoke",
 			@"Msg/Sec - Notification",
-			@"Msg/Sec - Increment"
+			@"Msg/Sec - Increment",
+			@"Redirect Count",
+			@"Redirect Rate",
+			@"Redirect Error Count"
 		};
 		
 		public static readonly string[] PerformanceCounterHelp = { 
@@ -97,8 +104,8 @@ namespace MySpace.DataRelay
 			"The number of pending in messages and in message lists",
 			"Total Messages Per Second",
 			"Total Messages Processed",
-            "Average amount of time a message exists on RelayNode.",
-            "Base for Average Life",
+			"Average amount of time a message exists on RelayNode.",
+			"Base for Average Life",
 			"Confirmed Save Messages Per Second", 
 			"Confirmed Update Messages Per Second",
 			"Confirmed Delete Messages Per Second", 
@@ -110,7 +117,10 @@ namespace MySpace.DataRelay
 			"Query Messages Per Second", 
 			"Invoke Messages Per Second", 
 			"Notification Messages Per Second", 
-			"Increment Messages Per Second"
+			"Increment Messages Per Second",
+			"Count of Messages Redirected",
+			"Messages Redirected Per Second",
+			"Count of messages redirected to the wrong node"
 		};
 		
 		public static readonly PerformanceCounterType[] PerformanceCounterTypes = { 			
@@ -130,8 +140,8 @@ namespace MySpace.DataRelay
 			PerformanceCounterType.NumberOfItems32,
 			PerformanceCounterType.RateOfCountsPerSecond32,
 			PerformanceCounterType.NumberOfItems64,
-            PerformanceCounterType.AverageCount64,
-            PerformanceCounterType.AverageBase,
+			PerformanceCounterType.AverageCount64,
+			PerformanceCounterType.AverageBase,
 			PerformanceCounterType.RateOfCountsPerSecond32, 
 			PerformanceCounterType.RateOfCountsPerSecond32,
 			PerformanceCounterType.RateOfCountsPerSecond32, 
@@ -143,7 +153,10 @@ namespace MySpace.DataRelay
 			PerformanceCounterType.RateOfCountsPerSecond32, 
 			PerformanceCounterType.RateOfCountsPerSecond32,
 			PerformanceCounterType.RateOfCountsPerSecond32, 
-			PerformanceCounterType.RateOfCountsPerSecond32
+			PerformanceCounterType.RateOfCountsPerSecond32,
+			PerformanceCounterType.NumberOfItems32,
+			PerformanceCounterType.RateOfCountsPerSecond32,
+			PerformanceCounterType.NumberOfItems32
 		};
 		#endregion
 
@@ -152,8 +165,8 @@ namespace MySpace.DataRelay
 		private MinuteAggregateCounter hitCounter;
 		private MinuteAggregateCounter attemptCounter;		
 		private System.Timers.Timer timer;
-        private AverageMessageLife avgMessageLife;
-        private static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
+		private AverageMessageLife avgMessageLife;
+		private static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
 
 		internal void Initialize(string instanceName)
 		{
@@ -202,8 +215,8 @@ namespace MySpace.DataRelay
 							false
 							);
 					}
-                    PerformanceCounter avgMsgLife = PerformanceCounters[(int)PerformanceCounterIndexes.AvgMsgLife];
-                    PerformanceCounter avgMsgLifeBase = PerformanceCounters[(int)PerformanceCounterIndexes.AvgMsgLifeBase];
+					PerformanceCounter avgMsgLife = PerformanceCounters[(int)PerformanceCounterIndexes.AvgMsgLife];
+					PerformanceCounter avgMsgLifeBase = PerformanceCounters[(int)PerformanceCounterIndexes.AvgMsgLifeBase];
 
 					if (PerformanceCounterCategory.CounterExists(PerformanceCounterNames[(int)PerformanceCounterIndexes.AvgMsgLife],
 						RelayNodeCounters.PerformanceCategoryName))
@@ -214,13 +227,20 @@ namespace MySpace.DataRelay
 					if (PerformanceCounterCategory.CounterExists(PerformanceCounterNames[(int)PerformanceCounterIndexes.SaveWithConfirm],
 						RelayNodeCounters.PerformanceCategoryName))
 					{
-						nov09CountersExist = true;
+						_nov09CountersExist = true;
+
+						if (PerformanceCounterCategory.CounterExists(PerformanceCounterNames[(int)PerformanceCounterIndexes.RedirectCount],
+							RelayNodeCounters.PerformanceCategoryName))
+						{
+							_july10CountersExist = true;
+						}
 					}
-					else
+
+					if (!_july10CountersExist)
 					{
-						log.Warn("Confirmed Update Counters are not installed, please reinstall DataRelay counters.");
+						log.Warn("Some DataRelay performance counters are not installed, please reinstall DataRelay counters.");
 					}
-                       
+					   
 					hitCounter = new MinuteAggregateCounter();
 					attemptCounter = new MinuteAggregateCounter();
 					ResetCounters();
@@ -229,8 +249,8 @@ namespace MySpace.DataRelay
 			}
 			catch(Exception ex)
 			{
-                if (log.IsErrorEnabled)
-                    log.ErrorFormat("Exception creating Relay Node Counters: {0}. The counters might need to be reinstalled via InstallUtil.", ex);
+				if (log.IsErrorEnabled)
+					log.ErrorFormat("Exception creating Relay Node Counters: {0}. The counters might need to be reinstalled via InstallUtil.", ex);
 				countersInitialized = false;
 			}
 		}
@@ -242,6 +262,12 @@ namespace MySpace.DataRelay
 				PerformanceCounters[(int)PerformanceCounterIndexes.HitRatio].RawValue = 0;
 				PerformanceCounters[(int)PerformanceCounterIndexes.HitRatioBase].RawValue = 0;
 				PerformanceCounters[(int)PerformanceCounterIndexes.TotalMessages].RawValue = 0;
+
+				if (_july10CountersExist)
+				{
+					PerformanceCounters[(int)PerformanceCounterIndexes.RedirectCount].RawValue = 0;
+					PerformanceCounters[(int)PerformanceCounterIndexes.RedirectErrorCount].RawValue = 0;
+				}
 			}
 		}
 
@@ -281,13 +307,13 @@ namespace MySpace.DataRelay
 
 		private void CalculateLife(RelayMessage message)
 		{
-			if (avgMessageLife == null) return;
-			else avgMessageLife.CalculateLife(message);
+			if (avgMessageLife != null)
+				avgMessageLife.CalculateLife(message);			
 		}
 
 		internal void CountInMessage(RelayMessage message)
 		{
-			if (countersInitialized)
+			if (countersInitialized && !message.WasRedirected)
 			{
 				CalculateLife(message);
 
@@ -303,11 +329,11 @@ namespace MySpace.DataRelay
 						PerformanceCounters[(int)PerformanceCounterIndexes.Update].Increment();
 						break;
 					case MessageType.Notification:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.Notification].Increment();
 						break;
 					case MessageType.Increment:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.Increment].Increment();
 						break;
 					case MessageType.Delete:
@@ -339,7 +365,7 @@ namespace MySpace.DataRelay
 
 		internal void CountInputBytes(RelayMessage message)
 		{
-			if (countersInitialized)
+			if (countersInitialized && !message.WasRedirected)
 			{
 				switch(message.MessageType)
 				{
@@ -368,7 +394,7 @@ namespace MySpace.DataRelay
 
 		internal void CountOutMessage(RelayMessage message)
 		{
-			if (countersInitialized)
+			if (countersInitialized && !message.WasRedirected)
 			{
 				CalculateLife(message);
 
@@ -386,7 +412,7 @@ namespace MySpace.DataRelay
 						}
 						break;
 					case MessageType.Query:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.Query].Increment();
 						attemptCounter.IncrementCounter();
 						if (message.Payload != null)
@@ -395,7 +421,7 @@ namespace MySpace.DataRelay
 						}
 						break;
 					case MessageType.Invoke:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.Invoke].Increment();
 						attemptCounter.IncrementCounter();
 						if (message.Payload != null)
@@ -404,35 +430,35 @@ namespace MySpace.DataRelay
 						}
 						break;
 					case MessageType.NotificationWithConfirm:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.NotificationWithConfirm].Increment();
 						break;
 					case MessageType.IncrementWithConfirm:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.IncrementWithConfirm].Increment();
 						break;
 					case MessageType.SaveWithConfirm:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.SaveWithConfirm].Increment();
 						break;
 					case MessageType.UpdateWithConfirm:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.UpdateWithConfirm].Increment();
 						break;
 					case MessageType.DeleteWithConfirm:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.DeleteWithConfirm].Increment();
 						break;
 					case MessageType.DeleteInAllTypesWithConfirm:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.DeleteInAllTypesWithConfirm].Increment();
 						break;
 					case MessageType.DeleteAllWithConfirm:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.DeleteAllWithConfirm].Increment();
 						break;
 					case MessageType.DeleteAllInTypeWithConfirm:
-						if (nov09CountersExist == false) break;
+						if (_nov09CountersExist == false) break;
 						PerformanceCounters[(int)PerformanceCounterIndexes.DeleteAllInTypeWithConfirm].Increment();
 						break;
 				}
@@ -476,6 +502,31 @@ namespace MySpace.DataRelay
 			if (countersInitialized)
 			{
 				PerformanceCounters[(int)PerformanceCounterIndexes.QueuedInMessages].RawValue = count;
+			}
+		}
+
+		/// <summary>
+		/// Counts redirected messages.
+		/// </summary>
+		/// <param name="count">The number of messages that were redirected.</param>
+		internal void CountRedirectedMessage(int count)
+		{
+			if (_july10CountersExist)
+			{
+				PerformanceCounters[(int) PerformanceCounterIndexes.RedirectCount].IncrementBy(count);
+				PerformanceCounters[(int)PerformanceCounterIndexes.RedirectRate].IncrementBy(count);
+			}
+		}
+
+		/// <summary>
+		/// Counts messages that were redirected to the wrong node.
+		/// </summary>
+		/// <param name="count">The number of messages redirected to the wrong server.</param>
+		internal void CountRedirectionErrors(int count)
+		{
+			if (_july10CountersExist)
+			{
+				PerformanceCounters[(int)PerformanceCounterIndexes.RedirectErrorCount].IncrementBy(count);
 			}
 		}
 

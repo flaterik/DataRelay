@@ -1,0 +1,340 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="BerkeleyDb">
+      <UniqueIdentifier>{892a5b33-81a7-4aba-bd93-d7a798131f9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BerkeleyDb\dbinc">
+      <UniqueIdentifier>{e454208c-30fe-413b-847f-3ea6a25056d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BerkeleyDb\dbinc_auto">
+      <UniqueIdentifier>{962d6f88-7ac1-4f9c-8436-9a967feb0947}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AssemblyInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ConvStr.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Util.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BdbExceptionFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DatabaseImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EnvironmentImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CursorImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Alloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ConvStr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DbtHolder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\clib_port.h">
+      <Filter>BerkeleyDb</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\db.h">
+      <Filter>BerkeleyDb</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\db_cxx.h">
+      <Filter>BerkeleyDb</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\db_int.h">
+      <Filter>BerkeleyDb</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\btree.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\clock.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\crypto.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\cxx_int.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_am.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_dispatch.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_join.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_page.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_server_int.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_swap.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_upgrade.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_verify.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\debug.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\fop.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\globals.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\hash.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\hmac.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\lock.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\log.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\mp.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\mutex.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\mutex_int.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\os.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\qam.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\queue.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\region.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\rep.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\repmgr.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\shqueue.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\tcl_db.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\txn.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\win_db.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\xa.h">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\btree_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\btree_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\clib_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\common_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\crdel_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\crypto_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\db_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\db_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\dbreg_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\dbreg_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\env_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\fileops_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\fileops_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\hash_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\hash_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\hmac_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\lock_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\log_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\mp_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\mutex_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\os_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\qam_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\qam_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\rep_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\rep_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\repmgr_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\repmgr_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\rpc_client_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\rpc_server_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\sequence_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\tcl_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\txn_auto.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\txn_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\xa_ext.h">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </ClInclude>
+    <ClInclude Include="BdbExceptionFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DatabaseImpl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EnvironmentImpl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CursorImpl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="OSILicense.txt">
+      <Filter>BerkeleyDb</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc\db.in">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc\db_185.in">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc\db_cxx.in">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc\db_int.in">
+      <Filter>BerkeleyDb\dbinc</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc_auto\api_flags.in">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc_auto\ext_185_def.in">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc_auto\ext_185_prot.in">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc_auto\ext_def.in">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc_auto\ext_prot.in">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </None>
+    <None Include="BerkeleyDb-Headers\dbinc_auto\int_def.in">
+      <Filter>BerkeleyDb\dbinc_auto</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="app.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

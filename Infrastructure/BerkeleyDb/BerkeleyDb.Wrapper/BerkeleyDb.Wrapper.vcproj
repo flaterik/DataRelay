@@ -503,7 +503,7 @@
 	<References>
 		<ProjectReference
 			ReferencedProjectIdentifier="{7C93D02B-ACA3-473A-BF7A-CE327F4DBD8D}"
-			RelativePathToProject="..\BerkeleyDb.Wrapper.Common\BerkeleyDb.Wrapper.Common.vcproj"
+			RelativePathToProject=".\BerkeleyDb.Wrapper.Common\BerkeleyDb.Wrapper.Common.vcproj"
 		/>
 		<AssemblyReference
 			RelativePath="System.dll"
@@ -522,7 +522,7 @@
 		/>
 		<ProjectReference
 			ReferencedProjectIdentifier="{2A0673C5-BEF2-42EF-9A30-096487BE1C0F}"
-			RelativePathToProject="..\BerkeleyDb.Configuration\BerkeleyDb.Configuration.csproj"
+			RelativePathToProject=".\BerkeleyDb.Configuration\BerkeleyDb.Configuration.csproj"
 		/>
 		<AssemblyReference
 			RelativePath="..\..\..\_drop\MySpace.Logging.dll"
@@ -533,6 +533,11 @@
 			RelativePath="..\..\..\_drop\MySpace.ResourcePool.dll"
 			AssemblyName="MySpace.ResourcePool, Version=1.0.1.0, processorArchitecture=MSIL"
 			MinFrameworkVersion="131072"
+		/>
+		<AssemblyReference
+			RelativePath="..\..\..\_drop\MySpace.Shared.dll"
+			AssemblyName="MySpace.Shared, Version=1.0.0.0, processorArchitecture=MSIL"
+			MinFrameworkVersion="196613"
 		/>
 	</References>
 	<Files>
@@ -722,6 +727,10 @@
 			Name="BerkeleyDb"
 			>
 			<File
+				RelativePath=".\BerkeleyDb-Headers\clib_port.h"
+				>
+			</File>
+			<File
 				RelativePath=".\BerkeleyDb-Headers\db.h"
 				>
 			</File>
@@ -730,9 +739,329 @@
 				>
 			</File>
 			<File
+				RelativePath=".\BerkeleyDb-Headers\db_int.h"
+				>
+			</File>
+			<File
 				RelativePath=".\OSILicense.txt"
 				>
 			</File>
+			<Filter
+				Name="dbinc"
+				>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\btree.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\clock.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\crypto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\cxx_int.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_185.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_am.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_cxx.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_dispatch.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_int.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_join.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_page.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_server_int.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_swap.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_upgrade.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\db_verify.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\debug.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\fop.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\globals.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\hash.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\hmac.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\lock.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\log.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\mp.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\mutex.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\mutex_int.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\os.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\qam.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\queue.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\region.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\rep.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\repmgr.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\shqueue.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\tcl_db.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\txn.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\win_db.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc\xa.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="dbinc_auto"
+				>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\api_flags.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\btree_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\btree_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\clib_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\common_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\crdel_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\crypto_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\db_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\db_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\dbreg_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\dbreg_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\env_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\ext_185_def.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\ext_185_prot.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\ext_def.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\ext_prot.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\fileops_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\fileops_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\hash_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\hash_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\hmac_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\int_def.in"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\lock_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\log_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\mp_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\mutex_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\os_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\qam_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\qam_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\rep_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\rep_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\repmgr_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\repmgr_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\rpc_client_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\rpc_server_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\sequence_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\tcl_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\txn_auto.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\txn_ext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\BerkeleyDb-Headers\dbinc_auto\xa_ext.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 	</Files>
 	<Globals>

@@ -232,6 +232,27 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         }
 
         /// <summary>
+        /// Tries the get string names for the specified typeId.
+        /// </summary>
+        /// <param name="typeId">The typeId.</param>
+        /// <param name="stringNames">The string names.</param>
+        /// <returns><c>true</c>if typeId exists in the StringHashCollection; otherwise, </returns>
+        internal bool TryGetStringNames(short typeId, out string[] stringNames)
+        {
+            stringNames = null;
+            bool typeExists = false;
+            Dictionary<int /*StringHashCode*/, string /*String*/> stringCollection;
+
+            if (typeStringHashCollection.TryGetValue(typeId, out stringCollection))
+            {
+                typeExists = true;
+                stringNames = new string[stringCollection.Count];
+                stringCollection.Values.CopyTo(stringNames, 0);
+            }
+            return typeExists;
+        }
+
+        /// <summary>
         /// Persists the state.
         /// </summary>
         internal void PersistState()

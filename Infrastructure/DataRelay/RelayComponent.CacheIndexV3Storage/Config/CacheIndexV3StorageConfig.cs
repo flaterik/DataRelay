@@ -20,13 +20,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
         [XmlElement("BerkeleyDbConfig", Namespace = "http://myspace.com/BerkeleyDbConfig.xsd")]
         public BerkeleyDbConfig BerkeleyDbConfig;
 
-        public void InitializeCustomFields()
+        public void SanityCheckAndInitializeCustomFields()
         {
             foreach (IndexTypeMapping indexTypeMapping in CacheIndexV3StorageConfig.IndexTypeMappingCollection)
             {
                 indexTypeMapping.Initialize();
                 foreach (Index index in indexTypeMapping.IndexCollection)
                 {
+                    indexTypeMapping.CheckTypeMappingSanity();
                     index.InitializeLocalIdentityTagList();
                     index.InitializeStringHashCodeDictionary();
                     index.PrimarySortInfo.InitializeSortOrderList();
@@ -37,6 +38,18 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
 
     public class CacheIndexV3StorageConfig
     {
+        [XmlElement("MemPoolItemInitialSizeInBytes")]
+        public int MemPoolItemInitialSizeInBytes = 1024;
+
+        [XmlElement("MemPoolMinItemNumber")]
+        public short MemPoolMinItemNumber = 20;
+
+        [XmlElement("PartialGetSizeInBytes")]
+        public int PartialGetLength = -1;  // default to fullget
+
+        [XmlElement("RemoteClusterQueryTimeOutinMilliSec")]
+        public int RemoteClusterQueryTimeOut = 60 * 1000;  // default to 1 minute
+
         [XmlElement("StorageStateFile")]
         public string StorageStateFile;
 
@@ -76,6 +89,9 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
         [XmlElement("MetadataStoredSeperately")]
         public bool MetadataStoredSeperately;
 
+        [XmlElement("IsMetadataPropertyCollection")]
+        public bool IsMetadataPropertyCollection;
+
         [XmlElement("QueryOverrideSettings")]
         public QueryOverrideSettings QueryOverrideSettings;
 
@@ -103,6 +119,23 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
         internal void InitializeFullDataIdFieldList()
         {
             FullDataIdFieldList = ProcessFullDataIdPartCollection(FullDataIdPartCollection);
+        }
+
+        internal void CheckTypeMappingSanity()
+        {
+            if ((string.Compare(ModeString.Trim().ToUpper(), "DATABOUND") == 0) && (IndexCollection.Count > 1))
+            {
+                foreach (var index in IndexCollection)
+                {
+                    if (index.MaxIndexSize > 0)
+                    {
+                        string errStr = string.Format("Invalid databound Capped MultiIndex Configuration found. Index type id is {0}, index name is {1}", TypeId, index.IndexName);
+                        LoggingUtil.Log.Error(errStr);
+
+                        throw new Exception(errStr);
+                    }
+                }
+            }
         }
 
         private FullDataIdFieldList ProcessFullDataIdPartCollection(Collection<FullDataIdPart> fullDataIdPartCollection)
@@ -247,6 +280,9 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
         [XmlElement("IndexName")]
         public string IndexName;
 
+        [XmlElement("PartialGetSizeInBytes")]
+        public int PartialGetSizeInBytes;
+
         [XmlElement("ExtendedIdSuffix")]
         public short ExtendedIdSuffix;
 
@@ -261,6 +297,9 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
 
         [XmlElement("MetadataPresent")]
         public bool MetadataPresent;
+
+        [XmlElement("IsMetadataPropertyCollection")]
+        public bool IsMetadataPropertyCollection;
 
         [XmlArray("TagCollection")]
         [XmlArrayItem(typeof(Tag))]
@@ -282,6 +321,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
             {
                 if (tag.LocalIdentity)
                 {
+                    if (!String.IsNullOrEmpty(PrimarySortInfo.DefaultSortTagValue) &&
+                        String.Equals(PrimarySortInfo.FieldName, tag.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new Exception("DefaultSortTagValue feature not supported on indexes where sort tag is a part of local identity");
+                    }
                     localIdentityTagList.Add(tag.Name);
                 }
             }
@@ -317,6 +361,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
         [XmlElement("FieldName")]
         public string FieldName;
 
+        internal byte[] DefaultSortTagValueBytes;
+
+        [XmlElement("DefaultSortTagValue")]
+        public string DefaultSortTagValue;
+
         [XmlArray("SortOrderStructureCollection")]
         [XmlArrayItem(typeof(SortOrderStructure))]
         public Collection<SortOrderStructure> SortOrderStructureCollection;
@@ -329,6 +378,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
                 return sortOrderList;
             }
         }
+
+        private static readonly Encoding stringEncoder = new UTF8Encoding(false, true);
 
         public void InitializeSortOrderList()
         {
@@ -357,6 +408,67 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
                     throw new Exception("SortBy " + sortOrderStructure.SortBy + "NOT supported");
                 }
                 sortOrderList.Add(sortOrder);
+            }
+
+            //Set Default Value
+            if (!String.IsNullOrEmpty(DefaultSortTagValue) && sortOrderList.Count > 1)
+            {
+                throw new Exception("DefaultSortTagValue feature not supported for indexes with multiple fields in the SortOrderCollection");
+            }
+            GetDefaultSortTagValue();
+        }
+
+        private void GetDefaultSortTagValue()
+        {
+            byte[] retVal;
+            if (!String.IsNullOrEmpty(DefaultSortTagValue))
+            {
+                switch (sortOrderList[0].DataType)
+                {
+                    case DataType.UInt16:
+                        DefaultSortTagValueBytes = BitConverter.GetBytes(Convert.ToUInt16(DefaultSortTagValue));
+                        break;
+
+                    case DataType.Int16:
+                        DefaultSortTagValueBytes = BitConverter.GetBytes(Convert.ToInt16(DefaultSortTagValue));
+                        break;
+
+                    case DataType.UInt32:
+                        DefaultSortTagValueBytes = BitConverter.GetBytes(Convert.ToUInt32(DefaultSortTagValue));
+                        break;
+
+                    case DataType.Int32:
+                    case DataType.SmallDateTime:
+                        DefaultSortTagValueBytes = BitConverter.GetBytes(Convert.ToInt32(DefaultSortTagValue));
+                        break;
+
+                    case DataType.UInt64:
+                        DefaultSortTagValueBytes = BitConverter.GetBytes(Convert.ToUInt64(DefaultSortTagValue));
+                        break;
+
+                    case DataType.Int64:
+                    case DataType.DateTime:
+                        DefaultSortTagValueBytes = BitConverter.GetBytes(Convert.ToInt64(DefaultSortTagValue));
+                        break;
+
+                    case DataType.String:
+                        DefaultSortTagValueBytes = stringEncoder.GetBytes(DefaultSortTagValue);
+                        break;
+
+                    case DataType.Byte:
+                        throw new Exception("Default Value not supported for DataType.Byte");
+
+                    case DataType.Float:
+                        DefaultSortTagValueBytes = BitConverter.GetBytes(Convert.ToUInt16(DefaultSortTagValue));
+                        break;
+
+                    case DataType.Double:
+                        DefaultSortTagValueBytes = BitConverter.GetBytes(Convert.ToUInt16(DefaultSortTagValue));
+                        break;
+
+                    case DataType.ByteArray:
+                        throw new Exception("Default Value not supported for DataType.ByteArray");
+                }
             }
         }
     }

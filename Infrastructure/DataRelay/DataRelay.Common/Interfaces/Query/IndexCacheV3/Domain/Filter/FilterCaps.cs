@@ -1,6 +1,8 @@
 ﻿using System.Collections.ObjectModel;
+using System.Text;
 using MySpace.Common;
 using MySpace.Common.IO;
+using System;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
@@ -128,6 +130,21 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             }
             filterCap = null;
             return false;
+        }
+
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            stb.Append("(").Append("FilterCaps Count: ").Append(Count);
+            if (Count > 0)
+            {
+                foreach (var filterCap in this)
+                {
+                    stb.Append("(").Append("FilterCap: ").Append(filterCap.ToString()).Append("),");
+                }
+            }
+            stb.Append("),");
+            return stb.ToString();
         }
 
         #endregion

@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema targetNamespace="http://myspace.com/common.xsd"
+    elementFormDefault="qualified"
+    xmlns="http://myspace.com/common.xsd"
+    xmlns:mstns="http://myspace.com/common.xsd"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+>
+
+<xs:simpleType name="nonEmptyString">
+    <xs:restriction base="xs:string">
+        <xs:minLength value="1"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="versionWithWildcards">
+    <xs:restriction base="xs:string">
+        <xs:pattern value="(?:\d{1,5}|\*)(?:\.(?:\d{1,5}|\*)){3}"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="typeName">
+    <xs:restriction base="xs:string">
+        <xs:pattern value="\w+(?:\.\w+)*(?:\s*,\s*\w+(?:\.\w+)*(?:\s*,\s*\w+=[^,]+)*)?"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="assemblyName">
+    <xs:restriction base="xs:string">
+        <xs:pattern value="\w+(?:\.\w+)*(?:\s*,\s*\w+=[^,]+)*"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="csharpIdentifier">
+    <xs:restriction base="xs:string">
+        <xs:pattern value="[a-zA-Z][a-zA-Z0-9_]*"/>
+        <xs:maxLength value="100"/>
+    </xs:restriction>
+</xs:simpleType>
+
+</xs:schema>

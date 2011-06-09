@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using MySpace.Common.IO;
+using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
@@ -85,6 +86,20 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
             //AdditionalAvailableItemCount
             writer.Write(AdditionalAvailableItemCount);
+
+            //IndexCap
+            writer.Write(IndexCap);
+
+            //GroupByResult
+            if (GroupByResult == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, GroupByResult);
+            }
         }
 
         public override void Deserialize(IPrimitiveReader reader, int version)
@@ -105,12 +120,12 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
             //IndexIdIndexHeaderMapping
             ushort count = reader.ReadUInt16();
+            ushort len;
             if (count > 0)
             {
                 IndexIdIndexHeaderMapping = new Dictionary<byte[], IndexHeader>(count, new ByteArrayEqualityComparer());
                 byte[] indexId;
                 IndexHeader indexHeader;
-                ushort len;
 
                 for (ushort i = 0; i < count; i++)
                 {
@@ -152,9 +167,24 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
             //AdditionalAvailableItemCount
             AdditionalAvailableItemCount = reader.ReadInt32();
+
+            //IndexCap
+            if (version >= 2)
+            {
+                IndexCap = reader.ReadInt32();
+            }
+
+            if (version >= 3)
+            {
+                if (reader.ReadBoolean())
+                {
+                    GroupByResult = new GroupByResult(new BaseComparer(IsTagPrimarySort, SortFieldName, SortOrderList));
+                    Serializer.Deserialize(reader.BaseStream, GroupByResult);
+                }
+            }
         }
 
-        private const int CURRENT_VERSION = 1;
+        private const int CURRENT_VERSION = 3;
         public override int CurrentVersion
         {
             get

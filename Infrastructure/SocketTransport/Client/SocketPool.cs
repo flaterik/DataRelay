@@ -18,16 +18,16 @@ namespace MySpace.SocketTransport
 			Settings = settings;			
 			TimeSpan socketLifetime = new TimeSpan(0, 0, settings.SocketLifetimeMinutes, 0, 0);			
 			socketLifetimeTicks = socketLifetime.Ticks;
-            if (SocketClient.Config.UseSharedBufferPool)
-            {
-                rebufferedStreamPool = SocketManager.Instance.SharedBufferPool;
-            }
-            else
-            {
-                rebufferedStreamPool = new MemoryStreamPool(settings.InitialMessageSize, settings.BufferReuses);
-            }
+			if (SocketClient.config.UseSharedBufferPool)
+			{
+				rebufferedStreamPool = SocketManager.Instance.SharedBufferPool;
+			}
+			else
+			{
+				rebufferedStreamPool = new MemoryStreamPool(settings.InitialMessageSize, settings.BufferReuses);
+			}
 		}
-        protected Logging.LogWrapper log = new Logging.LogWrapper();
+		protected Logging.LogWrapper log = new Logging.LogWrapper();
 		protected IPEndPoint destination;
 		protected int poolSize;		
 		internal SocketSettings Settings;		

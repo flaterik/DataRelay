@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using Microsoft.Ccr.Core;
+using MySpace.Common;
 using MySpace.ResourcePool;
 using MySpace.Shared.Configuration;
 
@@ -22,18 +23,19 @@ namespace MySpace.SocketTransport
 	public delegate bool ConnectionWhitelist(IPEndPoint remoteEndpoint);
 	public class SocketServer
 	{
-		internal static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
-
+		internal static readonly Logging.LogWrapper log = new Logging.LogWrapper();
+		private readonly ParameterlessDelegate logConnectionClosed; //frequency bound
 		protected Byte[] emptyReplyBytes = { 241, 216, 255, 255 };
-		protected MemoryStream emptyReplyStream;
+		protected Byte[] serverCapabilityBytes = { 0, 1 };
+		protected MemoryStream emptyReplyStream, serverCapabilityStream;
 
-		protected ConnectionList connections = null;
-		protected Byte[] emptyMessage = new Byte[0] { };
+		protected ConnectionList connections;
+		protected Byte[] emptyMessage = new Byte[] { };
 		protected Byte[] trueBytes;
 		protected Byte[] falseBytes;
 
 		protected Timer connectionWatcher;
-		protected Socket listener = null;
+		protected Socket listener;
 		protected BinaryFormatter messageObjectFormatter = new BinaryFormatter();
 
 		protected int SyncThreads;
@@ -45,15 +47,15 @@ namespace MySpace.SocketTransport
 		protected Port<ProcessState> OnewayMessagePort = new Port<ProcessState>();
 		protected Port<ProcessState> SyncMessagePort = new Port<ProcessState>();
 
-		protected Thread timerThread = null; //used to increment the avg timer. Since everything else is multithreaded this needs its own thread
-		protected AsyncCallback acceptCallBack = null;
-		protected AsyncCallback receiveCallBack = null;
+		protected Thread timerThread; //used to increment the avg timer. Since everything else is multithreaded this needs its own thread
+		protected AsyncCallback acceptCallBack;
+		protected AsyncCallback receiveCallBack;
 
-		protected bool useNetworkOrder = false;
+		protected bool useNetworkOrder;
 
 		protected int initialMessageSize = 1024;
 		protected int maximumMessageSize = 20480;
-		protected bool discardTooBigMessages = false;
+		protected bool discardTooBigMessages;
 
 		protected byte[] messageTerminatorBytesHost = BitConverter.GetBytes(Int16.MinValue);
 		protected byte[] messageStarterBytesHost = BitConverter.GetBytes(Int16.MaxValue);
@@ -62,21 +64,64 @@ namespace MySpace.SocketTransport
 
 		protected WaitCallback processCall;
 
-		protected MemoryStreamPool bufferPool = null;
-		protected ResourcePool<ConnectionState> connectionStatePool = null;
+		protected MemoryStreamPool bufferPool;
+		protected ResourcePool<ConnectionState> connectionStatePool;
 		protected ResourcePool<ConnectionState>.BuildItemDelegate buildConnectionStateDelegate;
 		protected ResourcePool<ConnectionState>.ResetItemDelegate resetConnectionStateDelegate;
 
-		protected AsyncCallback replyCallBack = null;
-		private static int ReplyChannelCreationCommandId = Int32.MinValue;
+		protected AsyncCallback replyCallBack;
+
+		private bool sendSeverCapabilities;
+		private const short ServerCapabilitiesRequestCommandId = Int16.MinValue; 
+		private const short SendAckMessageId = Int16.MinValue;
 
 		private SocketServerConfig config;
 		private int maximumSockets;
 
 		public delegate bool AcceptNewConnectionDelegate();
+		public delegate bool AcceptNewRequestDelegate();
 		protected AcceptNewConnectionDelegate acceptNewConnectionDelegate;
+		protected AcceptNewRequestDelegate acceptNewRequestDelegate;
 
-		private bool DefaultAcceptDelegate() { return true; }
+		private static bool DefaultAcceptDelegate() { return true; }
+
+		/// <summary>
+		/// Create a new socket server listening on portNumber
+		/// </summary>
+		/// <param name="portNumber">The port to listen on</param>
+		public SocketServer(int portNumber)
+		{
+			this.portNumber = portNumber;
+			acceptCallBack = AcceptCallBack;
+			receiveCallBack = ReceiveCallBack;
+			replyCallBack = SendReplyCallback;
+
+			emptyReplyStream = new MemoryStream(4);
+			emptyReplyStream.Write(emptyReplyBytes, 0, 4);
+			emptyReplyStream.Seek(0, SeekOrigin.Begin);
+
+			serverCapabilityStream = new MemoryStream(serverCapabilityBytes.Length);
+			serverCapabilityStream.Write(serverCapabilityBytes, 0, serverCapabilityBytes.Length);
+			serverCapabilityStream.Seek(0, SeekOrigin.Begin);
+
+			trueBytes = BitConverter.GetBytes(true);
+			falseBytes = BitConverter.GetBytes(false);
+
+			acceptNewConnectionDelegate = DefaultAcceptDelegate;
+			acceptNewRequestDelegate = DefaultAcceptDelegate;
+			logConnectionClosed = Algorithm.FrequencyBoundMethod(timesSuppressed => log.WarnFormat("New Connection Closed. Server not accepting new connections. Mostly likely due to too many open sockets or pending requests. (Frequency Bound Log Message 1sec {0} logs suppressed)", timesSuppressed), TimeSpan.FromSeconds(1));
+		}
+
+		/// <summary>
+		/// Create a new socket server named instanceName, listening on portNumber
+		/// </summary>
+		/// <param name="instanceName">The name of the socket server instance for performance data</param>
+		/// <param name="portNumber">The port to listen on</param>
+		public SocketServer(string instanceName, int portNumber)
+			: this(portNumber)
+		{
+			this.instanceName = instanceName;
+		}
 
 		public AcceptNewConnectionDelegate AcceptingConnectionsDelegate
 		{
@@ -93,10 +138,30 @@ namespace MySpace.SocketTransport
 			}
 		}
 
+		public AcceptNewRequestDelegate AcceptingRequestsDelegate
+		{
+			set
+			{
+				if (value == null)
+				{
+					acceptNewRequestDelegate = DefaultAcceptDelegate;
+				}
+				else
+				{
+					acceptNewRequestDelegate = value;
+				}
+			}
+			get
+			{
+				return acceptNewRequestDelegate;
+			}
+		}
+
 		private ConnectionWhitelist connectionWhitelist;
 
 		private readonly object whitelistOnlyLock = new object();
 		private bool whitelistOnly;
+
 		/// <summary>
 		/// Gets or sets whether only whitelisted connections are allowed.
 		/// </summary>
@@ -191,31 +256,31 @@ namespace MySpace.SocketTransport
 			PerformanceCounterType.NumberOfItems32
 		};
 
-		protected PerformanceCounter socketCountCounter = null;
-		protected PerformanceCounter connectionsPerSecCounter = null;
-		protected PerformanceCounter syncPerSecCounter = null;
-		protected PerformanceCounter onewayPerSecCounter = null;
+		protected PerformanceCounter socketCountCounter;
+		protected PerformanceCounter connectionsPerSecCounter;
+		protected PerformanceCounter syncPerSecCounter;
+		protected PerformanceCounter onewayPerSecCounter;
 
-		protected PerformanceCounter allocatedBuffers = null;
-		protected PerformanceCounter requestsQueued = null;
+		protected PerformanceCounter allocatedBuffers;
+		protected PerformanceCounter requestsQueued;
 
-		protected PerformanceCounter avgHandlerTime = null;
-		protected PerformanceCounter avgHandlerTimeBase = null;
+		protected PerformanceCounter avgHandlerTime;
+		protected PerformanceCounter avgHandlerTimeBase;
 
-		protected PerformanceCounter freeWorkerThreadCounter = null;
-		protected PerformanceCounter freeCompletionThreadCounter = null;
+		protected PerformanceCounter freeWorkerThreadCounter;
+		protected PerformanceCounter freeCompletionThreadCounter;
 
-		protected PerformanceCounter activeWorkerThreadCounter = null;
-		protected PerformanceCounter activeCompletionThreadCounter = null;
+		protected PerformanceCounter activeWorkerThreadCounter;
+		protected PerformanceCounter activeCompletionThreadCounter;
 
-		protected string instanceName = null;
+		protected string instanceName;
 
 		public string InstanceName
 		{
 			get { return instanceName; }
 		}
 
-		protected bool countersInitialized = false;
+		protected bool countersInitialized;
 		#endregion
 
 		protected int connectionCheckInterval = 60000;
@@ -247,41 +312,9 @@ namespace MySpace.SocketTransport
 			}
 		}
 
-		public HandleAsyncMessage AsynMessageHandler = null;
-		private IAsyncMessageHandler asyncMessageHandler = null;
+		public HandleAsyncMessage AsynMessageHandler;
+		private IAsyncMessageHandler asyncMessageHandler;
 		public bool UseDefaultReplyHeader = true;
-
-		/// <summary>
-		/// Create a new socket server listening on portNumber
-		/// </summary>
-		/// <param name="portNumber">The port to listen on</param>
-		public SocketServer(int portNumber)
-		{
-			this.portNumber = portNumber;
-			acceptCallBack = AcceptCallBack;
-			receiveCallBack = ReceiveCallBack;
-			replyCallBack = SendReplyCallback;
-
-			emptyReplyStream = new MemoryStream(4);
-			emptyReplyStream.Write(emptyReplyBytes, 0, 4);
-			emptyReplyStream.Seek(0, SeekOrigin.Begin);
-
-			trueBytes = BitConverter.GetBytes(true);
-			falseBytes = BitConverter.GetBytes(false);
-
-			acceptNewConnectionDelegate = new AcceptNewConnectionDelegate(DefaultAcceptDelegate);
-		}
-
-		/// <summary>
-		/// Create a new socket server named instanceName, listening on portNumber
-		/// </summary>
-		/// <param name="instanceName">The name of the socket server instance for performance data</param>
-		/// <param name="portNumber">The port to listen on</param>
-		public SocketServer(string instanceName, int portNumber)
-			: this(portNumber)
-		{
-			this.instanceName = instanceName;
-		}
 
 		public void ReloadConfig(object sender, EventArgs args)
 		{
@@ -295,11 +328,29 @@ namespace MySpace.SocketTransport
 					log.Warn("No Socket Server Config Found. Using defaults.");
 				newConfig = new SocketServerConfig();
 			}
+			SetConfig(newConfig);
+		}
+
+		const string _configSectionName = "SocketServerConfig";
+
+		/// <summary>
+		///	<para>The configuration section name for the <see cref="SocketServerConfig"/>.</para>
+		/// </summary>
+		public static readonly string ConfigSectionName = _configSectionName;
+
+		public SocketServerConfig GetCurrentConfig()
+		{
+			return config;
+		}
+
+		public void SetConfig(SocketServerConfig newConfig)
+		{
 			maximumMessageSize = newConfig.MaximumMessageSize;
 			discardTooBigMessages = newConfig.DiscardTooBigMessages;
 			connectionCheckInterval = newConfig.ConnectionCheckIntervalSeconds;
 			useNetworkOrder = newConfig.UseNetworkOrder;
 			maximumSockets = (newConfig.MaximumOpenSockets == 0 ? Int32.MaxValue : newConfig.MaximumOpenSockets);
+			sendSeverCapabilities = newConfig.SendServerCapabilities;
 			int bufferInitMsgSize = newConfig.InitialMessageSize;
 			int bufferPoolReuses = newConfig.BufferPoolReuses;
 			int connectionStateReuses = newConfig.ConnectionStateReuses;
@@ -311,7 +362,7 @@ namespace MySpace.SocketTransport
 			if (config.MaximumWorkerThreads > 0) currentWorker = config.MaximumWorkerThreads;
 			if (config.MaximumCompletionPortThreads > 0) currentCompletion = config.MaximumCompletionPortThreads;
 			bool maxSet = ThreadPool.SetMaxThreads(currentWorker, currentCompletion);
-			
+
 			if (config.MaximumWorkerThreads > 0 || config.MaximumCompletionPortThreads > 0)
 			{
 				if (maxSet == false)
@@ -358,7 +409,7 @@ namespace MySpace.SocketTransport
 
 					Arbiter.Activate(newOnewayQueue,
 						Arbiter.Receive<ProcessState>(true,
-						OnewayMessagePort, delegate(ProcessState state) { ProcessCall(state); }));
+						OnewayMessagePort, ProcessCall));
 
 					OnewayMessageQueue = newOnewayQueue;
 					OnewayDispatcher = newOnewayDispatcher;
@@ -414,14 +465,7 @@ namespace MySpace.SocketTransport
 
 			config = newConfig;
 		}
-
-		const string _configSectionName = "SocketServerConfig";
-
-		/// <summary>
-		///	<para>The configuration section name for the <see cref="SocketServerConfig"/>.</para>
-		/// </summary>
-		public static readonly string ConfigSectionName = _configSectionName;
-
+		
 		private void GetConfig()
 		{
 			config = ConfigurationManager.GetSection(_configSectionName) as SocketServerConfig;
@@ -438,6 +482,8 @@ namespace MySpace.SocketTransport
 			initialMessageSize = config.InitialMessageSize;
 			maximumMessageSize = config.MaximumMessageSize;
 			discardTooBigMessages = config.DiscardTooBigMessages;
+			sendSeverCapabilities = config.SendServerCapabilities;
+
 			maximumSockets = (config.MaximumOpenSockets == 0 ? Int32.MaxValue : config.MaximumOpenSockets);
 			if (log.IsInfoEnabled)
 			{
@@ -463,7 +509,7 @@ namespace MySpace.SocketTransport
 				OnewayThreads = Environment.ProcessorCount * Dispatcher.ThreadsPerCpu;
 			}
 
-			XmlSerializerSectionHandler.RegisterReloadNotification(typeof(SocketServerConfig), new EventHandler(ReloadConfig));
+			XmlSerializerSectionHandler.RegisterReloadNotification(typeof(SocketServerConfig), ReloadConfig);
 		}
 
 		/// <summary>
@@ -477,7 +523,7 @@ namespace MySpace.SocketTransport
 			if (isRunning)
 			{
 				if (log.IsWarnEnabled)
-					log.Warn("Attempt to start already running socket server on port " + this.portNumber);
+					log.Warn("Attempt to start already running socket server on port " + portNumber);
 				return;
 			}
 
@@ -536,14 +582,14 @@ namespace MySpace.SocketTransport
 			//kick off CCR
 			OnewayDispatcher = new Dispatcher(OnewayThreads, ThreadPriority.Normal, true, "Socket Server OneWay:" + portNumber.ToString());
 			SyncDispatcher = new Dispatcher(SyncThreads, ThreadPriority.AboveNormal, true, "Socket Server Sync:" + portNumber.ToString());
-			OnewayMessageQueue = new DispatcherQueue("Socket Server " + portNumber.ToString() + " one way", OnewayDispatcher, TaskExecutionPolicy.ConstrainQueueDepthThrottleExecution, config.OnewayQueueDepth);
-			SyncMessageQueue = new DispatcherQueue("Socket Server " + portNumber.ToString() + " sync", SyncDispatcher, TaskExecutionPolicy.ConstrainQueueDepthThrottleExecution, config.SyncQueueDepth);
+			OnewayMessageQueue = new DispatcherQueue("Socket Server " + portNumber.ToString() + " one way", OnewayDispatcher, TaskExecutionPolicy.Unconstrained, config.OnewayQueueDepth);
+			SyncMessageQueue = new DispatcherQueue("Socket Server " + portNumber.ToString() + " sync", SyncDispatcher, TaskExecutionPolicy.Unconstrained, config.SyncQueueDepth);
 
 			Arbiter.Activate(OnewayMessageQueue,
-				Arbiter.Receive<ProcessState>(true, OnewayMessagePort, delegate(ProcessState state) { ProcessCall(state); }));
+				Arbiter.Receive<ProcessState>(true, OnewayMessagePort, ProcessCall));
 
 			Arbiter.Activate(SyncMessageQueue,
-				Arbiter.Receive<ProcessState>(true, SyncMessagePort, delegate(ProcessState state) { ProcessCall(state); }));
+				Arbiter.Receive<ProcessState>(true, SyncMessagePort, ProcessCall));
 
 			listener.Bind(new IPEndPoint(IPAddress.Any, this.portNumber));
 
@@ -783,43 +829,47 @@ namespace MySpace.SocketTransport
 		{
 			try
 			{
-				Socket listener = ar.AsyncState as Socket;
+				Socket listener = (Socket)ar.AsyncState;
 				Socket connection = null;
-				if (AcceptingNew)
+				
+				try
 				{
-					try
+					connection = listener.EndAccept(ar);
+
+					if (AcceptNewConnections() == false)
 					{
-
-						connection = listener.EndAccept(ar);
-
-						if (whitelistOnly && connectionWhitelist != null &&
-							!connectionWhitelist((IPEndPoint)connection.RemoteEndPoint))
-						{
-							connection.Close();
-							return;
-						}
-
-						if (countersInitialized)
-						{
-							connectionsPerSecCounter.Increment();
-						}
-
-					}
-					catch (ObjectDisposedException)
-					{
+						logConnectionClosed(); 
+						connection.Close();
 						return;
 					}
 
-					connection.ReceiveTimeout = config.ReceiveTimeout;
-					connection.ReceiveBufferSize = config.ReceiveBufferSize;
-					connection.SendTimeout = config.SendTimeout;
-					connection.SendBufferSize = config.SendBufferSize;
-					ResourcePoolItem<ConnectionState> connectionStateItem = connectionStatePool.GetItem();
-					ConnectionState connectionState = connectionStateItem.Item;
-					connectionState.WorkSocket = connection;
-					connections.Add(connectionState);
-					connection.BeginReceive(connectionState.networkBuffer, 0, connectionState.BufferSize, SocketFlags.None, receiveCallBack, connectionStateItem);
+					if (whitelistOnly && connectionWhitelist != null &&
+						!connectionWhitelist((IPEndPoint)connection.RemoteEndPoint))
+					{
+						connection.Close();
+						return;
+					}
+
+					if (countersInitialized)
+					{
+						connectionsPerSecCounter.Increment();
+					}
+
 				}
+				catch (ObjectDisposedException)
+				{
+					return;
+				}
+
+				connection.ReceiveTimeout = config.ReceiveTimeout;
+				connection.ReceiveBufferSize = config.ReceiveBufferSize;
+				connection.SendTimeout = config.SendTimeout;
+				connection.SendBufferSize = config.SendBufferSize;
+				ResourcePoolItem<ConnectionState> connectionStateItem = connectionStatePool.GetItem();
+				ConnectionState connectionState = connectionStateItem.Item;
+				connectionState.WorkSocket = connection;
+				connections.Add(connectionState);
+				connection.BeginReceive(connectionState.networkBuffer, 0, connectionState.BufferSize, SocketFlags.None, receiveCallBack, connectionStateItem);
 			}
 			catch (SocketException sex)
 			{
@@ -850,12 +900,9 @@ namespace MySpace.SocketTransport
 			}
 		}
 
-		private bool AcceptingNew
+		private bool AcceptNewConnections()
 		{
-			get
-			{
-				return connections.SocketCount < maximumSockets && acceptNewConnectionDelegate();
-			}
+			return connections.SocketCount < maximumSockets && acceptNewConnectionDelegate();
 		}
 
 		private ConnectionState BuildConnectionState()
@@ -995,7 +1042,11 @@ namespace MySpace.SocketTransport
 								//we have enough data for a message
 								lock (state)
 								{
-									HandleCompleteConnectionState(state);
+									if (HandleCompleteSentData(state) == false)
+									{
+										CloseConnection(stateItem);
+										return;
+									}
 									if (state.messagePosition > state.messageSize)
 									{
 										//there's some of the next message in the buffer already
@@ -1029,13 +1080,7 @@ namespace MySpace.SocketTransport
 						{
 							if (log.IsErrorEnabled)
 								log.ErrorFormat("Error beginning another receive: {0}", beginError);
-							if (!connection.Connected)
-							{
-								connection.Shutdown(SocketShutdown.Both);
-								connection.Close();
-							}
-							RemoveConnection(state);
-							connectionStatePool.ReleaseItem(stateItem);
+							CloseConnection(stateItem);
 						}
 					}
 					else
@@ -1046,14 +1091,7 @@ namespace MySpace.SocketTransport
 				}
 				else if (endError == SocketError.Success) //Successful notififcation of 0 byte read - this means the client disconnected cleanly.
 				{
-					//LoggingWrapper.Write("Client ended connection.", "Socket Server Trace");
-					if (connection.Connected)
-					{
-						connection.Shutdown(SocketShutdown.Both);
-						connection.Close();
-					}
-					RemoveConnection(state);
-					connectionStatePool.ReleaseItem(stateItem);
+					CloseConnection(stateItem);
 				}
 				else //endError != Success
 				{
@@ -1062,14 +1100,7 @@ namespace MySpace.SocketTransport
 						if (log.IsErrorEnabled)
 							log.ErrorFormat("Socket Error during EndReceive from {0}: {1}.", state.remoteEndPoint, endError);
 					}
-					if (!connection.Connected)
-					{
-						//RemoveConnection(connection);
-						connection.Shutdown(SocketShutdown.Both);
-						connection.Close();
-					}
-					RemoveConnection(state);
-					connectionStatePool.ReleaseItem(stateItem);
+					CloseConnection(stateItem);
 				}
 			}
 			catch (SocketException se)
@@ -1078,14 +1109,7 @@ namespace MySpace.SocketTransport
 					log.ErrorFormat("Socket Exception during ReceiveCallback: {0}. Removing Connection.", se.SocketErrorCode);
 				try
 				{
-					//RemoveConnection(connection);
-					if (connection.Connected)
-					{
-						connection.Shutdown(SocketShutdown.Both);
-						connection.Close();
-					}
-					RemoveConnection(state);
-					connectionStatePool.ReleaseItem(stateItem);
+					CloseConnection(stateItem);
 				}
 				catch (Exception e)
 				{
@@ -1098,14 +1122,32 @@ namespace MySpace.SocketTransport
 			}
 		}
 
+		private void CloseConnection(ResourcePoolItem<ConnectionState> stateItem)
+		{
+			ConnectionState state = stateItem.Item;
+			Socket connection = state.WorkSocket;
+			if (connection.Connected)
+			{
+				connection.Shutdown(SocketShutdown.Both);
+				connection.Close();
+			}
+			RemoveConnection(state);
+			connectionStatePool.ReleaseItem(stateItem);
+		}
+
 		private int GetMessageSize(MemoryStream memoryStream)
 		{
 			return GetHostOrdered(BitConverter.ToInt32(memoryStream.GetBuffer(), 2), useNetworkOrder);
 		}
 
-		protected void HandleCompleteConnectionState(ConnectionState state)
+		/// <summary>
+		/// Handles a complete message.
+		/// </summary>
+		/// <param name="state">The state.</param>
+		/// <returns>Returns <see langword="false"/> we can't handle any more requests from this client.</returns>
+		protected bool HandleCompleteSentData(ConnectionState state)
 		{
-			bool sendReply = false;
+			bool sendReply, sendAck;
 
 			byte[] buff = state.messageBuffer.GetBuffer();
 			short commandId = 0;
@@ -1123,7 +1165,9 @@ namespace MySpace.SocketTransport
 					commandId = BitConverter.ToInt16(buff, 6);
 					messageId = BitConverter.ToInt16(buff, 8);
 				}
+
 				sendReply = BitConverter.ToBoolean(buff, 10);
+				sendAck = (messageId == SendAckMessageId);
 				if (countersInitialized)
 				{
 					if (sendReply)
@@ -1137,7 +1181,7 @@ namespace MySpace.SocketTransport
 				if (log.IsErrorEnabled)
 					log.ErrorFormat("Socket Server Exception extracting message info from {0}: {1} . Resetting connection state.", state.remoteEndPoint, e);
 				ResetConnectionStateMessageBuffer(state);
-				return;
+				return true;
 			}
 
 			if (!CheckForMessageTerminator(buff, state.messageSize))
@@ -1146,65 +1190,62 @@ namespace MySpace.SocketTransport
 					log.ErrorFormat("Message without end terminator found from {0}. Resetting connection state.", state.remoteEndPoint);
 
 				ResetConnectionStateMessageBuffer(state);
-				return;
+				return true;
 			}
-
-
-
 
 			try
 			{
-				#region if replychannel
-				if (commandId == SocketServer.ReplyChannelCreationCommandId)
+
+				ResourcePoolItem<MemoryStream> messageBuffer = bufferPool.GetItem();
+				try
 				{
-					try
-					{
-						byte[] justAddress = new byte[4];
-						Array.Copy(buff, 11, justAddress, 0, 4);
-						IPAddress sendChannelAddress = new IPAddress(justAddress);
-						IPEndPoint sendChannelEndPoint = new IPEndPoint(sendChannelAddress, BitConverter.ToInt32(buff, 15));
+					messageBuffer.Item.Write(buff, 11, state.messageSize - 13);
+					messageBuffer.Item.Seek(0, SeekOrigin.Begin);
 
-						connections[sendChannelEndPoint].ReplySocket = state.WorkSocket;
-						SendReplyChannelConfirmation(state.WorkSocket, true);
+					ReplyType replyType = ReplyType.None;
+					if (sendAck)
+						replyType = ReplyType.SendAck;
+					if (sendReply)
+					{
+						if(sendAck)
+							log.ErrorFormat("Received message with both send ack and send reply set from {0}. Ack will be sent but client will error out waiting for reply.", state.remoteEndPoint);
+						replyType = ReplyType.SendReply;
 					}
-					catch (Exception ex)
-					{
-						if (log.IsErrorEnabled)
-							log.ErrorFormat("Socket Server Exception creating reply socket for {0}: {1}", state.remoteEndPoint, ex);
-						SendReplyChannelConfirmation(state.WorkSocket, false);
-					}
-				}
-				#endregion
-				else
-				{
-					ResourcePoolItem<MemoryStream> messageBuffer = bufferPool.GetItem();
-					ProcessState processState = null;
-					try
-					{
-						messageBuffer.Item.Write(buff, 11, state.messageSize - 13);
-						messageBuffer.Item.Seek(0, SeekOrigin.Begin);
 
-						processState = new ProcessState(state.ReplySocket, commandId, messageId, sendReply, messageBuffer, state.messageSize - 13);
+					ProcessState processState = new ProcessState(state.ReplySocket, commandId, messageId, replyType, messageBuffer,
+					                                             state.messageSize - 13);
 
-						if (sendReply)
+					if (sendReply)
+					{
+						if (SyncDispatcher.PendingTaskCount < config.SyncQueueDepth && AcceptingRequestsDelegate())
 						{
 							SyncMessagePort.Post(processState);
 						}
 						else
 						{
-
-							OnewayMessagePort.Post(processState);
+							return false; //will cause connection to close
 						}
 					}
-					catch (Exception ex)
+					else
 					{
-
-						if (log.IsErrorEnabled)
-							log.ErrorFormat("Socket Server Exception enqueueing message work item for {0}: {1}. Releasing buffer.", state.remoteEndPoint, ex);
-						bufferPool.ReleaseItem(messageBuffer);
+						if (OnewayDispatcher.PendingTaskCount < config.OnewayQueueDepth && AcceptingRequestsDelegate())
+						{
+							OnewayMessagePort.Post(processState);
+						}
+						else
+						{
+							return false; //will cause connection to close
+						}
 					}
 				}
+				catch (Exception ex)
+				{
 
+					if (log.IsErrorEnabled)
+						log.ErrorFormat("Socket Server Exception enqueueing message work item for {0}: {1}. Releasing buffer.",
+						                state.remoteEndPoint, ex);
+					bufferPool.ReleaseItem(messageBuffer);
+				}
 			}
 			catch (Exception ex)
 			{
@@ -1212,77 +1253,75 @@ namespace MySpace.SocketTransport
 				if (log.IsErrorEnabled)
 					log.ErrorFormat("Socket Server Exception while handling message for {0}: {1}. Resetting message state.", state.remoteEndPoint, ex);
 				ResetConnectionStateMessageBuffer(state);
-				return;
+				return true;
 			}
-		}
 
-
-
-		private void SendReplyChannelConfirmation(Socket socket, bool success)
-		{
-			try
-			{
-				socket.Send(success ? trueBytes : falseBytes);
-			}
-			catch (Exception ex)
-			{
-
-				if (log.IsErrorEnabled)
-					log.ErrorFormat("Error sending reply channel confirmation: {0}", ex);
-			}
+			return true;
 		}
 
 		protected void ProcessCall(ProcessState state)
 		{
-			MemoryStream messageStream = null;
 			MemoryStream replyStream = null;
-
+			bool ackSuccessful = true; //default to true, because we don't always try to send one
 			MessageState message = null;
 			try
 			{
-				messageStream = state.message.Item;
-
-				if (asyncMessageHandler != null)
+				if (state.ReplyType == ReplyType.SendAck)
 				{
-					message = new MessageState
-					{
-						CommandId = state.commandId,
-						Message = messageStream,
-						Length = state.messageLength,
-						ClientIP = state.remoteEndpoint
-					};
-
-					asyncMessageHandler.BeginHandleMessage(message, (asyncResult) =>
-					{
-						try
-						{
-							MemoryStream reply = asyncMessageHandler.EndHandleMessage(asyncResult);
-							CompleteProcessCall(state, reply); //not APM
-						}
-						catch (Exception exc)
-						{
-							if (log.IsErrorEnabled)
-								log.Error(exc);
-						}
-					});
-
-					return; //very important
+					ackSuccessful = SendReply(state, null); //sendack is mutually exclusive with sendreply, so we just do this and then carry on. 
 				}
 
-				if (AsynMessageHandler != null)
+				MemoryStream messageStream = state.Message.Item;
+
+				if (sendSeverCapabilities && state.CommandId == ServerCapabilitiesRequestCommandId)
 				{
-					replyStream = AsynMessageHandler.Invoke((int)state.commandId, messageStream, state.remoteEndpoint.Address);
+				    replyStream = serverCapabilityStream;
 				}
-				else if (MessageHandler != null)
+				else if(ackSuccessful) //we do not want to process the message if the sender thinks the ack failed
 				{
-					replyStream = MessageHandler.HandleMessage((int)state.commandId, messageStream, state.messageLength);
+					if (asyncMessageHandler != null)
+					{
+						message = new MessageState
+						          	{
+						          		CommandId = state.CommandId,
+						          		Message = messageStream,
+						          		Length = state.MessageLength,
+						          		ClientIP = state.RemoteEndpoint
+						          	};
+
+						asyncMessageHandler.BeginHandleMessage(message, (asyncResult) =>
+						                                                	{
+						                                                		try
+						                                                		{
+						                                                			MemoryStream reply =
+						                                                				asyncMessageHandler.EndHandleMessage(asyncResult);
+						                                                			CompleteProcessCall(state, reply); //not APM
+						                                                		}
+						                                                		catch (Exception exc)
+						                                                		{
+						                                                			if (log.IsErrorEnabled)
+						                                                				log.Error(exc);
+						                                                		}
+						                                                	});
+
+						return; //very important
+					}
+
+					if (AsynMessageHandler != null)
+					{
+						replyStream = AsynMessageHandler.Invoke((int) state.CommandId, messageStream, state.RemoteEndpoint.Address);
+					}
+					else if (MessageHandler != null)
+					{
+						replyStream = MessageHandler.HandleMessage((int) state.CommandId, messageStream, state.MessageLength);
+					}
 				}
 			}
 			catch (Exception ex)
 			{
 				try
 				{
-					string endPoint = state.socket.RemoteEndPoint.ToString();
+					string endPoint = state.Socket.RemoteEndPoint.ToString();
 
 					if (log.IsErrorEnabled)
 						log.ErrorFormat("Socket Server Exception handling message from {0}: {1}.", endPoint, ex);
@@ -1297,8 +1336,8 @@ namespace MySpace.SocketTransport
 					message.Message = null;
 					message.Length = 0;
 				}
-				bufferPool.ReleaseItem(state.message);
-				state.message = null;
+				bufferPool.ReleaseItem(state.Message);
+				state.Message = null;
 			}
 
 			CompleteProcessCall(state, replyStream);
@@ -1311,13 +1350,13 @@ namespace MySpace.SocketTransport
 				avgHandlerTimeBase.Increment();
 			}
 
-			if (state.sendReply)
+			if (state.ReplyType == ReplyType.SendReply)
 			{
 				SendReply(state, replyStream);
 			}
 		}
 
-		private void SendReply(ProcessState state, MemoryStream replyStream)
+		private bool SendReply(ProcessState state, MemoryStream replyStream)
 		{
 			int replyLength;
 			if (replyStream == null)
@@ -1329,80 +1368,83 @@ namespace MySpace.SocketTransport
 			{
 				replyLength = (int)replyStream.Length;
 			}
-			SendReply(state, replyStream, replyLength);
+			return SendReply(state, replyStream, replyLength);
 		}
 
-		protected void SendReply(ProcessState state, MemoryStream reply, int replyLength)
+		protected bool SendReply(ProcessState state, MemoryStream reply, int replyLength)
 		{
 			SocketError socketError;
 			try
 			{
 				int replySize = replyLength + 4;
-				if (state.messageId != 0) //if the client sent a message Id, we need to send it back
+				if (state.MessageId != 0) //if the client sent a message Id, we need to send it back
 				{
 					replySize += 2;
 				}
 
-				state.replyBuffer = bufferPool.GetItem();
-				if (state.replyBuffer.Item.Position > 0)
+				state.ReplyBuffer = bufferPool.GetItem();
+				if (state.ReplyBuffer.Item.Position > 0)
 				{
 
 					if (log.IsErrorEnabled)
-						log.ErrorFormat("Buffer from pool had position {0}!. Resetting position and length.", state.replyBuffer.Item.Position.ToString("N0"));
-					state.replyBuffer.Item.Seek(0, SeekOrigin.Begin);
-					state.replyBuffer.Item.SetLength(0);
+						log.ErrorFormat("Buffer from pool had position {0}!. Resetting position and length.", state.ReplyBuffer.Item.Position.ToString("N0"));
+					state.ReplyBuffer.Item.Seek(0, SeekOrigin.Begin);
+					state.ReplyBuffer.Item.SetLength(0);
 				}
 				if (UseDefaultReplyHeader)
 				{
-					state.replyBuffer.Item.Write(BitConverter.GetBytes(GetNetworkOrdered(replySize, useNetworkOrder)), 0, 4);
-					if (state.messageId != 0)
+					state.ReplyBuffer.Item.Write(BitConverter.GetBytes(GetNetworkOrdered(replySize, useNetworkOrder)), 0, 4);
+					if (state.MessageId != 0)
 					{
-						state.replyBuffer.Item.Write(BitConverter.GetBytes(GetNetworkOrdered(state.messageId, useNetworkOrder)), 0, 2);
+						state.ReplyBuffer.Item.Write(BitConverter.GetBytes(GetNetworkOrdered(state.MessageId, useNetworkOrder)), 0, 2);
 					}
-					state.replyBuffer.Item.Write(reply.GetBuffer(), 0, replyLength);
+					state.ReplyBuffer.Item.Write(reply.GetBuffer(), 0, replyLength);
 				}
-				if (state.socket.Connected)
+				
+				if (state.Socket.Connected)
 				{
-					state.socket.BeginSend(state.replyBuffer.Item.GetBuffer(), 0, replySize, SocketFlags.None, out socketError, replyCallBack, state);
+					state.Socket.BeginSend(state.ReplyBuffer.Item.GetBuffer(), 0, replySize, SocketFlags.None, out socketError, replyCallBack, state);
 					if (socketError != SocketError.Success)
 					{
 						if (log.IsErrorEnabled)
-							log.ErrorFormat("Error sending reply to {0}: {1}.", state.remoteEndpoint, socketError);
-						if (!state.socket.Connected)
+							log.ErrorFormat("Error sending reply to {0}: {1}.", state.RemoteEndpoint, socketError);
+						if (!state.Socket.Connected)
 						{
-							state.socket.Shutdown(SocketShutdown.Both);
-							state.socket.Close();
+							state.Socket.Shutdown(SocketShutdown.Both);
+							state.Socket.Close();
 						}
-						RemoveConnection(state.remoteEndpoint);
+						RemoveConnection(state.RemoteEndpoint);
+						return false;
 					}
+					return true;
 				}
 				else
 				{
-
 					if (log.IsErrorEnabled)
-						log.ErrorFormat("Connection dropped before reply sent to {0}", state.remoteEndpoint);
-					bufferPool.ReleaseItem(state.replyBuffer);
-					state.replyBuffer = null;
+						log.ErrorFormat("Connection dropped before reply sent to {0}", state.RemoteEndpoint);
+					bufferPool.ReleaseItem(state.ReplyBuffer);
+					state.ReplyBuffer = null;
+					return false;
 				}
 			}
 			catch (SocketException ex)
 			{
-				if (state.replyBuffer != null)
+				if (state.ReplyBuffer != null)
 				{
-					bufferPool.ReleaseItem(state.replyBuffer);
-					state.replyBuffer = null;
+					bufferPool.ReleaseItem(state.ReplyBuffer);
+					state.ReplyBuffer = null;
 				}
 
 				if (log.IsErrorEnabled)
-					log.ErrorFormat("Socket Exception during SendReply to {0}: {1}.  Removing connection.", state.remoteEndpoint, ex);
+					log.ErrorFormat("Socket Exception during SendReply to {0}: {1}.  Removing connection.", state.RemoteEndpoint, ex);
 				try
 				{
-					if (state.socket.Connected)
+					if (state.Socket.Connected)
 					{
-						state.socket.Shutdown(SocketShutdown.Both);
-						state.socket.Close();
+						state.Socket.Shutdown(SocketShutdown.Both);
+						state.Socket.Close();
 					}
-					RemoveConnection(state.remoteEndpoint);
+					RemoveConnection(state.RemoteEndpoint);
 				}
 				catch (Exception exc)
 				{
@@ -1410,25 +1452,29 @@ namespace MySpace.SocketTransport
 					if (log.IsErrorEnabled)
 						log.ErrorFormat("Socket Server Exception attempted to remove connection in SendReply exception cleanup: {0}", exc);
 				}
+				return false;
 			}
 			catch (ObjectDisposedException)
 			{
-				if (state.replyBuffer != null)
+				if (state.ReplyBuffer != null)
 				{
-					bufferPool.ReleaseItem(state.replyBuffer);
-					state.replyBuffer = null;
+					bufferPool.ReleaseItem(state.ReplyBuffer);
+					state.ReplyBuffer = null;
 				}
+				return false;
 			}
 			catch (Exception ex)
 			{
-				if (state.replyBuffer != null)
+				if (state.ReplyBuffer != null)
 				{
-					bufferPool.ReleaseItem(state.replyBuffer);
-					state.replyBuffer = null;
+					bufferPool.ReleaseItem(state.ReplyBuffer);
+					state.ReplyBuffer = null;
 				}
 
 				if (log.IsErrorEnabled)
-					log.ErrorFormat("Socket Server Exception during SendReply to {0}: {1}.", state.remoteEndpoint, ex);
+					log.ErrorFormat("Socket Server Exception during SendReply to {0}: {1}.", state.RemoteEndpoint, ex);
+				
+				return false;
 			}
 		}
 
@@ -1463,24 +1509,24 @@ namespace MySpace.SocketTransport
 			ProcessState state = ar.AsyncState as ProcessState;
 			try
 			{
-				if (state.socket.Connected)
+				if (state.Socket.Connected)
 				{
-					state.socket.EndSend(ar);
+					state.Socket.EndSend(ar);
 				}
 			}
 			catch (SocketException ex)
 			{
 
 				if (log.IsErrorEnabled)
-					log.ErrorFormat("Socket Exception during SendReplyCallback to {0}: {1}. Removing connection.", state.remoteEndpoint, ex);
+					log.ErrorFormat("Socket Exception during SendReplyCallback to {0}: {1}. Removing connection.", state.RemoteEndpoint, ex);
 				try
 				{
-					if (state.socket.Connected)
+					if (state.Socket.Connected)
 					{
-						state.socket.Shutdown(SocketShutdown.Both);
-						state.socket.Close();
+						state.Socket.Shutdown(SocketShutdown.Both);
+						state.Socket.Close();
 					}
-					RemoveConnection(state.remoteEndpoint);
+					RemoveConnection(state.RemoteEndpoint);
 				}
 				catch (Exception exc)
 				{
@@ -1495,8 +1541,8 @@ namespace MySpace.SocketTransport
 			}
 			finally
 			{
-				bufferPool.ReleaseItem(state.replyBuffer);
-				state.replyBuffer = null;
+				bufferPool.ReleaseItem(state.ReplyBuffer);
+				state.ReplyBuffer = null;
 			}
 		}
 

@@ -53,5 +53,7 @@ namespace MySpace.SocketTransport
 		public int MaximumCompletionPortThreads = 100;
 		[XmlElement("MaximumOpenSockets")]
 		public int MaximumOpenSockets = 0;
+		[XmlElement("SendServerCapabilities")] //whether or not to treat Int16.MinValue as a special command to request sever capabilities
+		public bool SendServerCapabilities = true;
 	}
 }

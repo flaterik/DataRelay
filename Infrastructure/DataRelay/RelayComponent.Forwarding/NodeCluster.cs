@@ -16,21 +16,16 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		internal Node Me; //The server the code is running on
 
 		// Nodes organized by their designated Zones
-		internal Dictionary<ushort, List<Node>> ZoneNodes = new Dictionary<ushort, List<Node>>();
 		internal Dictionary<ushort, Node> ChosenZoneNodes = new Dictionary<ushort, Node>();
 		private readonly object _chooseZoneNodeLock = new object();
 
 		internal List<Node> Nodes = new List<Node>(); //All nodes in the cluster EXCEPT "Me"
-		internal readonly int   MaximumHops = 10; //the maximum number of hops to consider for network topography mapping. > this will all be treated as == this
-		internal int            NodeSelectionHopWindowSize = 1; //The size, in hops, of the sliding window used to define each layer in NodeLayers
 
-		private static readonly LogWrapper _log = new LogWrapper();
+		private static readonly LogWrapper log = new LogWrapper();
 
 		private readonly NodeGroup _nodeGroup;
-		private List<Node>[]    _nodesByNumberOfHops; //first index: # hops. second index: node index in cluster
-		private List<Node>[]    _nodeLayers; //NodesByNumberOfHops composed into layers based on selection window size
-		private List<Node>[]    _nodesByDetectedZone; //Divided using detectedZone, based on the zonedefinition node instead of the per-node zone definition
-		private bool            _mapNetwork = true;
+		
+		private List<Node>[]    _nodesByZone; //Divided using detectedZone, based on the zonedefinition node instead of the per-node zone definition
 		private ushort          _localZone; //determined by local ip address and zone definition config, NOT the zone on the node
 		private ZoneDefinitionCollection _zoneDefinitions; //kept around just to see if it's changed during a config reload        
 		private readonly RelayNodeClusterDefinition _clusterDefinition;
@@ -63,16 +58,21 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			return sb.ToString();
 		}
 
+		internal static string GetMessageQueueNameFor(RelayNodeDefinition nodeDefinition)
+		{
+			return "Relay Node " + nodeDefinition;
+		}
+
 		internal NodeCluster(RelayNodeClusterDefinition clusterDefinition, RelayNodeConfig nodeConfig, NodeGroup nodeGroup, ForwardingConfig forwardingConfig)
 		{
 			_nodeGroup = nodeGroup;
 			_clusterDefinition = clusterDefinition;
 			_minimumId = clusterDefinition.MinId;
 			_maximumId = clusterDefinition.MaxId;
-			NodeSelectionHopWindowSize = nodeGroup.NodeSelectionHopWindowSize;
+			
 			RelayNodeDefinition meDefinition = nodeConfig.GetMyNode();
 			_meInThisCluster = false;
-			_mapNetwork = forwardingConfig.MapNetwork;
+			
 			_localZone = nodeConfig.GetLocalZone();
 			_zoneDefinitions = nodeConfig.RelayNodeMapping.ZoneDefinitions;
 			foreach (RelayNodeDefinition nodeDefinition in clusterDefinition.RelayNodes)
@@ -84,10 +84,10 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 			
 			DispatcherQueue nodeInQueue, nodeOutQueue;
-
+			
 			if (_meInThisCluster)
 			{
-				GetMessageQueuesFor(meDefinition, clusterDefinition,
+				GetMessageQueuesFor(GetMessageQueueNameFor(meDefinition), clusterDefinition,
 					NodeManager.Instance.InMessageDispatcher, NodeManager.Instance.OutMessageDispatcher,
 					out nodeInQueue, out nodeOutQueue);
 
@@ -100,39 +100,27 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			{
 				if (nodeDefinition != meDefinition)
 				{
-					GetMessageQueuesFor(nodeDefinition, clusterDefinition,
+					GetMessageQueuesFor(GetMessageQueueNameFor(nodeDefinition), clusterDefinition,
 						NodeManager.Instance.InMessageDispatcher, NodeManager.Instance.OutMessageDispatcher,
 						out nodeInQueue, out nodeOutQueue);
 					Node node = new Node(nodeDefinition, nodeGroup, this, forwardingConfig,
 						nodeInQueue, nodeOutQueue);
 
 					Nodes.Add(node);
-
-					if (node.DetectedZone > maxDetectedZone)
-					{
-						maxDetectedZone = node.DetectedZone;
-					}
+					
 					if (node.Zone > maxDetectedZone)
 					{
 						maxDetectedZone = node.Zone;
 					}
-
-					if (!ZoneNodes.ContainsKey(nodeDefinition.Zone))
-					{
-						ZoneNodes[nodeDefinition.Zone] = new List<Node>();
-					}
-
-					ZoneNodes[nodeDefinition.Zone].Add(node);
+					
 				}				
 			}
-
-			_nodesByNumberOfHops = CalculateTopography(Nodes, MaximumHops);
-			_nodeLayers = CalculateNodeLayers(_nodesByNumberOfHops, NodeSelectionHopWindowSize);
-			_nodesByDetectedZone = CalculateNodesByDetectedZone(Nodes, maxDetectedZone);
+			
+			_nodesByZone = CalculateNodesByZone(Nodes, maxDetectedZone);
 		}
 
 		#region Node Mapping 
-		private static List<Node>[] CalculateNodesByDetectedZone(IEnumerable<Node> nodes, ushort maxDetectedZone)
+		private static List<Node>[] CalculateNodesByZone(IEnumerable<Node> nodes, ushort maxDetectedZone)
 		{
 			List<Node>[] nodesByDetectedZone = new List<Node>[maxDetectedZone + 1];
 			for (int i = 0; i < nodesByDetectedZone.Length; i++)
@@ -143,93 +131,20 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			{
 				foreach (Node node in nodes)
 				{
-					if (node.DetectedZone != 0)
-					{
-						nodesByDetectedZone[node.DetectedZone].Add(node);
-					}
-					else
-					{
-						nodesByDetectedZone[node.Zone].Add(node);
-					}
+					nodesByDetectedZone[node.Zone].Add(node);
 				}
 
 			}
 			catch (Exception e)
 			{
-				if (_log.IsErrorEnabled)
-					_log.ErrorFormat("Error calculating nodes by detected zone: {0}", e);
+				if (log.IsErrorEnabled)
+					log.ErrorFormat("Error calculating nodes by detected zone: {0}", e);
 				nodesByDetectedZone = null;
 			}
 			return nodesByDetectedZone;
 		}
 
-		/// <summary>
-		/// Creates a list of nodes indexed by the number of hops away they are from here.
-		/// </summary>        
-		private static List<Node>[] CalculateTopography(List<Node> nodes, int maximumHops)
-		{
-			List<Node>[] nodesByNumberOfHops; 
-			try
-			{
-				nodesByNumberOfHops = new List<Node>[maximumHops + 1];
-				foreach (Node node in nodes)
-				{
-					if (node.HopsFromHere >= 0)
-					{
-						if (nodesByNumberOfHops[node.HopsFromHere] == null)
-						{
-							nodesByNumberOfHops[node.HopsFromHere] = new List<Node>(nodes.Count);
-						}
-						nodesByNumberOfHops[node.HopsFromHere].Add(node);
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				if (_log.IsErrorEnabled)
-					_log.ErrorFormat("Exception generating network topgraphy map: {0}. Will use flat map for this cluster.", ex);
-				nodesByNumberOfHops = new List<Node>[2];
-				nodesByNumberOfHops[1] = nodes;
-			}
-			return nodesByNumberOfHops;
-		}
 
-		/// <summary>
-		/// This transforms a list indexed by number of hops into layers based on a sliding window size.
-		/// This tries to treat nodes that are within windowSize hops of each other as being the same distance away.
-		/// It will not produce a result that strictly obeys this, however - in order to do this completely correctly, the window
-		/// should move forward one hop at a time. But because this would result in rechecking nodes that had already been checked
-		/// repeatedly, the window moves forward until it overlaps the last one by one every time. This should produce roughly the desired 
-		/// result with less overhead.
-		/// </summary>
-		/// <param name="nodesByNumberOfHops"></param>
-		/// <param name="windowSize"></param>
-		/// <returns></returns>
-		private static List<Node>[] CalculateNodeLayers(List<Node>[] nodesByNumberOfHops, int windowSize)
-		{
-			List<Node>[] nodeLayers = new List<Node>[nodesByNumberOfHops.Length];  //bigger than needed for windowsize > 1 but not worth overoptimizing
-			for (int layerCursor = 0, hopsCursor = 0 ; hopsCursor < nodesByNumberOfHops.Length ; layerCursor++)
-			{
-				//for each layer, grab the the list of nodes that fit in the window
-				for (int j = 0; j < windowSize && hopsCursor < nodesByNumberOfHops.Length ; j++,hopsCursor++)
-				{
-					if (nodesByNumberOfHops[hopsCursor] != null && nodesByNumberOfHops[hopsCursor].Count > 0)
-					{
-						if (nodeLayers[layerCursor] == null)
-						{
-							nodeLayers[layerCursor] = new List<Node>(nodesByNumberOfHops[hopsCursor].Count);
-						}
-						nodeLayers[layerCursor].AddRange(nodesByNumberOfHops[hopsCursor]);
-					}
-				}
-				//back up the number of hops by one to overlap each window, but don't back off at the end & cause an infinte loop!
-				if (windowSize > 1 && hopsCursor < nodesByNumberOfHops.Length)
-				{
-					hopsCursor--;
-				}
-			}
-			return nodeLayers;
-		}
 
 		#endregion 
 
@@ -237,10 +152,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		{
 			_minimumId = relayNodeClusterDefinition.MinId;
 			_maximumId = relayNodeClusterDefinition.MaxId;
-			_mapNetwork = forwardingConfig.MapNetwork;
 			
 			//figure out if anything changed. if it did, rebuild
-			
 			bool rebuild = false;
 
 			ushort newLocalZone = newConfig.GetLocalZone();
@@ -267,8 +180,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			//if there's a different number of nodes, we definitely have to rebuild
 			if (relayNodeClusterDefinition.RelayNodes.Length != effectiveSize)
 			{
-				if(_log.IsInfoEnabled)
-					_log.InfoFormat("Number of nodes in a cluster in group {0} changed from {1} to {2}, rebuilding", _nodeGroup.GroupName, effectiveSize, relayNodeClusterDefinition.RelayNodes.Length);				
+				if(log.IsInfoEnabled)
+					log.InfoFormat("Number of nodes in a cluster in group {0} changed from {1} to {2}, rebuilding", _nodeGroup.GroupName, effectiveSize, relayNodeClusterDefinition.RelayNodes.Length);				
 				rebuild = true;
 			}
 			else
@@ -278,25 +191,20 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				{
 					if (!relayNodeClusterDefinition.ContainsNode(node.EndPoint.Address, node.EndPoint.Port))
 					{
-						if (_log.IsInfoEnabled)
-							_log.InfoFormat("Node {0} is no longer found in its cluster in group {1}, rebuilding.",
+						if (log.IsInfoEnabled)
+							log.InfoFormat("Node {0} is no longer found in its cluster in group {1}, rebuilding.",
 								node, _nodeGroup.GroupName);
 						rebuild = true;						
 						break;
 					}
 				}
-				if (!rebuild && _nodeGroup.NodeSelectionHopWindowSize != NodeSelectionHopWindowSize)
-				{
-					NodeSelectionHopWindowSize = _nodeGroup.NodeSelectionHopWindowSize;
-					rebuild = true;                    
-				}
-
+				
 				if (!rebuild && _meInThisCluster)
 				{
 					if (!relayNodeClusterDefinition.ContainsNode(Me.EndPoint.Address, Me.EndPoint.Port))
 					{
-						if (_log.IsInfoEnabled)
-							_log.InfoFormat("Node {0} (this machine) is no longer found in its cluster in group {1}, rebuilding.",
+						if (log.IsInfoEnabled)
+							log.InfoFormat("Node {0} (this machine) is no longer found in its cluster in group {1}, rebuilding.",
 								Me, _nodeGroup.GroupName);
 						rebuild = true;						
 					}
@@ -309,8 +217,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					{
 						if (!ContainsNode(nodeDefinition))
 						{
-							if (_log.IsInfoEnabled)
-								_log.InfoFormat("Node {0} is defined in the new config but does not exist in this cluster in group {1}, rebuilding.",
+							if (log.IsInfoEnabled)
+								log.InfoFormat("Node {0} is defined in the new config but does not exist in this cluster in group {1}, rebuilding.",
 									nodeDefinition, _nodeGroup.GroupName);
 							rebuild = true;
 							break;
@@ -320,8 +228,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 
 			if (rebuild)
-			{				
-				Dictionary<ushort, List<Node>> newZoneNodes = new Dictionary<ushort, List<Node>>();		
+			{			
+				
 				List<Node> newNodes = new List<Node>();
 
 				RelayNodeDefinition meDefinition = newConfig.GetMyNode();
@@ -329,12 +237,12 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				
 				if (meDefinition != null)
 				{                    
-					GetMessageQueuesFor(meDefinition, relayNodeClusterDefinition,
+					GetMessageQueuesFor(GetMessageQueueNameFor(meDefinition), relayNodeClusterDefinition,
 						NodeManager.Instance.InMessageDispatcher, NodeManager.Instance.OutMessageDispatcher,
 						out nodeInQueue, out nodeOutQueue);
 					//Me is in the new config
 					//Either create it new or overwrite the old one					
-					Me = new Node(meDefinition, _nodeGroup, this, forwardingConfig, 
+					Me = new Node(meDefinition, _nodeGroup, this, forwardingConfig,
 						nodeInQueue, nodeOutQueue);
 
 				}
@@ -348,7 +256,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				{					
 					if (nodeDefinition != meDefinition)
 					{
-						GetMessageQueuesFor(nodeDefinition, relayNodeClusterDefinition,
+						GetMessageQueuesFor(GetMessageQueueNameFor(nodeDefinition), relayNodeClusterDefinition,
 						NodeManager.Instance.InMessageDispatcher, NodeManager.Instance.OutMessageDispatcher,
 						out nodeInQueue, out nodeOutQueue);
 
@@ -356,28 +264,15 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 							nodeInQueue, nodeOutQueue);
 
 						newNodes.Add(node);
-						if (node.DetectedZone > maxDetectedZone)
-						{
-							maxDetectedZone = node.DetectedZone;
-						}
+						
 						if (node.Zone > maxDetectedZone)
 						{
 							maxDetectedZone = node.Zone;
 						}
-						if (!newZoneNodes.ContainsKey(nodeDefinition.Zone))
-						{
-							newZoneNodes[nodeDefinition.Zone] = new List<Node>();
-						}
-
-						newZoneNodes[nodeDefinition.Zone].Add(node);
-
 					}
 				}
 				Nodes = newNodes;
-				ZoneNodes = newZoneNodes;
-				_nodesByNumberOfHops = CalculateTopography(Nodes, MaximumHops);                
-				_nodeLayers = CalculateNodeLayers(_nodesByNumberOfHops, NodeSelectionHopWindowSize);
-				_nodesByDetectedZone = CalculateNodesByDetectedZone(Nodes, maxDetectedZone);
+				_nodesByZone = CalculateNodesByZone(Nodes, maxDetectedZone);
 				lock (_chooseLock)
 				{
 					ChosenNode = null;
@@ -396,7 +291,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				for (int i = 0; i < relayNodeClusterDefinition.RelayNodes.Length; i++)
 				{
 					string definitionString = relayNodeClusterDefinition.RelayNodes[i].Host + ":" + relayNodeClusterDefinition.RelayNodes[i].Port;
-					if (definitionString == meString)
+					if (definitionString == meString && Me != null)
 					{
 						hitMe = true;
 						Me.ReloadMapping(relayNodeClusterDefinition.RelayNodes[i], forwardingConfig);
@@ -449,14 +344,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				{   
 					if (ChosenNode == null || !ChosenNode.Activated || ChosenNode.DangerZone)
 					{
-						if (_mapNetwork || _nodesByDetectedZone == null)
-						{
-							chosenNode = SelectANodeIncrementally(_nodeLayers, Randomizer);
-						}
-						else
-						{
-							chosenNode = SelectANodeByZone(_nodesByDetectedZone, Randomizer, _localZone);
-						}
+						chosenNode = SelectANodeByZone(_nodesByZone, Randomizer, _localZone);
+						
 						ChosenNode = chosenNode; 
 					}
 				}
@@ -468,24 +357,31 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			return chosenNode; 
 		}
 
-		private Node GetChosenZoneNode(ushort Zone)
+		private Node GetChosenZoneNode(ushort zone)
 		{
 			Node chosenNode = null;
 
-			if (!ChosenZoneNodes.ContainsKey(Zone) || ChosenZoneNodes[Zone] == null || ChosenZoneNodes[Zone].DangerZone)
+			if (!ChosenZoneNodes.ContainsKey(zone) || ChosenZoneNodes[zone] == null || ChosenZoneNodes[zone].DangerZone)
 			{
 				lock (_chooseZoneNodeLock)
 				{
-					if (!ChosenZoneNodes.ContainsKey(Zone) || ChosenZoneNodes[Zone] == null || ChosenZoneNodes[Zone].DangerZone)
+					if (!ChosenZoneNodes.ContainsKey(zone) || ChosenZoneNodes[zone] == null || ChosenZoneNodes[zone].DangerZone)
 					{
-						chosenNode = SelectSafeNode(new List<Node>(ZoneNodes[Zone]), Randomizer);
-						ChosenZoneNodes[Zone] = chosenNode;
+						if (zone < _nodesByZone.Length)
+						{
+							chosenNode = SelectSafeNode(new List<Node>(_nodesByZone[zone]), Randomizer);
+							ChosenZoneNodes[zone] = chosenNode;
+						}
+						else
+						{
+							log.ErrorFormat("Got a request for nodes in Zone {0}, but the highest zone is {1}!", zone, _nodesByZone.Length - 1);
+						}
 					}
 				}
 			}
 			else
 			{
-				chosenNode = ChosenZoneNodes[Zone];
+				chosenNode = ChosenZoneNodes[zone];
 			}
 
 			return chosenNode;
@@ -509,28 +405,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 			return candidate;
 		}
-
-		private static Node SelectANodeIncrementally(List<Node>[] nodeLayers, Random randomizer)
-		{
-			Node candidate = null;
-			List<Node> thisLayer;
-			
-			for (int windex = 0; windex < nodeLayers.Length ; windex++)
-			{	
-				thisLayer = nodeLayers[windex];
-				if (thisLayer != null && thisLayer.Count > 0)
-				{
-					candidate = SelectSafeNode(new List<Node>(thisLayer), randomizer);		 //would probably be better as a non-array backed linked list?								
-					if (candidate != null)
-					{
-						break;
-					}
-				}
-			}
-
-			return candidate;
-		}
-
+		
 		/// <summary>
 		/// Tries to find an activated non-Danger-zone node in nodeLayers, which is assumed to be indexed by zone id.
 		/// It starts at startZone, and if it fails to find a node in that zone moves randomly through the remaining zones until one is found
@@ -542,7 +417,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 
 			//first try to local zone; the vast majority of times we shouldn't need the 
 			//overhead involved in the random zone selection process
-			if (startZone > 0 && startZone < nodesByZone.Length)
+			if (startZone < nodesByZone.Length)
 			{
 				candidate = SelectSafeNode(new List<Node>(nodesByZone[startZone]), randomizer);
 			}
@@ -572,26 +447,26 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		}
 
 
-		private SimpleLinkedList<Node> SelectNodes(RelayMessage message)
+		private LinkedListStack<Node> SelectNodes(RelayMessage message)
 		{
-			SimpleLinkedList<Node> nodes;
-
-			if (ZoneNodes.ContainsKey(Me.NodeDefinition.Zone))
+			LinkedListStack<Node> nodes;
+			List<Node> zoneNodes = _nodesByZone[Me.Zone];
+			if (zoneNodes != null)
 			{
 				// select all other nodes in the current zone if they exist
-				nodes = new SimpleLinkedList<Node>(ZoneNodes[Me.NodeDefinition.Zone]);
+				nodes = new LinkedListStack<Node>(zoneNodes);
 			}
 			else
 			{
-				nodes = new SimpleLinkedList<Node>();
+				nodes = new LinkedListStack<Node>();
 			}
 
-			if (message.SourceZone == Me.NodeDefinition.Zone)
+			if (message.SourceZone == Me.Zone)
 			{
 				// Add 1 node from each foreign zone
-				foreach (ushort zone in ZoneNodes.Keys)
+				for (ushort zone = 0; zone < _nodesByZone.Length; zone++)
 				{
-					if (zone != Me.NodeDefinition.Zone)
+					if (zone != Me.Zone)
 					{
 						Node ZoneNode = GetChosenZoneNode(zone);
 						if (ZoneNode != null)
@@ -637,19 +512,31 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		internal SimpleLinkedList<Node> GetNodesForMessage(RelayMessage message)
+        /// <summary>
+        /// Gets a list of all nodes in the local zone.
+        /// </summary>
+        /// <returns>
+        /// A List of nodes.  All of the nodes in the list are available to have requests made to them.  This list may be empty if there are no active nodes for the zone.
+        /// </returns>
+        internal IList<Node> SelectNodesInZoneForMessage()
+        {
+            var zoneNodes = _nodesByZone[_localZone] ?? new List<Node>(0);
+            return zoneNodes;
+        }
+
+	    internal LinkedListStack<Node> GetNodesForMessage(RelayMessage message)
 		{
-			SimpleLinkedList<Node> nodes;
+			LinkedListStack<Node> nodes;
 			Node node;
 			
 			if (message.IsTwoWayMessage)
 			{
 				//messages that always go to a selected node
-				nodes = new SimpleLinkedList<Node>();
+				nodes = new LinkedListStack<Node>();
 				node = GetChosenNode();
 				if (node != null)
 				{
-					nodes.Push(node);
+					nodes.Push(node);  // this is where the single node is selected and returned for OUT messages
 				}
 			}
 			else
@@ -659,7 +546,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				//  in system: to every other node
 				if (Me == null) //out of system
 				{
-					nodes = new SimpleLinkedList<Node>();
+					nodes = new LinkedListStack<Node>();
 					node = GetChosenNode();
 					if (node != null)
 					{
@@ -728,8 +615,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 							SerializedMessageList errorsList = currentNode.DequeueErrors();
 							if (errorsList != null)
 							{
-								if (_log.IsInfoEnabled)
-									_log.InfoFormat("Using Node {0} to process {1} error queued messages from {2}",
+								if (log.IsInfoEnabled)
+									log.InfoFormat("Using Node {0} to process {1} error queued messages from {2}",
 										node, 
 										errorsList.InMessageCount,
 										currentNode.ToString());
@@ -738,7 +625,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 								// if the queue should be used.  Thus, no exception will be 
 								// thrown, so we can send in "false" for "skipErrorQueueForSync
 								// without having to check the settings.
-								node.DoHandleInMessages(errorsList.InMessages, false);								
+								node.SendInMessages(errorsList.InMessages, false);								
 							}
 						}						
 					}
@@ -757,26 +644,33 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		internal void PopulateQueues(Dictionary<string, MessageQueue> errorQueues, bool incrementCounter)
+		internal void PopulateQueues(Dictionary<string, ErrorQueue> errorQueues, bool incrementCounter)
 		{
 			for (int i = 0; i < Nodes.Count; i++)
 			{
 				if (errorQueues.ContainsKey(Nodes[i].ToString()))
 				{
-					MessageQueue errorQueue = errorQueues[Nodes[i].ToString()];
+					ErrorQueue errorQueue = errorQueues[Nodes[i].ToString()];
 					if (errorQueue != null)
 					{						
 						if (errorQueue != Nodes[i].MessageErrorQueue) //when reloading configs, a repopulate will be called. Nodes might not be recreated, in which case the error queue hasn't changed.
 						{
-							if (_log.IsInfoEnabled)
-								_log.InfoFormat("Repopulating {0} error queued messages for node {1}",
+							if (log.IsInfoEnabled)
+								log.InfoFormat("Repopulating {0} error queued messages for node {1}",
 									errorQueue.InMessageQueueCount,
 									Nodes[i]
 									);
-							Nodes[i].MessageErrorQueue = errorQueue;
-							if (incrementCounter)
+							if (Nodes[i].MessageErrorQueue == null)
 							{
-								NodeManager.Instance.Counters.IncrementErrorQueueBy(Nodes[i].MessageErrorQueue.InMessageQueueCount);
+								Nodes[i].MessageErrorQueue = errorQueue;
+								if (incrementCounter)
+								{
+									NodeManager.Instance.Counters.IncrementErrorQueueBy(Nodes[i].MessageErrorQueue.InMessageQueueCount);
+								}
+							}
+							else
+							{
+								Nodes[i].MessageErrorQueue.Populate(errorQueue, incrementCounter);
 							}
 						}
 					}
@@ -794,40 +688,39 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		}
 
 		#region Dispatchers and Dispatcher Queues
-
+		 
 		internal void SetNewDispatchers(Dispatcher newInDispatcher, Dispatcher newOutDispatcher)
 		{   
 			DispatcherQueue inMessageQueue, outMessageQueue;
 			if (Me != null)
 			{
-				GetMessageQueuesFor(Me.NodeDefinition, _clusterDefinition, newInDispatcher, newOutDispatcher, out inMessageQueue, out outMessageQueue);   
+				GetMessageQueuesFor(Me.GetMessageQueueName(), _clusterDefinition, newInDispatcher, newOutDispatcher, out inMessageQueue, out outMessageQueue);   
 				Me.SetNewDispatcherQueues(inMessageQueue, outMessageQueue);
 			}
 			for (int i = 0; i < Nodes.Count; i++)
 			{
-				GetMessageQueuesFor(Nodes[i].NodeDefinition, _clusterDefinition, newInDispatcher, newOutDispatcher, out inMessageQueue, out outMessageQueue);
+				GetMessageQueuesFor(Nodes[i].GetMessageQueueName(), _clusterDefinition, newInDispatcher, newOutDispatcher, out inMessageQueue, out outMessageQueue);
 				Nodes[i].SetNewDispatcherQueues(inMessageQueue, outMessageQueue);
 			}
 		}
 
-		internal void GetMessageQueuesFor(RelayNodeDefinition node, RelayNodeClusterDefinition cluster,
+		internal void GetMessageQueuesFor(string nodeMessageQueueName, RelayNodeClusterDefinition cluster,
 			Dispatcher inDispatcher, Dispatcher outDispatcher,
 			out DispatcherQueue inMessageQueue, out DispatcherQueue outMessageQueue)
 		{
+			int maxQueueLength;
 			string queueName;
-			int queueDepth;
 			if (Me == null) //not in this cluster, going to use the cluster wide message queues
 			{
 				queueName = GetQueueNameFor(cluster);
-				queueDepth = _nodeGroup.GetClusterQueueDepth();                                
+				maxQueueLength = _nodeGroup.GetClusterQueueDepth();                                
 			}
 			else //going to use the message queues that are per-node
-			{   
-				queueName = Node.GetMessageQueueNameFor(node);
-				queueDepth = _nodeGroup.GetClusterQueueDepth() / cluster.RelayNodes.Length;
-				
+			{
+				queueName = nodeMessageQueueName;
+				maxQueueLength = _nodeGroup.GetClusterQueueDepth() / cluster.RelayNodes.Length;
 			}
-			NodeManager.GetMessageQueues(inDispatcher, outDispatcher, queueName, queueDepth,
+			NodeManager.GetMessageQueues(inDispatcher, outDispatcher, queueName, maxQueueLength,
 					out inMessageQueue, out outMessageQueue);
 		}
 

@@ -13,6 +13,7 @@
 										<xs:element name="RelatedIndexTypeId" type="xs:short" nillable="true" default="0" minOccurs="0" maxOccurs="1" />
 										<xs:element name="Disabled" type="xs:boolean" nillable="true" default="false" minOccurs="0" maxOccurs="1"/>
 										<xs:element name="Compress" type="xs:boolean" nillable="true" default="false" minOccurs="0" maxOccurs="1"/>
+										<xs:element name="LocalCacheTTLSeconds" type="xs:int" nillable="true" minOccurs="0" maxOccurs="1"/>
 										<xs:element name="GroupName" type="xs:string" />
 										<xs:element name="CheckRaceCondition" type="xs:boolean" nillable="true" default="false" minOccurs="0" maxOccurs="1"/>
 										<xs:element name="TTLSetting" minOccurs="0" maxOccurs="1" nillable="true">
@@ -26,15 +27,18 @@
 										<xs:element name="SyncInMessages" type="xs:boolean"  nillable="true" default="false" minOccurs="0" maxOccurs="1" />
 										<xs:element name="ThrowOnSyncFailure" type="xs:boolean"  nillable="true" default="false" minOccurs="0" maxOccurs="1"/>
 										<xs:element name="AssemblyQualifiedTypeName" type="xs:string" minOccurs="0" maxOccurs="1" />
+										<xs:element name="Description" type="xs:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+                    <xs:element name="FlexCacheMode" type="FlexCacheMode" nillable="true" minOccurs="0" maxOccurs="1"/>
 									</xs:sequence>
 									<xs:attribute name="TypeName" type="xs:string" />
+									<xs:attribute name="GatherStatistics" type="xs:boolean" default="true"/>
 								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
 			</xs:sequence>
-			<xs:attribute name="MaxTypeId" type="xs:int" />
+			<xs:attribute name="CacheLocally" type="xs:boolean" use="optional" />			
 			<xs:attribute name="Compressor" type="CompressionImplementation" />
 		</xs:complexType>
 	</xs:element>
@@ -43,4 +47,11 @@
 			<xs:enumeration value="ManagedZLib" />
 		</xs:restriction>
 	</xs:simpleType>
+  <xs:simpleType name="FlexCacheMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Enabled" />
+      <xs:enumeration value="Disabled" />
+      <xs:enumeration value="EnabledWithRelayDrain" />
+    </xs:restriction>
+  </xs:simpleType>
 </xs:schema>

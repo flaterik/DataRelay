@@ -26,6 +26,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             int indexSize = -1;
             int virtualCount = -1;
             byte[] metadata = null;
+            MetadataPropertyCollection metadataPropertyCollection = null;
 
             try
             {
@@ -41,11 +42,23 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 int maxItemsPerIndex = getRangeQuery.Offset - 1 + getRangeQuery.ItemNum;
 
                 Index targetIndexInfo = indexTypeMapping.IndexCollection[getRangeQuery.TargetIndexName];
+                int indexCap = targetIndexInfo.MaxIndexSize;
 
                 #region Prepare Result
                 
                 #region Extract index and apply criteria
-                
+
+                if (indexTypeMapping.MetadataStoredSeperately)
+                {
+                    IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping,
+                        messageContext.TypeId,
+                        messageContext.PrimaryId,
+                        getRangeQuery.IndexId,
+                        storeContext,
+                        out metadata,
+                        out metadataPropertyCollection);
+                }
+
                 CacheIndexInternal targetIndex = IndexServerUtils.GetCacheIndexInternal(storeContext,
                     messageContext.TypeId,
                     messageContext.PrimaryId,
@@ -55,13 +68,20 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     maxItemsPerIndex,
                     getRangeQuery.Filter,
                     true,
-                    null,
+                    getRangeQuery.IndexCondition,
                     false,
                     false,
                     targetIndexInfo.PrimarySortInfo,
                     targetIndexInfo.LocalIdentityTagList,
                     targetIndexInfo.StringHashCodeDictionary,
-                    null);
+                    null,
+                    targetIndexInfo.IsMetadataPropertyCollection,
+                    metadataPropertyCollection,
+                    getRangeQuery.DomainSpecificProcessingType,
+                    storeContext.DomainSpecificConfig,
+                    null,
+                    null,
+                    false);
                 
                 #endregion
 
@@ -70,6 +90,15 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     indexSize = targetIndex.OutDeserializationContext.TotalCount;
                     virtualCount = targetIndex.VirtualCount;
                     indexExists = true;
+
+                    #region Dynamic tag sort
+
+                    if (getRangeQuery.TagSort != null)
+                    {
+                        targetIndex.Sort(getRangeQuery.TagSort);
+                    }
+
+                    #endregion
 
                     // update perf counter
                     PerformanceCounters.Instance.SetCounterValue(
@@ -92,7 +121,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     
                     if (!getRangeQuery.ExcludeData)
                     {
-                        DataTierUtil.GetData(resultItemList, 
+                        DataTierUtil.GetData(resultItemList,
+                            null,
                             storeContext, 
                             messageContext, 
                             indexTypeMapping.FullDataIdFieldList, 
@@ -103,14 +133,12 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                     #region Get metadata
                     
-                    if (getRangeQuery.GetMetadata)
+                    if (getRangeQuery.GetMetadata && !indexTypeMapping.MetadataStoredSeperately)
                     {
-                        metadata = IndexServerUtils.GetQueryMetadata(new List<CacheIndexInternal>(1) { targetIndex },
-                            indexTypeMapping,
-                            messageContext.TypeId,
-                            messageContext.PrimaryId,
-                            getRangeQuery.IndexId,
-                            storeContext);
+                        IndexServerUtils.GetMetadataStoredWithIndex(indexTypeMapping,
+                            new List<CacheIndexInternal>(1) { targetIndex },
+                            out metadata,
+                            out metadataPropertyCollection);
                     }
                     
                     #endregion
@@ -118,11 +146,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 #endregion
                 }
 
-                getRangeQueryResult = new GetRangeQueryResult(indexExists, indexSize, metadata, resultItemList, virtualCount, null);
+                getRangeQueryResult = new GetRangeQueryResult(indexExists, indexSize, metadata, metadataPropertyCollection, resultItemList, virtualCount, indexCap, null);
             }
             catch (Exception ex)
             {
-                getRangeQueryResult = new GetRangeQueryResult(false, -1, null, null, -1, ex.Message);
+                getRangeQueryResult = new GetRangeQueryResult(false, -1, null, null, null, -1, 0, ex.Message);
                 LoggingUtil.Log.ErrorFormat("TypeId {0} -- Error processing GetRangeQuery : {1}", messageContext.TypeId, ex);
             }
             return getRangeQueryResult;
@@ -135,6 +163,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// <param name="getRangeQuery">The get range query.</param>
         private static void ValidateQuery(IndexTypeMapping indexTypeMapping, GetRangeQuery getRangeQuery)
         {
+            if (string.IsNullOrEmpty(getRangeQuery.TargetIndexName))
+            {
+                getRangeQuery.TargetIndexName = IndexServerUtils.CheckQueryTargetIndexName(indexTypeMapping);
+            }
+
             if (!indexTypeMapping.IndexCollection.Contains(getRangeQuery.TargetIndexName))
             {
                 throw new Exception("Invalid TargetIndexName - " + getRangeQuery.TargetIndexName);

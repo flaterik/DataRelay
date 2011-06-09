@@ -17,11 +17,13 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
         /// Gets the data into resultItemList items.
         /// </summary>
         /// <param name="resultItemList">The result item list.</param>
+        /// <param name="groupByResult">The groupBy result.</param>
         /// <param name="storeContext">The store context.</param>
         /// <param name="messageContext">The message context.</param>
         /// <param name="fullDataIdFieldList">The full data id field list.</param>
         /// <param name="fullDataIdInfo">The full data id info.</param>
         internal static void GetData(List<ResultItem> resultItemList,
+            GroupByResult groupByResult,
             IndexStoreContext storeContext,
             MessageContext messageContext,
             FullDataIdFieldList fullDataIdFieldList,
@@ -44,22 +46,49 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
                 throw new Exception("Invalid RelatedTypeId for TypeId - " + messageContext.TypeId);
             }
 
+            //Form relay messages for resultItemList
             if (resultItemList != null && resultItemList.Count > 0)
             {
                 foreach (ResultItem resultItem in resultItemList)
                 {
                     extendedId = GetFullDataId(resultItem.IndexId,
-                        resultItem,
-                        fullDataIdInfo != null && fullDataIdInfo.RelatedTypeName != null ? fullDataIdInfo.FullDataIdFieldList : fullDataIdFieldList);
+                                               resultItem,
+                                               fullDataIdInfo != null && fullDataIdInfo.RelatedTypeName != null
+                                                   ? fullDataIdInfo.FullDataIdFieldList
+                                                   : fullDataIdFieldList);
                     dataStoreMessages.Add(new RelayMessage(relatedTypeId,
-                                              IndexCacheUtils.GeneratePrimaryId(extendedId),
-                                              extendedId,
-                                              MessageType.Get));
+                                                           IndexCacheUtils.GeneratePrimaryId(extendedId),
+                                                           extendedId,
+                                                           MessageType.Get));
                 }
+            }
 
-                storeContext.ForwarderComponent.HandleMessages(dataStoreMessages);
+            //Form relay messages for GroupByResult
+            if (groupByResult != null && groupByResult.Count > 0)
+            {
+                foreach (ResultItemBag resultItemBag in groupByResult)
+                {
+                    foreach (ResultItem resultItem in resultItemBag)
+                    {
+                        extendedId = GetFullDataId(resultItem.IndexId,
+                            resultItem,
+                            fullDataIdInfo != null && fullDataIdInfo.RelatedTypeName != null
+                            ? fullDataIdInfo.FullDataIdFieldList
+                            : fullDataIdFieldList);
+                        dataStoreMessages.Add(new RelayMessage(relatedTypeId,
+                            IndexCacheUtils.GeneratePrimaryId(extendedId),
+                            extendedId,
+                            MessageType.Get));  
+                    }
+                }
+            }
 
-                int i = 0;
+            storeContext.ForwarderComponent.HandleMessages(dataStoreMessages);
+
+            //Copy data to data fields in resultItemList
+            int i = 0;
+            if (resultItemList != null && resultItemList.Count > 0)
+            {
                 foreach (ResultItem resultItem in resultItemList)
                 {
                     if (dataStoreMessages[i].Payload != null)
@@ -73,10 +102,34 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
                             IndexCacheUtils.GetReadableByteArray(resultItem.IndexId),
                             IndexCacheUtils.GetReadableByteArray(resultItem.ItemId),
                             IndexCacheUtils.GetReadableByteArray(dataStoreMessages[i].ExtendedId),
-                            IndexCacheUtils.GeneratePrimaryId(dataStoreMessages[i].ExtendedId)
-                            );
+                            IndexCacheUtils.GeneratePrimaryId(dataStoreMessages[i].ExtendedId));
                     }
                     i++;
+                }
+            }
+
+            //Copy data to data fields in compositeKeyResultItemListMapping
+            if (groupByResult != null && groupByResult.Count > 0)
+            {
+                foreach (ResultItemBag resultItemBag in groupByResult)
+                {
+                    foreach (ResultItem resultItem in resultItemBag)
+                    {
+                        if (dataStoreMessages[i].Payload != null)
+                        {
+                            resultItem.Data = dataStoreMessages[i].Payload.ByteArray;
+                        }
+                        else
+                        {
+                            LoggingUtil.Log.DebugFormat("Fetched Null Data for TypeId: {0}, IndexId: {1}, ItemId: {2}, FullDataId: {3}, PrimaryId: {4}",
+                                relatedTypeId,
+                                IndexCacheUtils.GetReadableByteArray(resultItem.IndexId),
+                                IndexCacheUtils.GetReadableByteArray(resultItem.ItemId),
+                                IndexCacheUtils.GetReadableByteArray(dataStoreMessages[i].ExtendedId),
+                                IndexCacheUtils.GeneratePrimaryId(dataStoreMessages[i].ExtendedId));
+                        }
+                        i++;
+                    }
                 }
             }
         }

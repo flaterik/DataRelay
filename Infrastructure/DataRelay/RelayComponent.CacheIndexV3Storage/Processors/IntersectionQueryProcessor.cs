@@ -20,7 +20,9 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// <param name="messageContext">The message context.</param>
         /// <param name="storeContext">The store context.</param>
         /// <returns>IntersectionQueryResult</returns>
-        internal static IntersectionQueryResult Process(IntersectionQuery intersectionQuery, MessageContext messageContext, IndexStoreContext storeContext)
+        internal static IntersectionQueryResult Process(IntersectionQuery intersectionQuery,
+            MessageContext messageContext,
+            IndexStoreContext storeContext)
         {
             //Fetch each index (assume all indexes are local) and perform intersection and return the results
             IntersectionQueryResult intersectionQueryResult;
@@ -41,12 +43,12 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     ValidateQuery(indexTypeMapping, intersectionQuery);
 
                     #region Set sort vars
-                    
+
                     Index targetIndexInfo = indexTypeMapping.IndexCollection[intersectionQuery.TargetIndexName];
                     localIdentityTagNames = indexTypeMapping.IndexCollection[intersectionQuery.TargetIndexName].LocalIdentityTagList;
                     bool sortFieldPartOfLocalId = IsSortFieldPartOfLocalId(localIdentityTagNames, targetIndexInfo.PrimarySortInfo);
                     TagSort itemIdTagSort = new TagSort("ItemId", false, new SortOrder(DataType.Int32, SortBy.ASC));
-                    
+
                     if (!sortFieldPartOfLocalId)
                     {
                         //Set sort vars
@@ -60,22 +62,38 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         sortFieldName = targetIndexInfo.PrimarySortInfo.FieldName;
                         sortOrderList = targetIndexInfo.PrimarySortInfo.SortOrderList;
                     }
-                    
+
                     #endregion
 
                     #region Fetch CacheIndexInternal and Intersect
-                    
+
                     CacheIndexInternal targetIndex;
                     CacheIndexInternal resultCacheIndexInternal = null;
                     IntersectionQueryParams indexIdParam;
                     byte[] indexId;
+                    byte[] metadata;
+                    MetadataPropertyCollection metadataPropertyCollection;
 
                     for (int i = 0; i < intersectionQuery.IndexIdList.Count; i++)
                     {
                         #region Extract index and apply criteria
-                        
+
                         indexId = intersectionQuery.IndexIdList[i];
                         indexIdParam = intersectionQuery.GetIntersectionQueryParamForIndexId(indexId);
+                        // Note: This should be changed later and just extracted once if it is also requested in GetIndexHeader
+                        metadata = null;
+                        metadataPropertyCollection = null;
+                        if (indexTypeMapping.MetadataStoredSeperately)
+                        {
+                            IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping,
+                                messageContext.TypeId,
+                                messageContext.PrimaryId,
+                                indexId,
+                                storeContext,
+                                out metadata,
+                                out metadataPropertyCollection);
+                        }
+
                         targetIndex = IndexServerUtils.GetCacheIndexInternal(storeContext,
                             messageContext.TypeId,
                             (intersectionQuery.PrimaryIdList != null && i < intersectionQuery.PrimaryIdList.Count) ?
@@ -84,22 +102,29 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                             indexId,
                             targetIndexInfo.ExtendedIdSuffix,
                             intersectionQuery.TargetIndexName,
-                            0,
+                            indexIdParam.Count,
                             indexIdParam.Filter,
                             true,
-                            null,
+                            indexIdParam.IndexCondition,
                             false,
                             false,
                             targetIndexInfo.PrimarySortInfo,
                             targetIndexInfo.LocalIdentityTagList,
                             targetIndexInfo.StringHashCodeDictionary,
-                            null);
-                        
+                            null,
+                            targetIndexInfo.IsMetadataPropertyCollection,
+                            metadataPropertyCollection,
+                            intersectionQuery.DomainSpecificProcessingType,
+                            storeContext.DomainSpecificConfig,
+                            null,
+                            null,
+                            false);
+
                         #endregion
 
                         if (targetIndex != null)
                         {
-                            if (targetIndex.Count < 0)
+                            if (targetIndex.Count <= 0)
                             {
                                 // No items in one of the indexes. Stop Interestion !!
                                 resultCacheIndexInternal = null;
@@ -123,7 +148,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                             }
 
                             #region Intersection
-                            
+
                             if (resultCacheIndexInternal == null)
                             {
                                 // No need to perform intersection for first index
@@ -136,8 +161,10 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                                            localIdentityTagNames,
                                                            sortOrderList,
                                                            resultCacheIndexInternal.InternalItemList,
-                                                           targetIndex.InternalItemList);
-                                
+                                                           targetIndex.InternalItemList,
+                                                           intersectionQuery.MaxResultItems,
+                                                           i == intersectionQuery.IndexIdList.Count - 1 ? intersectionQuery.IsSingleClusterQuery : false);
+
                                 if (resultCacheIndexInternal == null || resultCacheIndexInternal.Count < 1)
                                 {
                                     // Unable to fetch one of the indexes. Stop Interestion !!
@@ -146,7 +173,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                     break;
                                 }
                             }
-                            
+
                             #endregion
                         }
                         else
@@ -158,36 +185,36 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         }
 
                         #region Get MetaData
-                        
+
                         if (intersectionQuery.GetIndexHeader)
                         {
                             if (!indexIdIndexHeaderMapping.ContainsKey(indexId))
                             {
                                 indexIdIndexHeaderMapping.Add(indexId,
-                                    GetIndexHeader(targetIndex, indexTypeMapping, messageContext.TypeId, IndexCacheUtils.GeneratePrimaryId(indexId), storeContext));
+                                    IndexServerUtils.GetIndexHeader(targetIndex, indexTypeMapping, messageContext.TypeId, IndexCacheUtils.GeneratePrimaryId(indexId), storeContext));
                             }
                         }
-                        
+
                         #endregion
                     }
                     if (resultCacheIndexInternal != null && resultCacheIndexInternal.Count > 0)
                     {
                         resultItemList = CacheIndexInternalAdapter.GetIndexDataItemList(resultCacheIndexInternal, 1, int.MaxValue);
                     }
-                    
+
                     #endregion
 
                     #region Get data
-                    
+
                     if (!intersectionQuery.ExcludeData && resultItemList != null && resultItemList.Count > 0)
                     {
-                        DataTierUtil.GetData(resultItemList, 
-                            storeContext, 
-                            messageContext, 
-                            indexTypeMapping.FullDataIdFieldList, 
+                        DataTierUtil.GetData(resultItemList,
+                            storeContext,
+                            messageContext,
+                            indexTypeMapping.FullDataIdFieldList,
                             intersectionQuery.FullDataIdInfo);
                     }
-                    
+
                     #endregion
                 }
 
@@ -215,68 +242,22 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         }
 
         /// <summary>
-        /// Gets the index header.
-        /// </summary>
-        /// <param name="targetIndex">Index of the target.</param>
-        /// <param name="indexTypeMapping">The index type mapping.</param>
-        /// <param name="typeId">The type id.</param>
-        /// <param name="primaryId">The primary id.</param>
-        /// <param name="storeContext">The store context.</param>
-        /// <returns>IndexHeader</returns>
-        private static IndexHeader GetIndexHeader(CacheIndexInternal targetIndex,
-            IndexTypeMapping indexTypeMapping,
-            short typeId,
-            int primaryId,
-            IndexStoreContext storeContext)
-        {
-            IndexHeader indexHeader = new IndexHeader();
-
-            #region Metadata
-            
-            if (indexTypeMapping.MetadataStoredSeperately)
-            {
-                #region Check if metadata is stored seperately
-                
-                //Send a get message to local index storage and fetch seperately stored metadata
-                RelayMessage getMsg = new RelayMessage(typeId, primaryId, targetIndex.InDeserializationContext.IndexId, MessageType.Get);
-                storeContext.IndexStorageComponent.HandleMessage(getMsg);
-                if (getMsg.Payload != null)
-                {
-                    indexHeader.Metadata = getMsg.Payload.ByteArray;
-                }
-                
-                #endregion
-            }
-            else
-            {
-                #region Check metadata on targetIndex
-                
-                if (indexTypeMapping.IndexCollection[targetIndex.InDeserializationContext.IndexName].MetadataPresent)
-                {
-                    indexHeader.Metadata = targetIndex.Metadata;
-                }
-                
-                #endregion
-            }
-            
-            #endregion
-
-            #region VirtualCount
-            
-            indexHeader.VirtualCount = targetIndex.VirtualCount;
-            
-            #endregion
-
-            return indexHeader;
-        }
-
-        /// <summary>
         /// Validates the query.
         /// </summary>
         /// <param name="indexTypeMapping">The index type mapping.</param>
         /// <param name="intersectionQuery">The intersection query.</param>
         private static void ValidateQuery(IndexTypeMapping indexTypeMapping, IntersectionQuery intersectionQuery)
         {
+            if (intersectionQuery.IsSingleClusterQuery && intersectionQuery.IndexIdList.Count == 1)
+            {
+                throw new Exception("Intersection requires minimum two Index Ids in the IndexIdList");
+            }
+
+            if (string.IsNullOrEmpty(intersectionQuery.TargetIndexName))
+            {
+                intersectionQuery.TargetIndexName = IndexServerUtils.CheckQueryTargetIndexName(indexTypeMapping);
+            }
+
             if (!indexTypeMapping.IndexCollection.Contains(intersectionQuery.TargetIndexName))
             {
                 throw new Exception("Invalid TargetIndexName - " + intersectionQuery.TargetIndexName);

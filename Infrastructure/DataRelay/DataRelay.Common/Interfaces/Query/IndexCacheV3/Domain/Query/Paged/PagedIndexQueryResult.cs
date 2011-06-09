@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using MySpace.Common.IO;
+using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
@@ -99,6 +100,20 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
             //PageableItemCount
             writer.Write(PageableItemCount);
+
+            //IndexCap
+            writer.Write(IndexCap);
+
+            //GroupByResult
+            if(GroupByResult == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, GroupByResult);
+            }
 		}
 
         public override void Deserialize(IPrimitiveReader reader, int version)
@@ -106,7 +121,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             // set the object's current version to the server's object version
             if (version < CORRECT_SERVERSIDE_PAGING_LOGIC_VERSION)
             {
-                this.currentVersion = version;                
+                currentVersion = version;                
             }
 
             //ResultItemList
@@ -125,12 +140,12 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
             //IndexIdIndexHeaderMapping
             ushort count = reader.ReadUInt16();
+            ushort len;
             if (count > 0)
             {
                 IndexIdIndexHeaderMapping = new Dictionary<byte[], IndexHeader>(count, new ByteArrayEqualityComparer());
                 byte[] indexId;
                 IndexHeader indexHeader;
-                ushort len;
 
                 for (ushort i = 0; i < count; i++)
                 {
@@ -176,9 +191,24 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 AdditionalAvailableItemCount = reader.ReadInt32();
             }
 
+            //IndexCap
+            if (version >= 4)
+            {
+                IndexCap = reader.ReadInt32();
+            }
+
+            if (version >= 5)
+            {
+                if (reader.ReadBoolean())
+                {
+                    GroupByResult = new GroupByResult(new BaseComparer(IsTagPrimarySort, SortFieldName, SortOrderList));
+                    Serializer.Deserialize(reader.BaseStream, GroupByResult);
+                }
+            }
+
 		}
 
-        private const int CURRENT_VERSION = 3;
+        private const int CURRENT_VERSION = 5;
         private int currentVersion = CURRENT_VERSION;
         public override int CurrentVersion
         {

@@ -80,7 +80,8 @@ namespace MySpace.DataRelay
 			}
 
 			socketServer.MessageHandler = messageHandler;
-			socketServer.AcceptingConnectionsDelegate = relayNode.AcceptNewConnection;
+			socketServer.AcceptingConnectionsDelegate = relayNode.AcceptNewRequest;
+			socketServer.AcceptingRequestsDelegate = relayNode.AcceptNewRequest;
 			socketServer.WhitelistOnly = whitelistOnly;
 			socketServer.Start(connectionWhitelist);
 

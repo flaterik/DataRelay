@@ -1,4 +1,5 @@
-﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -17,8 +18,23 @@
     </FileUpgradeFlags>
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
-    <OldToolsVersion>2.0</OldToolsVersion>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -29,8 +45,10 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <RunCodeAnalysis>false</RunCodeAnalysis>
-    <CodeAnalysisRules>-Microsoft.Design#CA2210;-Microsoft.Design#CA1020;-Microsoft.Design#CA1021;-Microsoft.Design#CA1011;-Microsoft.Design#CA1031;-Microsoft.Design#CA1051;-Microsoft.Design#CA1002;-Microsoft.Design#CA1004;-Microsoft.Design#CA1014;-Microsoft.Design#CA1024;-Microsoft.Design#CA1062;-Microsoft.Globalization#CA1301;-Microsoft.Globalization#CA1302;-Microsoft.Globalization#CA1303;-Microsoft.Globalization#CA1306;-Microsoft.Globalization#CA1304;-Microsoft.Globalization#CA1305;-Microsoft.Globalization#CA1300;-Microsoft.Naming#CA1720;-Microsoft.Usage#CA2209</CodeAnalysisRules>
+    <CodeAnalysisRules>
+    </CodeAnalysisRules>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -40,6 +58,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -51,6 +70,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <OutputPath>..\..\..\_drop\</OutputPath>
@@ -62,6 +82,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|AnyCPU' ">
     <OutputPath>..\..\..\_drop\</OutputPath>
@@ -73,6 +94,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x86' ">
     <OutputPath>..\..\..\_drop\</OutputPath>
@@ -84,6 +106,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <DebugSymbols>true</DebugSymbols>
@@ -95,6 +118,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <OutputPath>..\..\..\_drop\</OutputPath>
@@ -106,6 +130,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x64' ">
     <OutputPath>..\..\..\_drop\</OutputPath>
@@ -117,16 +142,14 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Ccr.Core, Version=2.0.913.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\Microsoft.Ccr.Core.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.DataRelay.NodeFactory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\_drop\MySpace.DataRelay.NodeFactory.dll</HintPath>
-    </Reference>
+    <Reference Include="MySpace.ConfigurationSystem.Client, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86" />
     <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
     <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
     <Reference Include="PowerCollections, Version=1.0.2141.24679, Culture=neutral, processorArchitecture=MSIL">
@@ -135,22 +158,45 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.configuration" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Web" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AggregateCounter.cs" />
+    <Compile Include="Configuration\RelayNodeSectionHandler.cs" />
     <Compile Include="GenericStorage.cs" />
+    <Compile Include="Interfaces\Messages\HydrationResultInfo.cs" />
+    <Compile Include="Interfaces\Messages\RelayException.cs" />
+    <Compile Include="Interfaces\Messages\RelayMessagePipelineHeader.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\MetadataPropertyCollectionUpdate.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\GroupBy\ResultItemBag.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\GroupBy\SortedResultItemBagList.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\GroupBy\GroupByResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\GroupBy\GroupBy.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\MetadataPropertyCollection\MetadataPropertyCollection.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MultiIndexContains\MultiIndexContainsQueryResultItem.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\CapCondition.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\FilterCap.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\FilterCaps.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\IndexCondition.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\BaseMultiIndexIdQuery.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\BaseMultiIndexIdQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Distinct\DistinctQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Distinct\DistinctQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Distinct\VirtualDistinctQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MetadataProperty\MetadataPropertyQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MetadataProperty\MetadataPropertyQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MetadataProperty\VirtualMetadataPropertyQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MultiIndexContains\BaseMultiIndexContainsQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MultiIndexContains\MultiIndexContainsQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MultiIndexContains\MultiIndexContainsQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MultiIndexContains\MultiIndexContainsQueryParams.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\MultiIndexContains\VirtualMultiIndexContainsQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\StringHash\StringHashQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\StringHash\StringHashQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\StringHash\VirtualStringHashQuery.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\IIndexIdParam.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Paged\RemoteClusteredPagedIndexQuery.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Paged\VirtualRemoteClusteredPagedIndexQuery.cs" />
@@ -159,6 +205,11 @@
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Span\SpanQueryResult.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Span\VirtualRemoteClusteredSpanQuery.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Span\VirtualSpanQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Tag\TagQueryResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Tag\TagQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Tag\VirtualTagQuery.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Update\Command\MetadataProperty\MetadataPropertyCommand.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Enums\DomainSpecificProcessingType.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Enums\FullDataIdPartFormat.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Enums\GetIndexHeaderType.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Utils\ByteArrayComparerUtil.cs" />
@@ -190,9 +241,9 @@
     <Compile Include="Interfaces\Query\IndexCacheV2\VirtualPagedIndexQuery.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\Criterion.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\CriterionList.cs" />
-    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\FullDataIdField.cs" />
-    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\FullDataIdFieldList.cs" />
-    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\FullDataIdInfo.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\CustomFullDataId\FullDataIdField.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\CustomFullDataId\FullDataIdFieldList.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\CustomFullDataId\FullDataIdInfo.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\IndexIdParams.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\ClusteredIntersectionQuery.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Intersection\IntersectionAlgo.cs" />
@@ -225,9 +276,9 @@
     <Compile Include="Interfaces\Query\IndexCacheV3\Enums\FilterType.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Utils\IndexCacheUtils.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\IndexHeader.cs" />
-    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\MultiItemResult.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\Contains\MultiItemResult.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Filter\OrFilter.cs" />
-    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Update\Command\FilteredIndexDeleteCommand.cs" />
+    <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Update\Command\FilteredDelete\FilteredIndexDeleteCommand.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\GetRange\VirtualGetRangeQuery.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\GetRange\GetRangeQueryResult.cs" />
     <Compile Include="Interfaces\Query\IndexCacheV3\Domain\Query\GetRange\GetRangeQuery.cs" />
@@ -268,6 +319,7 @@
     <Compile Include="Interfaces\Query\ListCache\SublistCacheListQuery.cs" />
     <Compile Include="Interfaces\Query\ListCache\VirtualCacheList.cs" />
     <Compile Include="RelayKeyType.cs" />
+    <Compile Include="RelayRetryPolicy.cs" />
     <Compile Include="Transports\IAsyncRelayTransport.cs" />
     <Compile Include="Transports\IRelayTransport.cs" />
     <Compile Include="Interfaces\Messages\SerializedMessageList.cs" />
@@ -279,7 +331,7 @@
     <Compile Include="MinuteAggregateCounter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Interfaces\Messages\RelayMessage.cs" />
-    <Compile Include="RelayNodeConfig.cs">
+    <Compile Include="Configuration\RelayNodeConfig.cs">
       <DependentUpon>RelayNodeConfig.xsd</DependentUpon>
     </Compile>
     <Compile Include="Schemas\RelayComponents.cs">
@@ -299,14 +351,16 @@
     <Compile Include="Transports\NullTransport.cs" />
     <Compile Include="Util\AverageMessageLife.cs" />
     <Compile Include="Util\MessageTracer.cs" />
+    <Compile Include="Util\LinkedListStack.cs" />
     <Compile Include="Util\SmallDateTime.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="RelayNodeConfig.xsd">
+    <None Include="Migrated rules for DataRelay.Common.ruleset" />
+    <None Include="Configuration\RelayNodeConfig.xsd">
       <SubType>
       </SubType>
     </None>
-    <None Include="RelayNodeConfig.xsx">
+    <None Include="Configuration\RelayNodeConfig.xsx">
       <DependentUpon>RelayNodeConfig.xsd</DependentUpon>
     </None>
     <None Include="Schemas\RelayComponents.xsd">
@@ -340,6 +394,29 @@
   </ItemGroup>
   <ItemGroup>
     <Service Include="{B4F97281-0DBD-4835-9ED8-7DFB966E87FF}" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DataRelay.NodeFactory\DataRelay.NodeFactory.csproj">
+      <Project>{A7168E1C-2A56-44BE-80C3-342B4A0EFC09}</Project>
+      <Name>DataRelay.NodeFactory</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

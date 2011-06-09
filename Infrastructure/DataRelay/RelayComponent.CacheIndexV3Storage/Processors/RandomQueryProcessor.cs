@@ -27,6 +27,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             int indexSize = -1;
             int virtualCount = -1;
             byte[] metadata = null;
+            MetadataPropertyCollection metadataPropertyCollection = null;
 
             try
             {
@@ -40,10 +41,22 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 #endregion
 
                 Index targetIndexInfo = indexTypeMapping.IndexCollection[randomQuery.TargetIndexName];
+                int indexCap = targetIndexInfo.MaxIndexSize;
 
                 #region Prepare Result
 
                 #region Extract index and apply criteria
+
+                if (indexTypeMapping.MetadataStoredSeperately)
+                {
+                    IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping,
+                        messageContext.TypeId,
+                        messageContext.PrimaryId,
+                        randomQuery.IndexId,
+                        storeContext,
+                        out metadata,
+                        out metadataPropertyCollection);
+                }
 
                 CacheIndexInternal targetIndex = IndexServerUtils.GetCacheIndexInternal(storeContext,
                     messageContext.TypeId,
@@ -54,13 +67,20 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     0,
                     randomQuery.Filter,
                     true,
-                    null,
+                    randomQuery.IndexCondition,
                     false,
                     false,
                     targetIndexInfo.PrimarySortInfo,
                     targetIndexInfo.LocalIdentityTagList,
                     targetIndexInfo.StringHashCodeDictionary,
-                    null);
+                    null,
+                    targetIndexInfo.IsMetadataPropertyCollection,
+                    metadataPropertyCollection,
+                    randomQuery.DomainSpecificProcessingType,
+                    storeContext.DomainSpecificConfig,
+                    null,
+                    null,
+                    false);
 
                 #endregion
 
@@ -94,21 +114,24 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                     if (!randomQuery.ExcludeData)
                     {
-                        DataTierUtil.GetData(resultItemList, storeContext, messageContext, indexTypeMapping.FullDataIdFieldList, randomQuery.FullDataIdInfo);
+                        DataTierUtil.GetData(resultItemList, 
+                            null,
+                            storeContext, 
+                            messageContext, 
+                            indexTypeMapping.FullDataIdFieldList, 
+                            randomQuery.FullDataIdInfo);
                     }
 
                     #endregion
 
                     #region Get metadata
 
-                    if (randomQuery.GetMetadata)
+                    if (randomQuery.GetMetadata && !indexTypeMapping.MetadataStoredSeperately)
                     {
-                        metadata = IndexServerUtils.GetQueryMetadata(new List<CacheIndexInternal>(1) { targetIndex },
-                            indexTypeMapping,
-                            messageContext.TypeId,
-                            messageContext.PrimaryId,
-                            randomQuery.IndexId,
-                            storeContext);
+                        IndexServerUtils.GetMetadataStoredWithIndex(indexTypeMapping,
+                            new List<CacheIndexInternal>(1) { targetIndex },
+                            out metadata,
+                            out metadataPropertyCollection);
                     }
 
                     #endregion
@@ -116,11 +139,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 #endregion
 
                 }
-                randomQueryResult = new RandomQueryResult(indexExists, indexSize, metadata, resultItemList, virtualCount, null);
+                randomQueryResult = new RandomQueryResult(indexExists, indexSize, metadata, metadataPropertyCollection, resultItemList, virtualCount, indexCap, null);
             }
             catch (Exception ex)
             {
-                randomQueryResult = new RandomQueryResult(false, -1, null, null, -1, ex.Message);
+                randomQueryResult = new RandomQueryResult(false, -1, null, null, null, -1, 0, ex.Message);
                 LoggingUtil.Log.ErrorFormat("TypeId {0} -- Error processing RandomQuery : {1}", messageContext.TypeId, ex);
             }
             return randomQueryResult;
@@ -133,6 +156,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// <param name="randomQuery">The random query.</param>
         private static void ValidateQuery(IndexTypeMapping indexTypeMapping, RandomQuery randomQuery)
         {
+            if (string.IsNullOrEmpty(randomQuery.TargetIndexName))
+            {
+                randomQuery.TargetIndexName = IndexServerUtils.CheckQueryTargetIndexName(indexTypeMapping);
+            }
+
             if (!indexTypeMapping.IndexCollection.Contains(randomQuery.TargetIndexName))
             {
                 throw new Exception("Invalid TargetIndexName - " + randomQuery.TargetIndexName);

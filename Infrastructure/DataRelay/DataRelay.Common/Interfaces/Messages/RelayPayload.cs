@@ -231,7 +231,7 @@ namespace MySpace.DataRelay
 		/// </summary>
 		/// <typeparam name="T">Any type that implements and empty constructor.</typeparam>
 		/// <returns>The loaded new instance if successful; otherwise returns a default empty value.</returns>
-        public T GetObject<T>() where T : new()
+		public T GetObject<T>()
         {
             if (this.ByteArray == null || this.ByteArray.Length == 0)
             {

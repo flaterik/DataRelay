@@ -8,6 +8,9 @@ namespace MySpace.DataRelay.Common.Schemas
 		[XmlElement("ListenPort")]
 		public int ListenPort;
 
+        [XmlElement("PipelinePort")]
+        public ushort PipelinePort;
+
 		[XmlElement("HttpListenPort")] 
 		public int HttpListenPort;
 	}

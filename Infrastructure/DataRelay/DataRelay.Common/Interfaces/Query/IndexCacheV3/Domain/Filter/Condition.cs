@@ -14,41 +14,25 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// Gets or sets the name of the field (ItemId/IndexId/{TagName}).
         /// </summary>
         /// <value>The name of the field.</value>
-        public string FieldName
-        {
-            get;
-            set;
-        }
+        public string FieldName { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this instance is tag.
         /// </summary>
         /// <value><c>true</c> if this instance is tag; otherwise, <c>false</c>.</value>
-        public bool IsTag
-        {
-            get;
-            set;
-        }
+        public bool IsTag { get; set; }
 
         /// <summary>
         /// Gets or sets the operation.
         /// </summary>
         /// <value>The operation.</value>
-        public Operation Operation
-        {
-            get;
-            set;
-        }
+        public Operation Operation { get; set; }
 
         /// <summary>
         /// Gets or sets the value for the field.
         /// </summary>
         /// <value>The value.</value>
-        public byte[] Value
-        {
-            get;
-            set;
-        }
+        public byte[] Value { get; set; }
 
         /// <summary>
         /// Gets or sets the bitwise mask. Should be set only for bitwise operators
@@ -70,31 +54,21 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// Gets or sets the DataType of the field.
         /// </summary>
         /// <value>The DataType.</value>
-        public DataType DataType
-        {
-            get;
-            set;
-        }
+        public DataType DataType { get; set; }
 
         /// <summary>
         /// Gets or sets the expected bitwise result. Only applicable for a Bitwise operation.
         /// </summary>
         /// <value>The expected bitwise result.</value>
-        public byte[] ExpectedBitwiseResult
-        {
-            get;
-            set;
-        }
+        public byte[] ExpectedBitwiseResult { get; set; }
 
         /// <summary>
         /// Gets or sets the no. of bytes to shift by. Only applicable for a Bitwise operation.
         /// </summary>
         /// <value>The shift by.</value>
-        public byte ShiftBy
-        {
-            get;
-            set;
-        }
+        public byte ShiftBy { get; set; }
+
+        public string MetadataProperty { get; set; }
 
         /// <summary>
         /// Gets the type of the filter.
@@ -107,6 +81,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return FilterType.Condition;
             }
         }
+
         #endregion
 
         #region Ctors
@@ -165,38 +140,31 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             }
         }
 
-        /// <summary>
-        /// Gets the filter info.
-        /// </summary>
-        /// <value>The filter info.</value>
-        internal override string FilterInfo
+        public override string ToString()
         {
-            get
+            var stb = new StringBuilder();
+            stb.Append("(").Append(FieldName).Append(" ");
+            stb.Append(Operation);
+            int oper = (int)Operation;
+            stb.Append(" ");
+            if ((oper <= (int)Operation.BitwiseXOR))
             {
-                var stb = new StringBuilder();
-                stb.Append("(").Append(FieldName).Append(" ");
-                stb.Append(Operation);
-                int oper = (int)Operation;
-                stb.Append(" ");
-                if ((oper <= (int)Operation.BitwiseXOR))
-                {
-                    stb.Append((Value == null)
-                                   ? "Null"
-                                   : (IndexCacheUtils.GetReadableByteArray(Value) + " [" + DataType + "]"));
-                }
-                else
-                {
-                    stb.Append(ShiftBy);
-                }
-
-                if (oper > (int)Operation.NotEquals && oper != (int)Operation.BitwiseComplement)
-                {
-                    stb.Append(" == ").Append((ExpectedBitwiseResult == null) ? "Null" : IndexCacheUtils.GetReadableByteArray(ExpectedBitwiseResult));
-                }
-
-                stb.Append(")");
-                return stb.ToString();
+                stb.Append((Value == null)
+                               ? "Null"
+                               : (IndexCacheUtils.GetReadableByteArray(Value) + " [" + DataType + "]"));
             }
+            else
+            {
+                stb.Append(ShiftBy);
+            }
+
+            if (oper > (int)Operation.NotEquals && oper != (int)Operation.BitwiseComplement)
+            {
+                stb.Append(" == ").Append((ExpectedBitwiseResult == null) ? "Null" : IndexCacheUtils.GetReadableByteArray(ExpectedBitwiseResult));
+            }
+
+            stb.Append(")");
+            return stb.ToString();
         }
 
         /// <summary>
@@ -641,6 +609,9 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
                 //ShiftBy
                 writer.Write(ShiftBy);
+
+                //MetadataProperty
+                writer.Write(MetadataProperty);
             }
         }
 
@@ -684,10 +655,16 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                     //ShiftBy
                     ShiftBy = reader.ReadByte();
                 }
+
+                if (version >= 3)
+                {
+                    //MetadataProperty
+                    MetadataProperty = reader.ReadString();
+                }
             }
         }
 
-        private const int CURRENT_VERSION = 2;
+        private const int CURRENT_VERSION = 3;
         /// <summary>
         /// Gets the current version.
         /// </summary>

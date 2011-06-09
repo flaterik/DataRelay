@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using MySpace.DataRelay.Interfaces.Query.IndexCacheV3.Domain.Query.Intersection;
 using Wintellect.PowerCollections;
 
@@ -14,6 +15,11 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
         public ClusteredIntersectionQuery(List<byte[]> indexIdList, string targetIndexName)
             : base(indexIdList, targetIndexName)
+        {
+        }
+
+        public ClusteredIntersectionQuery(IntersectionQuery query)
+            : base(query)
         {
         }
         #endregion
@@ -31,6 +37,11 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             : base(indexIdList, targetIndexName)
         {
         }
+
+        public BaseClusteredIntersectionQuery(IntersectionQuery query) 
+            : base(query)
+        {
+        }
         #endregion
 
         #region ISplitable Members
@@ -40,18 +51,64 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             List<IPrimaryRelayMessageQuery> queryList = new List<IPrimaryRelayMessageQuery>();
             Dictionary<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], IntersectionQueryParams>>> clusterParamsMapping;
 
-            IndexCacheUtils.SplitIndexIdsByCluster(indexIdList, primaryIdList, intersectionQueryParamsMapping, numClustersInGroup, out clusterParamsMapping);
+            IndexCacheUtils.SplitIndexIdsByCluster(IndexIdList, PrimaryIdList, intersectionQueryParamsMapping, numClustersInGroup, out clusterParamsMapping);
+
+            if (clusterParamsMapping.Count == 1)
+            {
+                //This means that the query is not spilt across more than multiple clusters and the MaxResultItems criteria can be applied on the server
+                IsSingleClusterQuery = true;
+            }
 
             foreach (KeyValuePair<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], IntersectionQueryParams>>> clusterParam in clusterParamsMapping)
             {
                 intersectionQuery = new IntersectionQuery(this)
-                                        {
-                                            primaryId = clusterParam.Key,
-                                            indexIdList = clusterParam.Value.First,
-                                            primaryIdList = clusterParam.Value.Second,
-                                            intersectionQueryParamsMapping = clusterParam.Value.Third
-                                        };
+                {
+                    primaryId = clusterParam.Key,
+                    IndexIdList = clusterParam.Value.First,
+                    PrimaryIdList = clusterParam.Value.Second,
+                    intersectionQueryParamsMapping = clusterParam.Value.Third
+                };
                 queryList.Add(intersectionQuery);
+            }
+            return queryList;
+        }
+
+        public List<IPrimaryRelayMessageQuery> SplitQuery(
+            int numClustersInGroup,
+            int localClusterPosition,
+            out IPrimaryRelayMessageQuery localQuery)
+        {
+            IntersectionQuery intersectionQuery;
+            List<IPrimaryRelayMessageQuery> queryList = new List<IPrimaryRelayMessageQuery>();
+            Dictionary<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], IntersectionQueryParams>>> clusterParamsMapping;
+            localQuery = null;
+
+            IndexCacheUtils.SplitIndexIdsByCluster(IndexIdList, PrimaryIdList, intersectionQueryParamsMapping, numClustersInGroup, out clusterParamsMapping);
+            
+            if(clusterParamsMapping.Count == 1)
+            {
+                //This means that the query is not spilt across more than multiple clusters and the MaxResultItems criteria can be applied on the server
+                IsSingleClusterQuery = true;
+            }
+
+            foreach (KeyValuePair<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], IntersectionQueryParams>>> clusterParam in clusterParamsMapping)
+            {
+                intersectionQuery = new IntersectionQuery(this)
+                {
+                    primaryId = clusterParam.Key,
+                    IndexIdList = clusterParam.Value.First,
+                    PrimaryIdList = clusterParam.Value.Second,
+                    intersectionQueryParamsMapping = clusterParam.Value.Third
+                };
+
+                if (clusterParam.Key == localClusterPosition)
+                {
+                    localQuery = intersectionQuery;
+                }
+                else
+                {
+                    queryList.Add(intersectionQuery);
+                }
             }
             return queryList;
         }
@@ -81,15 +138,19 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 }
                 else
                 {
-                    completeResult =  new TQueryResult();
+                    completeResult = new TQueryResult();
+                    StringBuilder exceptionStringBuilder = new StringBuilder();
+
                     #region Merge partialResults into completeResultList
                     ByteArrayEqualityComparer byteArrayEqualityComparer = new ByteArrayEqualityComparer();
                     Dictionary<byte[] /*IndexId*/, IndexHeader /*IndexHeader*/> completeIndexIdIndexHeaderMapping =
                         new Dictionary<byte[], IndexHeader>(byteArrayEqualityComparer);
 
-                    foreach (TQueryResult partialResult in partialResults)
+                    for (int i = 0; i < partialResults.Count; i++)
                     {
-                        if (partialResult != null && partialResult.ResultItemList != null && partialResult.ResultItemList.Count > 0)
+                        TQueryResult partialResult = partialResults[i];
+                        if (partialResult != null && partialResult.ResultItemList != null &&
+                            partialResult.ResultItemList.Count > 0)
                         {
                             if (completeResult.ResultItemList == null || completeResult.ResultItemList.Count == 0)
                             {
@@ -103,7 +164,9 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                                     partialResult.LocalIdentityTagNames,
                                     partialResult.SortOrderList,
                                     completeResult,
-                                    partialResult);
+                                    partialResult,
+                                    MaxResultItems,
+                                    i == partialResults.Count - 1 ? true : false);
 
                                 if (completeResult.ResultItemList == null || completeResult.ResultItemList.Count < 1)
                                 {
@@ -111,9 +174,10 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                                     break;
                                 }
                             }
-                            if (getIndexHeader && partialResult.IndexIdIndexHeaderMapping != null)
+                            if (GetIndexHeader && partialResult.IndexIdIndexHeaderMapping != null)
                             {
-                                foreach (KeyValuePair<byte[], IndexHeader> kvp in partialResult.IndexIdIndexHeaderMapping)
+                                foreach (
+                                    KeyValuePair<byte[], IndexHeader> kvp in partialResult.IndexIdIndexHeaderMapping)
                                 {
                                     completeIndexIdIndexHeaderMapping.Add(kvp.Key, kvp.Value);
                                 }
@@ -124,12 +188,25 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                             // Unable to fetch one of the indexes. Stop Interestion !!
                             completeResult.ResultItemList = null;
                             completeIndexIdIndexHeaderMapping = null;
+
+                            if ((partialResult != null) && (!String.IsNullOrEmpty(partialResult.ExceptionInfo)))
+                            {
+                                exceptionStringBuilder.Append(partialResult.ExceptionInfo);
+                                exceptionStringBuilder.Append(" ");
+                            }
+
                             break;
                         }
                     }
 
                     #region Create final result
                     completeResult.IndexIdIndexHeaderMapping = completeIndexIdIndexHeaderMapping;
+
+                    if (exceptionStringBuilder.Length > 0)
+                    {
+                        completeResult.ExceptionInfo = exceptionStringBuilder.ToString();
+                    }
+
                     #endregion
 
                     #endregion

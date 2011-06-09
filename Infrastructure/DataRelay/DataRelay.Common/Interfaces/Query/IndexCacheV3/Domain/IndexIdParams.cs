@@ -1,4 +1,5 @@
-﻿using MySpace.Common;
+﻿using System.Text;
+using MySpace.Common;
 using MySpace.Common.IO;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
@@ -6,6 +7,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
     public class IndexIdParams : IVersionSerializable
     {      
         #region Ctors
+
         public IndexIdParams()
         {
             Init(-1, null, null);    
@@ -22,9 +24,23 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             Filter = filter;
             BaseQuery = baseQuery;
         }
+
+        #endregion
+
+        #region Methods
+
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            stb.Append("(").Append("MaxItems: ").Append(MaxItems).Append("),");
+            stb.Append("(").Append("Filter: ").Append(Filter == null ? "Null" : Filter.ToString()).Append("),");
+            return stb.ToString();
+        }
+
         #endregion
 
         #region Data Members
+
         private int maxItems;
         public int MaxItems
         {
@@ -64,9 +80,11 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             get;
             set;
         }
+
         #endregion
 
         #region IVersionSerializable Members
+
         public void Serialize(IPrimitiveWriter writer)
         {
             using (writer.CreateRegion())
@@ -120,6 +138,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return false;
             }
         }
+
         #endregion
 
         #region ICustomSerializable Members

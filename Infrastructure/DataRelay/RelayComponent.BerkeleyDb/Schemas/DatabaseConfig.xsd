@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="DatabaseConfig" 
+	xmlns:tns="http://myspace.com/DatabaseConfig.xsd" 
+	elementFormDefault="qualified" 
+	targetNamespace="http://myspace.com/DatabaseConfig.xsd" 
+	xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element name="DatabaseConfig" nillable="true" type="tns:DatabaseConfig" />
+	<xs:complexType name="DatabaseConfig">
+		<xs:sequence>
+			<!--<xs:element minOccurs="0" maxOccurs="1" name="CreateFlags" type="tns:DatabaseCreateFlags" />-->
+			<xs:element minOccurs="0" maxOccurs="1" name="ErrorPrefix" type="xs:string" />
+			<xs:element minOccurs="0" maxOccurs="1" name="FileName" type="xs:string" />
+			<xs:element minOccurs="1" maxOccurs="1" name="Id" type="xs:short" />
+			<xs:element minOccurs="0" maxOccurs="1" name="OpenFlags" type="tns:DatabaseOpenFlags" />
+			<!--<xs:element minOccurs="1" maxOccurs="1" name="Type" type="tns:DbType" />-->
+		</xs:sequence>
+	</xs:complexType>
+	<!--
+	<xs:simpleType name="DatabaseCreateFlags">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="None" />
+			<xs:enumeration value="RepCreate" />
+			<xs:enumeration value="XACreate" />
+		</xs:restriction>
+	</xs:simpleType>-->
+	<xs:simpleType name="DatabaseOpenFlags">
+		<xs:list>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="None" />
+					<xs:enumeration value="Create" />
+					<xs:enumeration value="NoMemoryMap" />
+					<xs:enumeration value="ReadOnly" />
+					<xs:enumeration value="ThreadSafe" />
+					<xs:enumeration value="Truncate" />
+					<xs:enumeration value="Exclusive" />
+					<xs:enumeration value="AutoCommit" />
+					<xs:enumeration value="DirtyRead" />
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:list>
+	</xs:simpleType>
+	<!--<xs:simpleType name="DbType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="BTree" />
+			<xs:enumeration value="Hash" />
+			<xs:enumeration value="Recno" />
+			<xs:enumeration value="Queue" />
+			<xs:enumeration value="Unknown" />
+		</xs:restriction>
+	</xs:simpleType>-->
+</xs:schema>

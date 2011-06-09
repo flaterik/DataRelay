@@ -1,0 +1,379 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{1A8649F3-832B-4C8D-9D13-1ED901DD8DCC}</ProjectGuid>
+    <RootNamespace>BerkeleyDbWrapper</RootNamespace>
+    <SccProjectName>SAK</SccProjectName>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccProvider>SAK</SccProvider>
+    <Keyword>ManagedCProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <CLRSupport>true</CLRSupport>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <CLRSupport>true</CLRSupport>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <CLRSupport>true</CLRSupport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <CLRSupport>true</CLRSupport>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <ReferencePath Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\_drop;$(ReferencePath)</ReferencePath>
+    <ReferencePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\_drop;$(ReferencePath)</ReferencePath>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)..\..\..\_drop\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)..\..\..\_drop\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Platform)\$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+    <ReferencePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\_drop;$(ReferencePath)</ReferencePath>
+    <ReferencePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\_drop;$(ReferencePath)</ReferencePath>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)..\..\..\_drop\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)..\..\..\_drop\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Platform)\$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MySpace.$(ProjectName).$(Platform)</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">MySpace.$(ProjectName).$(Platform)</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MySpace.$(ProjectName).$(Platform)</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MySpace.$(ProjectName).$(Platform)</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.exe</TargetExt>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.exe</TargetExt>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <CustomBuildStep>
+      <Inputs>%(Inputs)</Inputs>
+      <Outputs>%(Outputs)</Outputs>
+    </CustomBuildStep>
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>BerkeleyDb-Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <GenerateXMLDocumentationFiles>true</GenerateXMLDocumentationFiles>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetFileName)</OutputFile>
+      <AdditionalLibraryDirectories>.\LibDb.Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AddModuleNamesToAssembly>%(AddModuleNamesToAssembly)</AddModuleNamesToAssembly>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AssemblyDebug>true</AssemblyDebug>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+    <PostBuildEvent>
+      <Command>attrib -r "$(SolutionDir)..\..\core\common\_externalreferences\$(TargetName).*"
+xcopy /c/i/y "$(TargetDir)$(TargetName).*" "$(SolutionDir)\..\..\core\common\_externalreferences\"
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <CustomBuildStep>
+      <Inputs>%(Inputs)</Inputs>
+      <Outputs>%(Outputs)</Outputs>
+    </CustomBuildStep>
+    <Midl />
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>BerkeleyDb-Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <GenerateXMLDocumentationFiles>true</GenerateXMLDocumentationFiles>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetFileName)</OutputFile>
+      <AdditionalLibraryDirectories>.\LibDb.Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AddModuleNamesToAssembly>%(AddModuleNamesToAssembly)</AddModuleNamesToAssembly>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AssemblyDebug>true</AssemblyDebug>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+    </Link>
+    <PostBuildEvent>
+      <Command>attrib -r "$(SolutionDir)..\..\core\common\_externalreferences\$(TargetName).*"
+xcopy /c/i/y "$(TargetDir)$(TargetName).*" "$(SolutionDir)\..\..\core\common\_externalreferences\"
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <AdditionalIncludeDirectories>BerkeleyDb-Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetFileName)</OutputFile>
+      <AdditionalLibraryDirectories>.\LibDb;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+    <PostBuildEvent>
+      <Command>attrib -r "$(SolutionDir)..\..\core\common\_externalreferences\$(TargetName).*"
+xcopy /c/i/y "$(TargetDir)$(TargetName).*" "$(SolutionDir)\..\..\core\common\_externalreferences\"
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Midl />
+    <ClCompile>
+      <AdditionalIncludeDirectories>BerkeleyDb-Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAsManaged>true</CompileAsManaged>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetFileName)</OutputFile>
+      <AdditionalLibraryDirectories>.\LibDb;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+    </Link>
+    <PostBuildEvent>
+      <Command>attrib -r "$(SolutionDir)..\..\core\common\_externalreferences\$(TargetName).*"
+xcopy /c/i/y "$(TargetDir)$(TargetName).*" "$(SolutionDir)\..\..\core\common\_externalreferences\"
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Reference Include="System">
+      <CopyLocalSatelliteAssemblies>true</CopyLocalSatelliteAssemblies>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </Reference>
+    <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\..\..\_drop\MySpace.Logging.dll</HintPath>
+      <CopyLocalSatelliteAssemblies>true</CopyLocalSatelliteAssemblies>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </Reference>
+    <Reference Include="MySpace.ResourcePool, Version=1.0.1.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\..\..\_drop\MySpace.ResourcePool.dll</HintPath>
+      <CopyLocalSatelliteAssemblies>true</CopyLocalSatelliteAssemblies>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </Reference>
+    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\..\..\_drop\MySpace.Shared.dll</HintPath>
+      <CopyLocalSatelliteAssemblies>true</CopyLocalSatelliteAssemblies>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AssemblyInfo.cpp" />
+    <ClCompile Include="BdbExceptionFactory.cpp" />
+    <ClCompile Include="ConvStr.cpp" />
+    <ClCompile Include="CursorImpl.cpp" />
+    <ClCompile Include="DatabaseImpl.cpp" />
+    <ClCompile Include="EnvironmentImpl.cpp" />
+    <ClCompile Include="Stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Util.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Alloc.h" />
+    <ClInclude Include="BdbExceptionFactory.h" />
+    <ClInclude Include="ConvStr.h" />
+    <ClInclude Include="CursorImpl.h" />
+    <ClInclude Include="DatabaseImpl.h" />
+    <ClInclude Include="DbtHolder.h" />
+    <ClInclude Include="EnvironmentImpl.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Stdafx.h" />
+    <ClInclude Include="Util.h" />
+    <ClInclude Include="BerkeleyDb-Headers\clib_port.h" />
+    <ClInclude Include="BerkeleyDb-Headers\db.h" />
+    <ClInclude Include="BerkeleyDb-Headers\db_cxx.h" />
+    <ClInclude Include="BerkeleyDb-Headers\db_int.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\btree.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\clock.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\crypto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\cxx_int.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_am.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_dispatch.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_join.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_page.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_server_int.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_swap.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_upgrade.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\db_verify.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\debug.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\fop.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\globals.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\hash.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\hmac.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\lock.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\log.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\mp.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\mutex.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\mutex_int.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\os.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\qam.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\queue.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\region.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\rep.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\repmgr.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\shqueue.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\tcl_db.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\txn.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\win_db.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc\xa.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\btree_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\btree_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\clib_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\common_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\crdel_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\crypto_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\db_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\db_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\dbreg_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\dbreg_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\env_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\fileops_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\fileops_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\hash_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\hash_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\hmac_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\lock_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\log_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\mp_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\mutex_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\os_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\qam_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\qam_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\rep_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\rep_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\repmgr_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\repmgr_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\rpc_client_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\rpc_server_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\sequence_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\tcl_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\txn_auto.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\txn_ext.h" />
+    <ClInclude Include="BerkeleyDb-Headers\dbinc_auto\xa_ext.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.ico" />
+    <None Include="OSILicense.txt" />
+    <None Include="BerkeleyDb-Headers\dbinc\db.in" />
+    <None Include="BerkeleyDb-Headers\dbinc\db_185.in" />
+    <None Include="BerkeleyDb-Headers\dbinc\db_cxx.in" />
+    <None Include="BerkeleyDb-Headers\dbinc\db_int.in" />
+    <None Include="BerkeleyDb-Headers\dbinc_auto\api_flags.in" />
+    <None Include="BerkeleyDb-Headers\dbinc_auto\ext_185_def.in" />
+    <None Include="BerkeleyDb-Headers\dbinc_auto\ext_185_prot.in" />
+    <None Include="BerkeleyDb-Headers\dbinc_auto\ext_def.in" />
+    <None Include="BerkeleyDb-Headers\dbinc_auto\ext_prot.in" />
+    <None Include="BerkeleyDb-Headers\dbinc_auto\int_def.in" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="app.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BerkeleyDb.Wrapper.Common\BerkeleyDb.Wrapper.Common.csproj">
+      <Project>{2dfa0b05-429d-4880-ae7f-7bf881e66b13}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

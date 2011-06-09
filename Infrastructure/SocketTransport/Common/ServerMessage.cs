@@ -41,7 +41,7 @@ namespace MySpace.SocketTransport
 		///	<para><paramref name="source"/> is <see langword="null"/>.</para>
 		/// </exception>
 		/// <exception cref="ArgumentOutOfRangeException">
-		///	<para><paramref name="source.Length"/> is less than <see cref="HeaderSize"/>.</para>
+		///	<para><paramref name="source"/> length is less than <see cref="HeaderSize"/>.</para>
 		///	<para>- or -</para>
 		///	<para>The remaining bytes following <paramref name="source"/>[<paramref name="offset"/>] (inclusive) is less than <see cref="HeaderSize"/>.</para>
 		/// </exception>
@@ -94,7 +94,7 @@ namespace MySpace.SocketTransport
 		///	<para><paramref name="messageBuffer"/> is <see langword="null"/></para>.
 		/// </exception>
 		/// <exception cref="ArgumentOutOfRangeException">
-		///	<para><paramref name="messageBuffer.Length"/> is less than
+		///	<para><paramref name="messageBuffer"/> length is less than
 		///	<see cref="EmptyReplyMessageLength"/> - <see cref="HeaderSize"/>.</para>
 		///	<para>- or -</para>
 		///	<para>The remaining bytes following <paramref name="messageBuffer"/> is less than

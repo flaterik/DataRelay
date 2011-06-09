@@ -86,7 +86,7 @@ namespace MySpace.SocketTransport
 					if (socket == null)
 					{
 						if (log.IsWarnEnabled)
-                            log.WarnFormat("All sockets in a socket pool for {0} are in use.", destination);
+							log.WarnFormat("All sockets in a socket pool for {0} are in use.", destination);
 						if (sockets.Length < ArraySocketPool.MaximumPoolSize)						
 						{						
 							GrowPool();
@@ -99,8 +99,8 @@ namespace MySpace.SocketTransport
 
 		private void GrowPool()
 		{
-            if (log.IsInfoEnabled)
-                log.InfoFormat("Growing socket pool for {0} to size {1}.", destination, sockets.Length * 2);
+			if (log.IsInfoEnabled)
+				log.InfoFormat("Growing socket pool for {0} to size {1}.", destination, sockets.Length * 2);
 			ArrayManagedSocket[] newSockets = new ArrayManagedSocket[sockets.Length * 2];
 			lock (growlock)
 			{

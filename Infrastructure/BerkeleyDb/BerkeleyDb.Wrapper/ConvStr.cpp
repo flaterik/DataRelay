@@ -1,6 +1,9 @@
 #include "StdAfx.h"
 #include "ConvStr.h"
 
+using namespace System;
+using namespace System::Runtime::InteropServices;
+
 ConvStr::ConvStr(String^ src)
 {
 	if (src != nullptr) {

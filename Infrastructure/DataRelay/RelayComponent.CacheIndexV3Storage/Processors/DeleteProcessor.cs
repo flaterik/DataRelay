@@ -21,17 +21,18 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             {
                 IndexTypeMapping indexTypeMapping = 
                     storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection[messageContext.TypeId];
-                List<RelayMessage> dataStorageMessageList = new List<RelayMessage>();
                 List<RelayMessage> indexStorageMessageList = new List<RelayMessage>(indexTypeMapping.IndexCollection.Count);
+                List<RelayMessage> dataStorageMessageList = new List<RelayMessage>();
                 CacheIndexInternal internalIndex;
                 List<byte[]> fullDataIdList;
 
                 if (indexTypeMapping.MetadataStoredSeperately)
                 {
-                    indexStorageMessageList.Add(new RelayMessage(messageContext.TypeId, 
-                                                    messageContext.PrimaryId, 
-                                                    messageContext.ExtendedId, 
-                                                    MessageType.Delete));
+                    BinaryStorageAdapter.Delete(
+                        storeContext.IndexStorageComponent,
+                        messageContext.TypeId,
+                        messageContext.PrimaryId,
+                        messageContext.ExtendedId);
                 }
 
                 foreach (Index index in indexTypeMapping.IndexCollection)
@@ -51,7 +52,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         index.PrimarySortInfo,
                         index.LocalIdentityTagList,
                         index.StringHashCodeDictionary,
-                        null);
+                        null,
+                        indexTypeMapping.IndexCollection[index.IndexName].IsMetadataPropertyCollection,
+                        null,
+                        DomainSpecificProcessingType.None,
+                        null,
+                        null,
+                        null,
+                        true);
 
                     if (internalIndex != null)
                     {
@@ -89,11 +97,12 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         #endregion
 
                         #region Delete messages for index store
-                        
-                        indexStorageMessageList.Add(new RelayMessage(messageContext.TypeId,
-                                                        messageContext.PrimaryId,
-                                                        IndexServerUtils.FormExtendedId(messageContext.ExtendedId, index.ExtendedIdSuffix),
-                                                        MessageType.Delete));
+
+                        BinaryStorageAdapter.Delete(
+                            storeContext.IndexStorageComponent,
+                            messageContext.TypeId,
+                            messageContext.PrimaryId,
+                            IndexServerUtils.FormExtendedId(messageContext.ExtendedId, index.ExtendedIdSuffix));
                         
                         #endregion
                     }
@@ -102,11 +111,6 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 if (dataStorageMessageList.Count > 0)
                 {
                     storeContext.ForwarderComponent.HandleMessages(dataStorageMessageList);
-                }
-
-                if (indexStorageMessageList.Count > 0)
-                {
-                    storeContext.IndexStorageComponent.HandleMessages(indexStorageMessageList);
                 }
             }
         }

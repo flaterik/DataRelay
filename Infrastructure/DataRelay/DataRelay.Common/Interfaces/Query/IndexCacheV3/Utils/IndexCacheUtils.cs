@@ -14,13 +14,20 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// <summary>
         /// Default primary id value for the multi index id query
         /// </summary>
-        internal const int MUTILEINDEXQUERYDEFAULTPRIMARYID = -1;
+        internal const int MULTIINDEXQUERY_DEFAULT_PRIMARYID = -1;
 
         /// <summary>
         /// static random generator for generate the primary id 
         /// </summary>
-        static Random randomGenerator = new Random();
+        static readonly Random randomGenerator = new Random();
 
+        /// <summary>
+        /// Checks IItems to see if they have equal local ids
+        /// </summary>
+        /// <param name="item1">The item1.</param>
+        /// <param name="item2">The item2.</param>
+        /// <param name="localIdentityTagNames">The local identity tag names.</param>
+        /// <returns></returns>
         internal static bool EqualsLocalId(IItem item1, IItem item2, List<string> localIdentityTagNames)
         {
             try
@@ -34,7 +41,10 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                     {
                         throw new Exception("Tag required for local identity not found on the IndexItem");
                     }
-                    return ByteArrayComparerUtil.CompareByteArrays(tag1, tag2);
+                    if (!ByteArrayComparerUtil.CompareByteArrays(tag1, tag2))
+                    {
+                        return false;
+                    }
                 }
                 return true;
             }
@@ -43,7 +53,12 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 throw new Exception("Unexptected error while comparing local id.", ex);
             }
         }
-   
+
+        /// <summary>
+        /// Generates the primary id.
+        /// </summary>
+        /// <param name="bytes">The bytes.</param>
+        /// <returns></returns>
         internal static int GeneratePrimaryId(byte[] bytes)
         {
             return CacheHelper.GeneratePrimaryId(bytes);
@@ -66,13 +81,25 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             return GeneratePrimaryId(indexIdList[GetRandom(0, indexIdList.Count)]);
         }
 
-        // return a random number between the range
+        /// <summary>
+        /// Gets a random number within min and max specified.
+        /// </summary>
+        /// <param name="min">Inclusive Min.</param>
+        /// <param name="max">Exclusive Max.</param>
+        /// <returns></returns>
         internal static int GetRandom(int min, int max)
         {
             return randomGenerator.Next(min, max);
         }
 
-
+        /// <summary>
+        /// Splits the IndexId list by cluster.
+        /// </summary>
+        /// <param name="indexIdList">The index id list.</param>
+        /// <param name="primaryIdList">The primary id list.</param>
+        /// <param name="indexIdParamsMapping">The index id params mapping.</param>
+        /// <param name="numClustersInGroup">The num clusters in group.</param>
+        /// <param name="clusterParamsMapping">The cluster params mapping.</param>
         internal static void SplitIndexIdsByCluster(
             List<byte[]> indexIdList,
             List<int> primaryIdList,
@@ -99,7 +126,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                         clusterId,
                         new Triple<List<byte[]>, List<int>, Dictionary<byte[], IndexIdParams>>(
                             new List<byte[]>(),
-                            new List<int>(),
+                            generatePrimaryId ? null : new List<int>(),
                             new Dictionary<byte[], IndexIdParams>()));
                 }
 
@@ -115,6 +142,14 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             }
         }
 
+        /// <summary>
+        /// Splits the IndexId list by cluster.
+        /// </summary>
+        /// <param name="indexIdList">The index id list.</param>
+        /// <param name="primaryIdList">The primary id list.</param>
+        /// <param name="intersectionQueryParamsMapping">The intersection query params mapping.</param>
+        /// <param name="numClustersInGroup">The num clusters in group.</param>
+        /// <param name="clusterParamsMapping">The cluster params mapping.</param>
         internal static void SplitIndexIdsByCluster(
             List<byte[]> indexIdList,
             List<int> primaryIdList,
@@ -158,6 +193,57 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         }
 
         /// <summary>
+        /// Splits the IndexId list by cluster.
+        /// </summary>
+        /// <param name="indexIdList">The index id list.</param>
+        /// <param name="primaryIdList">The primary id list.</param>
+        /// <param name="multiIndexContainsQueryParamsMapping">The multi index contains query params mapping.</param>
+        /// <param name="numClustersInGroup">The num clusters in group.</param>
+        /// <param name="clusterParamsMapping">The cluster params mapping.</param>
+        internal static void SplitIndexIdsByCluster(List<byte[]> indexIdList, 
+            List<int> primaryIdList, 
+            Dictionary<byte[], MultiIndexContainsQueryParams> multiIndexContainsQueryParamsMapping, 
+            int numClustersInGroup, 
+            out Dictionary<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], MultiIndexContainsQueryParams>>> clusterParamsMapping)
+        {
+            // NOTE - This method RELIES on the fact that DataRelay partitions clusters using "mod" logic.  If this ever changes,
+            // this method will need to be updated!!!
+
+            int id, clusterId;
+            clusterParamsMapping = new Dictionary<int /*Cluster No.*/, 
+                Triple<List<byte[]> /*IndexIdList*/, 
+                List<int> /*PrimaryIdList*/, 
+                Dictionary<byte[] /*IndexId*/, MultiIndexContainsQueryParams>>>(numClustersInGroup);
+            bool generatePrimaryId = !(primaryIdList != null && indexIdList.Count == primaryIdList.Count);
+            MultiIndexContainsQueryParams tempMultiIndexContainsQueryParams;
+
+            for (int i = 0; i < indexIdList.Count; i++)
+            {
+                id = generatePrimaryId ? GeneratePrimaryId(indexIdList[i]) : primaryIdList[i];
+                clusterId = id % numClustersInGroup;
+
+                if (!clusterParamsMapping.ContainsKey(clusterId))
+                {
+                    clusterParamsMapping.Add(
+                        clusterId,
+                        new Triple<List<byte[]>, List<int>, Dictionary<byte[], MultiIndexContainsQueryParams>>(new List<byte[]>(),
+                            new List<int>(),
+                            new Dictionary<byte[], MultiIndexContainsQueryParams>()));
+                }
+
+                clusterParamsMapping[clusterId].First.Add(indexIdList[i]);
+                if (!generatePrimaryId)
+                {
+                    clusterParamsMapping[clusterId].Second.Add(primaryIdList[i]);
+                }
+                if (multiIndexContainsQueryParamsMapping != null && multiIndexContainsQueryParamsMapping.TryGetValue(indexIdList[i], out tempMultiIndexContainsQueryParams))
+                {
+                    clusterParamsMapping[clusterId].Third.Add(indexIdList[i], tempMultiIndexContainsQueryParams);
+                }
+            }
+        }
+
+        /// <summary>
         /// Gets the readable byte array.
         /// </summary>
         /// <param name="buffer">The buffer.</param>
@@ -185,6 +271,22 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 }
             }
             return retVal;
+        }
+
+        /// <summary>
+        /// Processes the metadata property condition.
+        /// </summary>
+        /// <param name="condition">The condition.</param>
+        /// <param name="metadataPropertyCollection">The metadata property collection.</param>
+        internal static void ProcessMetadataPropertyCondition(Condition condition,
+            MetadataPropertyCollection metadataPropertyCollection)
+        {
+            if (!string.IsNullOrEmpty(condition.MetadataProperty) && metadataPropertyCollection != null)
+            {
+                byte[] metadataProperty;
+                metadataPropertyCollection.TryGetValue(condition.MetadataProperty, out metadataProperty);
+                condition.Value = metadataProperty;
+            }
         }
     }
 }

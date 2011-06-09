@@ -7,7 +7,11 @@
         <xs:element name="CacheIndexV3StorageConfig">
           <xs:complexType>
             <xs:sequence>
-              <xs:element name="StorageStateFile" type="xs:string" />
+                <xs:element name="MemPoolItemInitialSizeInBytes" type="xs:integer" />
+                <xs:element name="MemPoolMinItemNumber" type="xs:short" />
+                <xs:element name="PartialGetSizeInBytes" type="xs:integer" />
+				<xs:element name="RemoteClusterQueryTimeOutinMilliSec" type="xs:nonNegativeInteger" />
+				<xs:element name="StorageStateFile" type="xs:string" />
               <xs:element name="IndexTypeMappingCollection">
                 <xs:complexType>
                   <xs:sequence>
@@ -38,6 +42,7 @@
                                   <xs:complexType>
                                     <xs:sequence>
                                       <xs:element name="IndexName" type="xs:string" />
+                                      <xs:element name="PartialGetSizeInBytes" type="xs:nonNegativeInteger" />
                                       <xs:element name="ExtendedIdSuffix" type="xs:unsignedByte" />
                                       <xs:element name="PrimarySortInfo">
                                         <xs:complexType>
