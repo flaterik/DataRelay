@@ -25,6 +25,7 @@ namespace MySpace.Common
 		private long updateTicks = 0;
 		private long value = 0;
 		private object padLock = new object();
+        private object backingCounterCreationPadLock = new object();
 		private bool guardCounter = false;
 
 		#region Constructors
@@ -57,22 +58,27 @@ namespace MySpace.Common
 		{
 			get
 			{
-				if (counter == null && counterInstalled)
-				{
-					try
-					{
-						if(!machineName.Equals("."))
-							counter = new PerformanceCounter(categoryName, counterName, instanceName, machineName);
-						else
-							counter = new PerformanceCounter(categoryName, counterName, instanceName, readOnly);
-						counter.RawValue = 0;
-					}
-					catch
-					{
-						counterInstalled = false;
-						log.ErrorFormat("Expected counter {0}/{1}/{2} was not installed.", machineName, categoryName, counterName);
-					}
-				}
+                if (counter == null && counterInstalled)
+                {
+                    lock (backingCounterCreationPadLock)
+                    {
+                        if (counter != null || !counterInstalled) return counter;
+                        
+                        try
+                        {
+                            if (!machineName.Equals("."))
+                                counter = new PerformanceCounter(categoryName, counterName, instanceName, machineName);
+                            else
+                                counter = new PerformanceCounter(categoryName, counterName, instanceName, readOnly);
+                            counter.RawValue = 0;
+                        }
+                        catch
+                        {
+                            counterInstalled = false;
+                            Console.WriteLine("Expected counter was not installed.");
+                        }
+                    }
+                }
 				return counter;
 			}
 		}

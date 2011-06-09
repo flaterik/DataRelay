@@ -10,7 +10,7 @@ namespace MySpace.Common.Storage
 	/// <summary>
 	/// General purpose encapsulator for a variety of data sources and sinks.
 	/// </summary>
-	public struct DataBuffer : IVersionSerializable, IEquatable<DataBuffer>
+	public partial struct DataBuffer : IVersionSerializable, IEquatable<DataBuffer>
 	{
 		[DllImport("kernel32.dll", EntryPoint = "CopyMemory")]
 		static extern void CopyMemory(IntPtr Destination, IntPtr Source, int Length);
@@ -37,7 +37,6 @@ namespace MySpace.Common.Storage
 		private DataBufferType _type;
 		private static readonly DataBuffer _empty = new DataBuffer(
 			DataBufferType.Empty, new NonobjectDataUnion());
-		private static readonly Func<StringBuilder, String> _getStringBuilderInternalString;
 		#endregion
 
 		#region Helper Methods
@@ -49,7 +48,10 @@ namespace MySpace.Common.Storage
 		private void AssertValidOnlyForSegmentable()
 		{
 			if (_type == DataBufferType.Empty) return;
-			if ((_type & DataBufferType.Segmentable) != DataBufferType.Segmentable) throw InvalidOperationForType();
+			if ((_type & DataBufferType.Segmentable) != DataBufferType.Segmentable)
+			{
+				throw InvalidOperationForType();
+			}
 		}
 
 		private StringBuilder EnsureStringBuilderCapacity()
@@ -60,16 +62,10 @@ namespace MySpace.Common.Storage
 			return sbd;
 		}
 
-		private static unsafe void BinaryCopy(byte *source, byte *destination, int length)
-		{
-			CopyMemory(new IntPtr(destination), new IntPtr(source), length);
-		}
-
 		private unsafe int GetHashCodeForObjects()
 		{
 			int off, len;
 			var o = GetObjectValue(out off, out len);
-			if (len == 0) return 0;
 			var handle = GCHandle.Alloc(o, GCHandleType.Pinned);
 			try
 			{
@@ -77,7 +73,7 @@ namespace MySpace.Common.Storage
 					off);
 				var ret = 0x2ddefcf7;
 				var np = (int*)p;
-				for (; len > 3; len -= 4, ++np)
+				for (; len >= sizeof(int); len -= sizeof(int), ++np)
 				{
 					ret = ((ret << 5) | (ret >> 27)) ^ *np;
 				}
@@ -87,18 +83,17 @@ namespace MySpace.Common.Storage
 					switch (len)
 					{
 						case 1:
-							ret ^= *np & 0xff;
+							ret ^= (*np & 0xff);
 							break;
 						case 2:
-							ret ^= *np & 0xffff;
+							ret ^= (*np & 0xffff);
 							break;
 						case 3:
-							ret ^= *np & 0xffffff;
+							ret ^= (*np & 0xffffff);
 							break;
 					}
 				}
-				return ret;				
-				
+				return ret;
 			}
 			finally
 			{
@@ -135,7 +130,6 @@ namespace MySpace.Common.Storage
 		{
 			int off, len;
 			var o = GetObjectValue(out off, out len);
-			if (len == 0) return 0;
 			var handle = GCHandle.Alloc(o, GCHandleType.Pinned);
 			try
 			{
@@ -149,13 +143,13 @@ namespace MySpace.Common.Storage
 					switch(len)
 					{
 						case 1:
-							ret |= 0xff;
+							ret &= 0xff;
 							break;
 						case 2:
-							ret |= 0xffff;
+							ret &= 0xffff;
 							break;
 						case 3:
-							ret |= 0xffffff;
+							ret &= 0xffffff;
 							break;
 					}
 					return ret;
@@ -193,10 +187,49 @@ namespace MySpace.Common.Storage
 				_dataUnion.SegmentValue.Length);
 		}
 
-		private Exception InvalidOperationForType()
+		private static Exception InvalidOperationForType(DataBufferType type)
 		{
 			return new InvalidOperationException(string.Format(
-				"This operation is not valid for type {0}", _type));
+				"This operation is not valid for type {0}", type));			
+		}
+
+		private Exception InvalidOperationForType()
+		{
+			return InvalidOperationForType(_type);
+		}
+
+		private static bool GetFieldAccessors<T>(string name, bool writeAlso,
+			out Func<StringBuilder, T> getter, out Action<StringBuilder, T> setter)
+		{
+			var field = typeof(StringBuilder).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
+			if (field == null)
+			{
+				getter = null;
+				setter = null;
+				return false;
+			}
+			var method = new DynamicMethodHelper(name + "_StringBuilder_getter",
+				typeof(T), new[] { typeof(StringBuilder) },
+				typeof(StringBuilder));
+			method.GetField(0, field);
+			method.Return();
+			getter = method.Compile<Func<StringBuilder, T>>();
+			if (writeAlso)
+			{
+				method = new DynamicMethodHelper(name + "_StringBuilder_setter",
+					null, new[] { typeof(StringBuilder), typeof(T) },
+					typeof(StringBuilder));
+				method.PushArg(0);
+				method.PushArg(1);
+				method.SetField(field);
+				method.Return();
+				setter = method.Compile<Action<StringBuilder, T>>();				
+			}
+			else
+			{
+				setter = null;
+			}
+			return true;
 		}
 		#endregion
 
@@ -279,13 +312,13 @@ namespace MySpace.Common.Storage
 					case DataBufferType.String:
 					case DataBufferType.StringBuilderSegment:
 					case DataBufferType.CharArraySegment:
-						return sizeof(char) * _dataUnion.SegmentValue.Length;
+						return _dataUnion.SegmentValue.Length << _charShift;
 					case DataBufferType.ByteArraySegment:
 						return _dataUnion.SegmentValue.Length;
 					case DataBufferType.Int32ArraySegment:
-						return sizeof(int) * _dataUnion.SegmentValue.Length;
+						return _dataUnion.SegmentValue.Length << _intShift;
 					case DataBufferType.Int64ArraySegment:
-						return sizeof(long) * _dataUnion.SegmentValue.Length;
+						return _dataUnion.SegmentValue.Length << _longShift;
 					default:
 						throw InvalidOperationForType();
 				}
@@ -506,29 +539,29 @@ namespace MySpace.Common.Storage
 			{
 				case DataBufferType.String:
 					offset = 0;
-					length = _dataUnion.SegmentValue.Length * sizeof(char);
+					length = _dataUnion.SegmentValue.Length << _charShift;
 					break;
 				case DataBufferType.CharArraySegment:
-					offset = _dataUnion.SegmentValue.Offset * sizeof(char);
-					length = _dataUnion.SegmentValue.Length * sizeof(char);
+					offset = _dataUnion.SegmentValue.Offset << _charShift;
+					length = _dataUnion.SegmentValue.Length << _charShift;
 					break;
 				case DataBufferType.ByteArraySegment:
 					offset = _dataUnion.SegmentValue.Offset;
 					length = _dataUnion.SegmentValue.Length;
 					break;
 				case DataBufferType.Int32ArraySegment:
-					offset = _dataUnion.SegmentValue.Offset * 4;
-					length = _dataUnion.SegmentValue.Length * 4;
+					offset = _dataUnion.SegmentValue.Offset << _intShift;
+					length = _dataUnion.SegmentValue.Length << _intShift;
 					break;
 				case DataBufferType.Int64ArraySegment:
-					offset = _dataUnion.SegmentValue.Offset * 8;
-					length = _dataUnion.SegmentValue.Length * 8;
+					offset = _dataUnion.SegmentValue.Offset << _longShift;
+					length = _dataUnion.SegmentValue.Length << _longShift;
 					break;
 				case DataBufferType.StringBuilderSegment:
 					var sbd = EnsureStringBuilderCapacity();
-					offset = _dataUnion.SegmentValue.Offset * 2;
-					length = _dataUnion.SegmentValue.Length * 2;
-					return _getStringBuilderInternalString(sbd);
+					offset = _dataUnion.SegmentValue.Offset << _charShift;
+					length = _dataUnion.SegmentValue.Length << _charShift;
+					return StringBuilderInternalAccessor.Instance.GetObject(sbd);
 				default:
 					throw InvalidOperationForType();
 			}
@@ -537,18 +570,6 @@ namespace MySpace.Common.Storage
 		#endregion
 
 		#region Constructors
-		static DataBuffer()
-		{
-			var field = typeof(StringBuilder).GetField("m_StringValue",
-				BindingFlags.NonPublic | BindingFlags.Instance);
-			var method = new DynamicMethodHelper("MySpaceGetActualStringBuffer",
-				typeof (String), new[] {typeof (StringBuilder)},
-				typeof (StringBuilder));
-			method.GetField(0, field);
-			method.Return();
-			_getStringBuilderInternalString = method.Compile<Func<StringBuilder, String>>();
-		}
-
 		private DataBuffer(DataBufferType type, object mObject, int offset, int length)
 		{
 			_type = type;
@@ -1120,11 +1141,11 @@ namespace MySpace.Common.Storage
 		public DataBuffer Restrict(int length)
 		{
 			AssertValidOnlyForSegmentable();
+			if (length == 0) return Empty;
 			if (length < 0 || length > _dataUnion.SegmentValue.Length)
 			{
 				throw new ArgumentOutOfRangeException("length");
 			}
-			if (length == 0) return Empty;
 			return new DataBuffer(_type, _object, _dataUnion.SegmentValue.Offset,
 				length);
 		}
@@ -1168,15 +1189,15 @@ namespace MySpace.Common.Storage
 				throw new ArgumentOutOfRangeException("offsetIncrement");
 			}
 			var maxLength = _dataUnion.SegmentValue.Length - offsetIncrement;
-			if (offsetIncrement < 0 || maxLength < 0)
+			if (maxLength < 0)
 			{
 				throw new ArgumentOutOfRangeException("offsetIncrement");
 			}
+			if (length == 0) return Empty;
 			if (length < 0 || length > maxLength)
 			{
 				throw new ArgumentOutOfRangeException("length");				
 			}
-			if (length == 0) return Empty;
 			return new DataBuffer(_type, _object, _dataUnion.SegmentValue.Offset +
 				offsetIncrement, length);
 		}
@@ -1205,14 +1226,152 @@ namespace MySpace.Common.Storage
 		public DataBuffer RestrictOffset(int offsetIncrement)
 		{
 			AssertValidOnlyForSegmentable();
-			var newLength = _dataUnion.SegmentValue.Length - offsetIncrement;
-			if (offsetIncrement < 0 || newLength < 0)
+			if (offsetIncrement < 0)
 			{
 				throw new ArgumentOutOfRangeException("offsetIncrement");
 			}
+			var newLength = _dataUnion.SegmentValue.Length - offsetIncrement;
 			if (newLength == 0) return Empty;
+			if (newLength < 0)
+			{
+				throw new ArgumentOutOfRangeException("offsetIncrement");
+			}
 			return new DataBuffer(_type, _object, _dataUnion.SegmentValue.Offset +
 				offsetIncrement, newLength);
+		}
+
+		private static readonly int _charShift = (int) Math.Log(sizeof(char), 2);
+		private static readonly int _intShift = (int) Math.Log(sizeof(int), 2);
+		private static readonly int _longShift = (int) Math.Log(sizeof(long), 2);
+		private const int _intMask = sizeof(int) - 1;
+		private const int _longMask = sizeof(long) - 1;
+
+		/// <summary>
+		/// Converts the string representation of a data buffer to its equivalent.
+		/// A return value indicates whether the operation succeeded.
+		/// </summary>
+		/// <param name="type">The <see cref="DataBufferType"/> desired.</param>
+		/// <param name="s">The <see cref="String"/> representation.</param>
+		/// <param name="result">The equivalent <see cref="DataBuffer"/> output.
+		/// If the conversion fails, then the value will be set to
+		/// <see cref="Empty"/>.</param>
+		/// <returns>Whether or not the conversion succeeded.</returns>
+		/// <remarks><paramref name="result"/> is not guaranteed to have the same
+		/// <see cref="Type"/> as <paramref name="type"/>, for example
+		/// if <paramref name="s"/> is empty then the type of the equivalent
+		/// <see cref="DataBuffer"/> may be <see cref="DataBufferType.Empty"/>.</remarks>
+		public static unsafe bool TryParse(DataBufferType type, string s,
+			out DataBuffer result)
+		{
+			switch(type)
+			{
+				case DataBufferType.Empty:
+					result = Empty;
+					return true;
+				case DataBufferType.Int32:
+					int i;
+					if (int.TryParse(s, out i))
+					{
+						result = i;
+						return true;
+					}
+					break;
+				case DataBufferType.Int64:
+					long l;
+					if (long.TryParse(s, out l))
+					{
+						result = l;
+						return true;
+					}
+					break;
+				case DataBufferType.Int32ArraySegment:
+					if (string.IsNullOrEmpty(s))
+					{
+						result = Empty;
+						return true;
+					}
+					i = s.Length << _charShift;
+					if ((i & _intMask) == 0)
+					{
+						var ints = new int[i >> _intShift];
+						fixed(int *p = &ints[0])
+						{
+							var handle = GCHandle.Alloc(s, GCHandleType.Pinned);
+							try
+							{
+								CopyMemory(new IntPtr(p), handle.AddrOfPinnedObject(), i);
+							} finally
+							{
+								if (handle.IsAllocated) handle.Free();
+							}
+						}
+						result = ints;
+						return true;
+					}
+					break;
+				case DataBufferType.Int64ArraySegment:
+					if (string.IsNullOrEmpty(s))
+					{
+						result = Empty;
+						return true;
+					}
+					i = s.Length << _charShift;
+					if ((i & _longMask) == 0)
+					{
+						var longs = new long[i >> _longShift];
+						fixed (long* p = &longs[0])
+						{
+							var handle = GCHandle.Alloc(s, GCHandleType.Pinned);
+							try
+							{
+								CopyMemory(new IntPtr(p), handle.AddrOfPinnedObject(), i);
+							}
+							finally
+							{
+								if (handle.IsAllocated) handle.Free();
+							}
+						}
+						result = longs;
+						return true;
+					}
+					break;
+				case DataBufferType.String:
+					result = s;
+					return true;
+				case DataBufferType.CharArraySegment:
+					result = string.IsNullOrEmpty(s) ? Empty : s.ToCharArray();
+					return true;
+				case DataBufferType.ByteArraySegment:
+					result = string.IsNullOrEmpty(s) ? Empty : Encoding.Unicode.GetBytes(s);
+					return true;
+				case DataBufferType.StringBuilderSegment:
+					result = string.IsNullOrEmpty(s) ? Empty : new StringBuilder(s);
+					return true;
+				default:
+					throw InvalidOperationForType(type);
+			}
+			result = Empty;
+			return false;
+		}
+
+		/// <summary>
+		/// Converts the string representation of a data buffer to its equivalent.
+		/// </summary>
+		/// <param name="type">The <see cref="DataBufferType"/> desired.</param>
+		/// <param name="s">The <see cref="String"/> representation.</param>
+		/// <returns>The equivalent <see cref="DataBuffer"/>.</returns>
+		/// <exception cref="FormatException">
+		/// <para><paramref name="s"/> could not be converted.</para>
+		/// </exception>
+		/// <remarks>The equivalent is not guaranteed to have the same
+		/// <see cref="Type"/> as <paramref name="type"/>, for example
+		/// if <paramref name="s"/> is empty then the type of the equivalent
+		/// <see cref="DataBuffer"/> may be <see cref="DataBufferType.Empty"/>.</remarks>
+		public static DataBuffer Parse(DataBufferType type, string s)
+		{
+			DataBuffer result;
+			if (TryParse(type, s, out result)) return result;
+			throw new FormatException();
 		}
 		#endregion
 
@@ -1288,7 +1447,7 @@ namespace MySpace.Common.Storage
 		/// <filterpriority>
 		/// 	<para>2</para>
 		/// </filterpriority>
-		public override string ToString()
+		public unsafe override string ToString()
 		{
 			switch(_type)
 			{
@@ -1309,17 +1468,36 @@ namespace MySpace.Common.Storage
 						_dataUnion.SegmentValue.Offset,
 						_dataUnion.SegmentValue.Length);
 				case DataBufferType.Int32ArraySegment:
-					var l = 4*_dataUnion.SegmentValue.Length;
-					var o = 4*_dataUnion.SegmentValue.Offset;
-					var b = new byte[l];
-					Buffer.BlockCopy((int[]) _object, o, b, 0, l);
-					return Encoding.Unicode.GetString(b);
+					var l = _dataUnion.SegmentValue.Length << _intShift;
+					var o = _dataUnion.SegmentValue.Offset << _intShift;
+					goto CopyToString;
 				case DataBufferType.Int64ArraySegment:
-					l = 8 * _dataUnion.SegmentValue.Length;
-					o = 8 * _dataUnion.SegmentValue.Offset;
-					b = new byte[l];
-					Buffer.BlockCopy((long[])_object, o, b, 0, l);
-					return Encoding.Unicode.GetString(b);
+					l = _dataUnion.SegmentValue.Length << _longShift;
+					o = _dataUnion.SegmentValue.Offset << _longShift;
+				CopyToString:
+					var s = StringBuilderInternalAccessor.Instance.AllocateString(l >> _charShift);
+					var h1 = GCHandle.Alloc(s, GCHandleType.Pinned);
+					try
+					{
+						var h2 = GCHandle.Alloc(_object, GCHandleType.Pinned);
+						try
+						{
+							var src = h2.AddrOfPinnedObject();
+							if (o > 0)
+							{
+								src = new IntPtr(((byte*) src.ToPointer()) + o);
+							}
+							CopyMemory(h1.AddrOfPinnedObject(), src, l);
+						} finally
+						{
+							if (h2.IsAllocated) h2.Free();
+						}
+					}
+					finally
+					{
+						if (h1.IsAllocated) h1.Free();
+					}
+					return s;
 				case DataBufferType.StringBuilderSegment:
 					return MakeStringForStringBuilder();
 				default:
@@ -1546,10 +1724,13 @@ namespace MySpace.Common.Storage
 				{
 					int off;
 					var obj = GetObjectValue(out off, out len);
-					if (len == 0) return 0;
 					handle = GCHandle.Alloc(obj, GCHandleType.Pinned);
-					var ptrSrc = ((byte*)handle.AddrOfPinnedObject().ToPointer()) + off;
-					BinaryCopy(ptrSrc, dst, len);
+					var ptrSrc = handle.AddrOfPinnedObject();
+					if (off > 0)
+					{
+						ptrSrc = new IntPtr(((byte*) ptrSrc.ToPointer()) + off);
+					}
+					CopyMemory(new IntPtr(dst), ptrSrc, len);
 					return len;
 				}
 				finally
@@ -1605,12 +1786,15 @@ namespace MySpace.Common.Storage
 				{
 					int off;
 					var obj = GetObjectValue(out off, out len);
-					if (len == 0) return 0;
 					handle = GCHandle.Alloc(obj, GCHandleType.Pinned);
-					var ptrSrc = ((byte*)handle.AddrOfPinnedObject().ToPointer()) + off;
 					fixed (byte* ptrDst = &segment.Array[segment.Offset])
 					{
-						BinaryCopy(ptrSrc, ptrDst, len);
+						var ptrSrc = handle.AddrOfPinnedObject();
+						if (off > 0)
+						{
+							ptrSrc = new IntPtr(((byte*)ptrSrc.ToPointer()) + off);
+						}
+						CopyMemory(new IntPtr(ptrDst), ptrSrc, len);
 					}
 					return len;
 				}
@@ -2053,6 +2237,31 @@ namespace MySpace.Common.Storage
 			return Equals((DataBuffer)obj);
 		}
 
+		/// <summary>
+		/// Performs equality comparison of two data buffers.
+		/// </summary>
+		/// <param name="buffer1">The first <see cref="DataBuffer"/>.</param>
+		/// <param name="buffer2">The second <see cref="DataBuffer"/>.</param>
+		/// <returns><see langword="true"/> if <paramref name="buffer1"/>
+		/// and <paramref name="buffer2"/> are equal; otherwise
+		/// <see langword="false"/>.</returns>
+		public static bool operator ==(DataBuffer buffer1, DataBuffer buffer2)
+		{
+			return buffer1.Equals(buffer2);
+		}
+
+		/// <summary>
+		/// Performs inequality comparison of two data buffers.
+		/// </summary>
+		/// <param name="buffer1">The first <see cref="DataBuffer"/>.</param>
+		/// <param name="buffer2">The second <see cref="DataBuffer"/>.</param>
+		/// <returns><see langword="true"/> if <paramref name="buffer1"/>
+		/// and <paramref name="buffer2"/> are not equal; otherwise
+		/// <see langword="false"/>.</returns>
+		public static bool operator !=(DataBuffer buffer1, DataBuffer buffer2)
+		{
+			return !buffer1.Equals(buffer2);
+		}
 		#endregion
 	}
 }

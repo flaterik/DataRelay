@@ -138,31 +138,49 @@ namespace MySpace.Common.Storage
 		/// 	<para>A long value representing the length of the stream in
 		///		bytes.</para>
 		/// </returns>
+		/// <exception cref="ObjectDisposedException">
+		/// 	<para>Was called after the stream was closed.</para>
+		/// </exception>
 		public override long Length
 		{
-			get { return _length; }
+			get
+			{
+				if (_pointer == null) throw new ObjectDisposedException(typeof(SafeUnmanagedMemoryStream).Name); 
+				return _length;
+			}
 		}
 
 		/// <summary>
-		/// 	<para>Overriden. When overridden in a derived class, gets or
-		///		sets the position within the current stream. Cannot be
-		///		set.</para>
+		/// 	<para>Overriden. Gets or sets the position within the
+		///		current stream.</para>
 		/// </summary>
 		/// <returns>
 		/// 	<para>The current position within the stream.</para>
 		/// </returns>
-		/// <exception cref="NotSupportedException">
-		/// 	<para>An attempt was made to set the position.</para>
+		/// <exception cref="ObjectDisposedException">
+		/// 	<para>Was called after the stream was closed.</para>
 		/// </exception>
 		public override long Position
 		{
 			get
 			{
+				if (_pointer == null) throw new ObjectDisposedException(typeof(SafeUnmanagedMemoryStream).Name);
 				return _length - _remaining;
 			}
 			set
 			{
-				throw new NotSupportedException();
+				if (_pointer == null) throw new ObjectDisposedException(typeof(SafeUnmanagedMemoryStream).Name);
+				var position = value;
+				if (position < 0)
+				{
+					position = 0;
+				}
+				else if (position > _length)
+				{
+					position = _length;
+				}
+				_pointer = _cleanupPointer + position;
+				_remaining = _length - position;
 			}
 		}
 
@@ -252,12 +270,31 @@ namespace MySpace.Common.Storage
 		/// <param name="origin">
 		/// 	<para>A value of type <see cref="System.IO.SeekOrigin"/> indicating the reference point used to obtain the new position.</para>
 		/// </param>
-		/// <exception cref="NotSupportedException">
-		/// 	<para>This method is not supported.</para>
+		/// <exception cref="ObjectDisposedException">
+		/// 	<para>This method was called after the stream was closed.</para>
 		/// </exception>
 		public override long Seek(long offset, SeekOrigin origin)
 		{
-			throw new NotSupportedException();
+			if (_pointer == null) throw new ObjectDisposedException(typeof(SafeUnmanagedMemoryStream).Name);
+			long position;
+			switch(origin)
+			{
+				case SeekOrigin.Begin:
+					position = 0;
+					break;
+				case SeekOrigin.Current:
+					position = Position;
+					break;
+				case SeekOrigin.End:
+					position = _length;
+					break;
+				default:
+					throw new NotImplementedException(string.Format(
+						"{0} not supported", origin));
+			}
+			position += offset;
+			Position = position;
+			return Position;
 		}
 
 		/// <summary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.Serialization;
+using MySpace.Common.Barf;
 
 namespace MySpace.Common.IO
 {
@@ -43,10 +44,6 @@ namespace MySpace.Common.IO
 		}
 
 		#region Constants
-		internal const byte NullVersion = 0xff;
-		internal const byte HasHeaderVersion = 0xfe;
-		internal const byte MaxInlineSize = 0xf0;
-		internal const int InlineHeaderSize = sizeof(byte);
 
 		internal enum LegacySerializationType
 		{
@@ -71,13 +68,14 @@ namespace MySpace.Common.IO
 		SerializeMethod serializeMethod = null;
 		DeserializeMethod deserializeMethod = null;
 		AutoSerializeMethod autoSerializeMethod = null;
-		AutoDeserializeMethod autoDeserializeMethod = null;
+		LazyInitializer<AutoDeserializeMethod> autoDeserializeMethod = null;
 		CompareMethod compareMethod = null;
 		bool versionSerializable = false;
 		bool supportsSerializationInfo = false;
 		Type serializableBaseType = null;
 		Action deferredInitializationAction;
 		readonly object syncRoot = new object();
+		readonly LazyInitializer<IBarfSerializer> _barfSerializer;
 		#endregion
 
 		#region Construction
@@ -132,6 +130,7 @@ namespace MySpace.Common.IO
 			}
 
 			this.type = type;
+			_barfSerializer = new LazyInitializer<IBarfSerializer>(() => BarfSerializers.Get(this.type, PartFlags.None));
 			this.versionSerializable = type.GetInterface(typeof(IVersionSerializable).Name) != null;
 
 			//  Cache whether this type supports ISerializationInfo for forward-compatibility
@@ -363,6 +362,16 @@ namespace MySpace.Common.IO
 				if (attrib == null)
 					continue;
 
+				var property = prop as PropertyInfo;
+
+				if (property != null)
+				{
+					if (!(property.CanRead && property.CanWrite))
+					{
+						throw new SerializationException(string.Format("{0}.{1} must define a getter and a setter.", type.Name, property.Name));
+					}
+				}
+
 				propInfo = new PropertySerializationInfo(attrib, prop);
 				properties.Add(propInfo);
 				obsoleteVersion = Math.Max(obsoleteVersion, propInfo.ObsoleteVersion);
@@ -548,149 +557,165 @@ namespace MySpace.Common.IO
 		#region Helper Methods
 		void CreateSerializationMethod(List<PropertySerializationInfo> properties)
 		{
-			PropertySerializationInfo.GenerateArgs args = new PropertySerializationInfo.GenerateArgs();
-			FieldInfo nameTableField = typeof(TypeSerializationArgs).GetField("NameTable");
-
-			const string CreatedNameTableVar = "_createdNameTable";
-			const string HasNameTableLabel = "_hasNameTable";
-			const string SkipNameTableSerializeLabel = "_skipNameTableSerialize";
-			const string SerializationInfoVar = "_serializationInfo";
-			const string SkipUnhandledDataLabel = "_skipUnhandledData";
-
-			args.il = new DynamicMethodHelper(
-											"Serialize_" + type.Name,
-											null,
-											new Type[] { typeof(object), typeof(TypeSerializationArgs) },
-											this.type
-											);
-
-			args.instanceArg = 0;
-			args.dataArg = 1;
-			args.streamVar = "_writer";
-			args.headerVar = "_header";
-
-			//  IPrimitiveWriter writer = dataArg.Writer;
-			args.il.DeclareLocal(args.streamVar, typeof(IPrimitiveWriter));
-			args.il.GetField(args.dataArg, typeof(TypeSerializationArgs).GetField("Writer"));
-			args.il.PopLocal(args.streamVar);
-
-			//  TypeSerializationHeader _header = dataArg.Header
-			args.il.DeclareLocal(args.headerVar, typeof(TypeSerializationHeader));
-			args.il.GetField(args.dataArg, typeof(TypeSerializationArgs).GetField("Header"));
-			args.il.PopLocal(args.headerVar);
-
-			//  SerializationInfo _serializationInfo = dataArg.SerializationInfo
-			args.il.DeclareLocal(SerializationInfoVar, typeof(SerializationInfo));
-			args.il.GetField(args.dataArg, typeof(TypeSerializationArgs).GetField("SerializationInfo"));
-			args.il.PopLocal(SerializationInfoVar);
-
-			//  bool createdNameTable
-			//  TypeNameTable _typeNameTable = dataArg.NameTable;
-			//
-			//  if (_typeNameType == null)
-			//  {
-			//      _typeNameType = new TypeNameTable();
-			//      dataArg.NameTable = _typeNameType;
-			//      createdNameTable = true;
-			//  }
-			args.il.DeclareLocal(CreatedNameTableVar, typeof(bool));
-
-			args.nameTableVar = "_typeNameTable";
-			args.il.DeclareLocal(args.nameTableVar, typeof(TypeNameTable));
-			args.il.GetField(args.dataArg, nameTableField);
-			args.il.PopLocal(args.nameTableVar);
-
-			args.il.PushLocal(args.nameTableVar);
-			args.il.GotoIfTrue(HasNameTableLabel);
-
-			args.il.PushBool(true);
-			args.il.PopLocal(CreatedNameTableVar);
-
-			args.il.NewObject(args.nameTableVar);
-			args.il.SetField(args.dataArg, args.nameTableVar, nameTableField);
-
-			args.il.BeginCallMethod(args.nameTableVar, "Add", new Type[] { typeof(SerializationInfo) });
-			args.il.PushLocal(SerializationInfoVar);
-			args.il.CallMethod();
-
-			args.il.MarkLabel(HasNameTableLabel);
-
-			//  If the type automatically serializes its base class
-			//  then write it now. This must be done after the derived class
-			//  has a chance to create the name table
-			if (this.serializableBaseType != null)
+			if (attribute.MinWriteFrameworkVersion >= 1)
 			{
-				FieldInfo fi = typeof(TypeSerializationArgs).GetField("IsBaseClass");
-
-				args.il.PushArg(args.dataArg);
-				args.il.PushBool(true);
-				args.il.SetField(fi);
-
-				args.il.PushArg(args.instanceArg);
-				args.il.PushArg(args.dataArg);
-				args.il.CallMethod(PropertySerializationInfo.GetTypeMethod(this.serializableBaseType, PropertySerializationInfo.TypeMethodType.Serialize));
-
-				args.il.PushArg(args.dataArg);
-				args.il.PushBool(false);
-				args.il.SetField(fi);
-			}
-
-			//  Create calls to serialize each member
-			foreach (PropertySerializationInfo propInfo in properties)
-			{
-				//  Don't serialize this property if it's marked obsolete
-				//  and the min version is equal or greater than the
-				//  version it was made obsolete in.
-				if ((propInfo.ObsoleteVersion > 0) && (this.MinVersion >= propInfo.ObsoleteVersion))
+				serializeMethod = (o, args) =>
 				{
-					continue;
+					_barfSerializer.Value.SerializeObject(o, new BarfSerializationArgs(args.Writer));
+				};
+			}
+			else
+			{
+				PropertySerializationInfo.GenerateArgs args = new PropertySerializationInfo.GenerateArgs();
+				FieldInfo nameTableField = typeof(TypeSerializationArgs).GetField("NameTable");
+
+				const string CreatedNameTableVar = "_createdNameTable";
+				const string HasNameTableLabel = "_hasNameTable";
+				const string SkipNameTableSerializeLabel = "_skipNameTableSerialize";
+				const string SerializationInfoVar = "_serializationInfo";
+				const string SkipUnhandledDataLabel = "_skipUnhandledData";
+
+				args.il = new DynamicMethodHelper(
+												"Serialize_" + type.Name,
+												null,
+												new Type[] { typeof(object), typeof(TypeSerializationArgs) },
+												this.type
+												);
+
+				args.instanceArg = 0;
+				args.dataArg = 1;
+				args.streamVar = "_writer";
+				args.headerVar = "_header";
+
+				//  IPrimitiveWriter writer = dataArg.Writer;
+				args.il.DeclareLocal(args.streamVar, typeof(IPrimitiveWriter));
+				args.il.GetField(args.dataArg, typeof(TypeSerializationArgs).GetField("Writer"));
+				args.il.PopLocal(args.streamVar);
+
+				//  TypeSerializationHeader _header = dataArg.Header
+				args.il.DeclareLocal(args.headerVar, typeof(TypeSerializationHeader));
+				args.il.GetField(args.dataArg, typeof(TypeSerializationArgs).GetField("Header"));
+				args.il.PopLocal(args.headerVar);
+
+				//  SerializationInfo _serializationInfo = dataArg.SerializationInfo
+				args.il.DeclareLocal(SerializationInfoVar, typeof(SerializationInfo));
+				args.il.GetField(args.dataArg, typeof(TypeSerializationArgs).GetField("SerializationInfo"));
+				args.il.PopLocal(SerializationInfoVar);
+
+				//  bool createdNameTable
+				//  TypeNameTable _typeNameTable = dataArg.NameTable;
+				//
+				//  if (_typeNameType == null)
+				//  {
+				//      _typeNameType = new TypeNameTable();
+				//      dataArg.NameTable = _typeNameType;
+				//      createdNameTable = true;
+				//  }
+				args.il.DeclareLocal(CreatedNameTableVar, typeof(bool));
+
+				args.nameTableVar = "_typeNameTable";
+				args.il.DeclareLocal(args.nameTableVar, typeof(TypeNameTable));
+				args.il.GetField(args.dataArg, nameTableField);
+				args.il.PopLocal(args.nameTableVar);
+
+				args.il.PushLocal(args.nameTableVar);
+				args.il.GotoIfTrue(HasNameTableLabel);
+
+				args.il.PushBool(true);
+				args.il.PopLocal(CreatedNameTableVar);
+
+				args.il.NewObject(args.nameTableVar);
+				args.il.SetField(args.dataArg, args.nameTableVar, nameTableField);
+
+				args.il.BeginCallMethod(args.nameTableVar, "Add", new Type[] { typeof(SerializationInfo) });
+				args.il.PushLocal(SerializationInfoVar);
+				args.il.CallMethod();
+
+				args.il.MarkLabel(HasNameTableLabel);
+
+				//  If the type automatically serializes its base class
+				//  then write it now. This must be done after the derived class
+				//  has a chance to create the name table
+				if (this.serializableBaseType != null)
+				{
+					FieldInfo fi = typeof(TypeSerializationArgs).GetField("IsBaseClass");
+
+					args.il.PushArg(args.dataArg);
+					args.il.PushBool(true);
+					args.il.SetField(fi);
+
+					args.il.PushArg(args.instanceArg);
+					args.il.PushArg(args.dataArg);
+					args.il.CallMethod(PropertySerializationInfo.GetTypeMethod(this.serializableBaseType, PropertySerializationInfo.TypeMethodType.Serialize));
+
+					args.il.PushArg(args.dataArg);
+					args.il.PushBool(false);
+					args.il.SetField(fi);
 				}
 
-				args.il.BeginScope();
-				propInfo.GenerateWriteIL(args);
-				args.il.EndScope();
+				//  Create calls to serialize each member
+				foreach (PropertySerializationInfo propInfo in properties)
+				{
+					//  Don't serialize this property if it's marked obsolete
+					//  and the min version is equal or greater than the
+					//  version it was made obsolete in.
+					if ((propInfo.ObsoleteVersion > 0) && (this.MinVersion >= propInfo.ObsoleteVersion))
+					{
+						continue;
+					}
+
+					args.il.BeginScope();
+					propInfo.GenerateWriteIL(args);
+					args.il.EndScope();
+				}
+
+				if (this.IsInline == false)
+				{
+					//  Write saved unhandled data if current version is lower
+					//  than the data we original deserialized from
+					args.il.PushInt(this.CurrentVersion);
+					args.il.CallMethod(args.headerVar, typeof(TypeSerializationHeader).GetProperty("DataVersion").GetGetMethod());
+					args.il.GotoIfGreaterOrEqual(SkipUnhandledDataLabel);
+
+					args.il.BeginCallMethod(args.streamVar, "Write", new Type[] { typeof(byte[]) });
+					args.il.CallMethod(SerializationInfoVar, typeof(SerializationInfo).GetProperty("UnhandledData").GetGetMethod());
+					args.il.CallMethod();
+
+					args.il.MarkLabel(SkipUnhandledDataLabel);
+
+					//  Update header with actual data length
+					args.il.BeginCallMethod(args.headerVar, "UpdateDataLength", new Type[] { typeof(IPrimitiveWriter) });
+					args.il.PushLocal(args.streamVar);
+					args.il.CallMethod();
+
+					//  if (createdNameTable)
+					//  {
+					//      _typeNameTable.Serialize();     -- Will do nothing if the table is empty
+					//  }
+					args.il.PushLocal(CreatedNameTableVar);
+					args.il.GotoIfFalse(SkipNameTableSerializeLabel);
+
+					args.il.BeginCallMethod(args.nameTableVar, "Serialize", new Type[] { typeof(IPrimitiveWriter) });
+					args.il.PushLocal(args.streamVar);
+					args.il.CallMethod();
+
+					args.il.MarkLabel(SkipNameTableSerializeLabel);
+				}
+
+				args.il.Return();
+
+				this.autoSerializeMethod = (AutoSerializeMethod)args.il.Compile(typeof(AutoSerializeMethod));
+				this.serializeMethod = SerializeAutoSerializable;
 			}
-
-			if (this.IsInline == false)
-			{
-				//  Write saved unhandled data if current version is lower
-				//  than the data we original deserialized from
-				args.il.PushInt(this.CurrentVersion);
-				args.il.CallMethod(args.headerVar, typeof(TypeSerializationHeader).GetProperty("DataVersion").GetGetMethod());
-				args.il.GotoIfGreaterOrEqual(SkipUnhandledDataLabel);
-
-				args.il.BeginCallMethod(args.streamVar, "Write", new Type[] { typeof(byte[]) });
-				args.il.CallMethod(SerializationInfoVar, typeof(SerializationInfo).GetProperty("UnhandledData").GetGetMethod());
-				args.il.CallMethod();
-
-				args.il.MarkLabel(SkipUnhandledDataLabel);
-
-				//  Update header with actual data length
-				args.il.BeginCallMethod(args.headerVar, "UpdateDataLength", new Type[] { typeof(IPrimitiveWriter) });
-				args.il.PushLocal(args.streamVar);
-				args.il.CallMethod();
-
-				//  if (createdNameTable)
-				//  {
-				//      _typeNameTable.Serialize();     -- Will do nothing if the table is empty
-				//  }
-				args.il.PushLocal(CreatedNameTableVar);
-				args.il.GotoIfFalse(SkipNameTableSerializeLabel);
-
-				args.il.BeginCallMethod(args.nameTableVar, "Serialize", new Type[] { typeof(IPrimitiveWriter) });
-				args.il.PushLocal(args.streamVar);
-				args.il.CallMethod();
-
-				args.il.MarkLabel(SkipNameTableSerializeLabel);
-			}
-
-			args.il.Return();
-
-			this.autoSerializeMethod = (AutoSerializeMethod)args.il.Compile(typeof(AutoSerializeMethod));
-			this.serializeMethod = SerializeAutoSerializable;
 		}
 
 		void CreateDeserializationMethod(List<PropertySerializationInfo> properties)
+		{
+			autoDeserializeMethod = new LazyInitializer<AutoDeserializeMethod>(() => CreateAutoDeserializeMethod(properties));
+			this.deserializeMethod = DeserializeAutoSerializable;
+		}
+
+		AutoDeserializeMethod CreateAutoDeserializeMethod(List<PropertySerializationInfo> properties)
 		{
 			const string HasNameTableLabel = "_hasNameTable";
 			const string endLabel = "exitFunction";
@@ -876,9 +901,7 @@ namespace MySpace.Common.IO
 			//  :endFunction
 			args.il.MarkLabel(endLabel);
 			args.il.Return();
-
-			this.autoDeserializeMethod = (AutoDeserializeMethod)args.il.Compile(typeof(AutoDeserializeMethod));
-			this.deserializeMethod = DeserializeAutoSerializable;
+			return (AutoDeserializeMethod)args.il.Compile(typeof(AutoDeserializeMethod));
 		}
 
 		void CreateCompareMethod(List<PropertySerializationInfo> properties)
@@ -938,12 +961,12 @@ namespace MySpace.Common.IO
 					this.autoSerializeMethod(instance, args);
 					endPosition = args.Writer.BaseStream.Position;
 
-					length = (int)((endPosition - lengthPosition) - InlineHeaderSize);
-					if (length > MaxInlineSize)
+					length = (int)((endPosition - lengthPosition) - SerializerHeaders.InlineHeaderSize);
+					if (length > SerializerHeaders.MaxInlineSize)
 					{
 						throw new NotSupportedException(string.Format(
 								  "Inline classes must be {0} bytes or less. Class {1} serialized to {2} bytes.",
-								  MaxInlineSize,
+								  SerializerHeaders.MaxInlineSize,
 								  instance.GetType().FullName,
 								  length
 								  ));
@@ -956,7 +979,7 @@ namespace MySpace.Common.IO
 			}
 			else if (instance == null)
 			{
-				args.Writer.Write(NullVersion);
+				args.Writer.Write(SerializerHeaders.NullVersion);
 			}
 			else
 			{
@@ -1015,7 +1038,7 @@ namespace MySpace.Common.IO
 				//  be higher than actual object versions, older serialization
 				//  code will simply treat this is a higher unhandled version,
 				//  which is true.
-				args.Writer.Write(HasHeaderVersion);
+				args.Writer.Write(SerializerHeaders.AutoSerializable);
 
 				//  Write the header with placeholder data
 				args.Header.Write(args.Writer);
@@ -1045,20 +1068,26 @@ namespace MySpace.Common.IO
 			{
 				//  Read length prefix. If length is 0 then object is null
 				byte length = args.Reader.ReadByte();
-				if (length == 0) dataVersion = NullVersion;
+				if (length == 0) dataVersion = SerializerHeaders.NullVersion;
 			}
 			else
 			{
 				dataVersion = args.Reader.ReadByte();
 			}
 
-			if (dataVersion == NullVersion)
+			if (dataVersion == SerializerHeaders.NullVersion)
 			{
 				instance = null;
 				return false;
 			}
 
-			if (dataVersion == HasHeaderVersion)
+			if (dataVersion == SerializerHeaders.Barf)
+			{
+				_barfSerializer.Value.InnerDeserializeObject(ref instance, new BarfDeserializationArgs(args.Reader));
+				return true;
+			}
+
+			if (dataVersion == SerializerHeaders.AutoSerializable)
 			{
 				args.Header = new TypeSerializationHeader();
 				args.Header.Read(args.Reader);
@@ -1080,55 +1109,52 @@ namespace MySpace.Common.IO
 			{
 				throw new UnhandledVersionException(this.CurrentVersion, dataVersion);
 			}
-			else
+			if (instance == null)
 			{
-				if (instance == null)
-				{
-					instance = CreateInstance();
-				}
+				instance = CreateInstance();
+			}
 
-				//  If this is the derived class then create a new top-level
-				//  serialization info. If this is the base class then set
-				//  the base class serialization info
-				if (callerArgs.IsBaseClass == false)
-				{
-					args.SerializationInfo = new SerializationInfo();
-
-					if (isSerializationInfoSupported == true)
-					{
-						((ISerializationInfo)instance).SerializationInfo = args.SerializationInfo;
-					}
-				}
-				else
-				{
-					callerArgs.SerializationInfo.BaseClassInfo = new SerializationInfo();
-					args.SerializationInfo = callerArgs.SerializationInfo.BaseClassInfo;
-				}
-
-				args.SerializationInfo.Version = dataVersion;
-
-				if (args.Header != null)
-				{
-					args.SerializationInfo.MinVersion = args.Header.DataMinVersion;
-				}
-
-				this.autoDeserializeMethod(instance, dataVersion, args);
-
-				if (args.Succeeded == false)
-				{
-					//this should never be hit, as it is a legacy of the volatile flag
-					return false;
-				}
+			//  If this is the derived class then create a new top-level
+			//  serialization info. If this is the base class then set
+			//  the base class serialization info
+			if (callerArgs.IsBaseClass == false)
+			{
+				args.SerializationInfo = new SerializationInfo();
 
 				if (isSerializationInfoSupported == true)
 				{
-					if (dataVersion > this.CurrentVersion)
-					{
-						int readDataLength = (int)(args.Reader.BaseStream.Position - args.Header.DataPosition);
-						int unhandledDataLength = args.Header.DataLength - readDataLength;
+					((ISerializationInfo)instance).SerializationInfo = args.SerializationInfo;
+				}
+			}
+			else
+			{
+				callerArgs.SerializationInfo.BaseClassInfo = new SerializationInfo();
+				args.SerializationInfo = callerArgs.SerializationInfo.BaseClassInfo;
+			}
 
-						args.SerializationInfo.UnhandledData = args.Reader.ReadBytes(unhandledDataLength);
-					}
+			args.SerializationInfo.Version = dataVersion;
+
+			if (args.Header != null)
+			{
+				args.SerializationInfo.MinVersion = args.Header.DataMinVersion;
+			}
+
+			this.autoDeserializeMethod.Value(instance, dataVersion, args);
+
+			if (args.Succeeded == false)
+			{
+				//this should never be hit, as it is a legacy of the volatile flag
+				return false;
+			}
+
+			if (isSerializationInfoSupported == true)
+			{
+				if (dataVersion > this.CurrentVersion)
+				{
+					int readDataLength = (int)(args.Reader.BaseStream.Position - args.Header.DataPosition);
+					int unhandledDataLength = args.Header.DataLength - readDataLength;
+
+					args.SerializationInfo.UnhandledData = args.Reader.ReadBytes(unhandledDataLength);
 				}
 			}
 
@@ -1139,7 +1165,7 @@ namespace MySpace.Common.IO
 		{
 			if (instance == null)
 			{
-				args.Writer.Write(NullVersion);
+				args.Writer.Write(SerializerHeaders.NullVersion);
 			}
 			else
 			{
@@ -1154,7 +1180,7 @@ namespace MySpace.Common.IO
 			byte version = args.Reader.ReadByte();
 			bool success = false;
 
-			if (version != NullVersion)
+			if (version != SerializerHeaders.NullVersion)
 			{
 				if (instance == null)
 				{
@@ -1258,6 +1284,4 @@ namespace MySpace.Common.IO
 		}
 		#endregion // IComparer<PropertySerializationInfo>
 	}
-
-
 }

@@ -1087,6 +1087,113 @@ namespace MySpace.Common
 
 		#region enumerate, find and convert operations
 
+		private class AnonymousDisposable : IDisposable
+		{
+			private readonly Action _disposeAction;
+			private bool _disposed;
+
+			public AnonymousDisposable(Action disposeAction)
+			{
+				_disposeAction = disposeAction;
+			}
+
+			#region IDisposable Members
+
+			public void Dispose()
+			{
+				if (!_disposed)
+				{
+					_disposeAction();
+					_disposed = true;
+				}
+			}
+
+			#endregion
+		}
+
+		/// <summary>
+		/// Creates an anonymous <see cref="IDisposable"/> implementation from <paramref name="disposer"/>.
+		/// </summary>
+		/// <param name="disposer">The dispose action.</param>
+		/// <returns>An anonymous <see cref="IDisposable"/> implementation from <paramref name="disposer"/>.</returns>
+		/// <exception cref="ArgumentNullException">
+		///		<para><paramref name="disposer"/> is <see langword="null"/>.</para>
+		/// </exception>
+		public static IDisposable CreateDisposable(Action disposer)
+		{
+			ArgumentAssert.IsNotNull(disposer, "disposer");
+
+			return new AnonymousDisposable(disposer);
+		}
+
+		private class AnonymousComparer<T> : IComparer<T>
+		{
+			private readonly Comparison<T> _comparison;
+
+			public AnonymousComparer(Comparison<T> comparison)
+			{
+				_comparison = comparison;
+			}
+
+			public int Compare(T x, T y)
+			{
+				return _comparison(x, y);
+			}
+		}
+
+		/// <summary>
+		/// Creates an <see cref="IComparer{T}"/> implementation from the specified method.
+		/// </summary>
+		/// <typeparam name="T">The type to compare.</typeparam>
+		/// <param name="comparison">The comparison.</param>
+		/// <returns>An <see cref="IComparer{T}"/> implementation from the specified method.</returns>
+		public static IComparer<T> CreateComparer<T>(Comparison<T> comparison)
+		{
+			if (comparison == null) throw new ArgumentNullException("comparison");
+
+			return new AnonymousComparer<T>(comparison);
+		}
+
+		private class AnonymousEqualityComparer<T> : IEqualityComparer<T>
+		{
+			private readonly Func<T, T, bool> _equalityComparison;
+			private readonly Func<T, int> _hashProvider;
+
+			public AnonymousEqualityComparer(
+				Func<T, T, bool> equalityComparison,
+				Func<T, int> hashProvider)
+			{
+				_equalityComparison = equalityComparison;
+				_hashProvider = hashProvider ?? EqualityComparer<T>.Default.GetHashCode;
+			}
+
+			public bool Equals(T x, T y)
+			{
+				return _equalityComparison(x, y);
+			}
+
+			public int GetHashCode(T obj)
+			{
+				return _hashProvider(obj);
+			}
+		}
+
+		/// <summary>
+		/// Creates an <see cref="IEqualityComparer{T}"/> implementation from the specified methods.
+		/// </summary>
+		/// <typeparam name="T">The type to compare.</typeparam>
+		/// <param name="equalityComparison">The equality comparison.</param>
+		/// <param name="hashProvider">The hash provider; or <see langword="null"/> to use the default hash provider.</param>
+		/// <returns>An <see cref="IEqualityComparer{T}"/> implementation from the specified methods.</returns>
+		public static IEqualityComparer<T> CreateEqualityComparer<T>(
+			Func<T, T, bool> equalityComparison,
+			Func<T, int> hashProvider)
+		{
+			if (equalityComparison == null) throw new ArgumentNullException("equalityComparison");
+
+			return new AnonymousEqualityComparer<T>(equalityComparison, hashProvider);
+		}
+
 		/// <summary>
 		/// Allow for selecting an object from an IEnumerable by specifying an index
 		/// </summary>
@@ -1317,10 +1424,7 @@ namespace MySpace.Common
 		{
 			if (values == null)
 				return string.Empty;
-			StringBuilder sb = new StringBuilder();
-			foreach (var b in values)
-				sb.AppendFormat("{0:X}", b);
-			return sb.ToString();
+			return values.ToHex();
 		}
 
 		/// <summary>
@@ -1408,6 +1512,53 @@ namespace MySpace.Common
 		#endregion
 
 		#region miscellaneous operations
+
+		/// <summary>
+		/// Joins <paramref name="keys"/> and <paramref name="values"/> into a set of <see cref="KeyValuePair{TKey,TValue}"/> instances.
+		/// </summary>
+		/// <typeparam name="TKey">The type of elements contained by the <paramref name="keys"/> collection.</typeparam>
+		/// <typeparam name="TValue">The type of elements contained by the <paramref name="values"/> collection.</typeparam>
+		/// <param name="keys">The set of keys.</param>
+		/// <param name="values">The set of values.</param>
+		/// <returns>
+		///		<para>A set of <see cref="KeyValuePair{TKey,TValue}"/> where they key property
+		///		comes from the elements in <paramref name="keys"/> and the value property
+		///		comes from the elements in <paramref name="values"/>.</para>
+		/// </returns>
+		/// <exception cref="ArgumentNullException">
+		///		<para><paramref name="keys"/> is <see langword="null"/>.</para>
+		///		<para>- or -</para>
+		///		<para><paramref name="values"/> is <see langword="null"/>.</para>
+		/// </exception>
+		/// <exception cref="ArgumentException">
+		///		<para><paramref name="keys"/> has more elements than <paramref name="values"/>.</para>
+		///		<para>- or -</para>
+		///		<para><paramref name="values"/> has more elements than <paramref name="keys"/>.</para>
+		/// </exception>
+		public static IEnumerable<KeyValuePair<TKey, TValue>> JoinPairs<TKey, TValue>(
+			IEnumerable<TKey> keys,
+			IEnumerable<TValue> values)
+		{
+			using (var keyEnumerator = keys.GetEnumerator())
+			using (var valueEnumerator = values.GetEnumerator())
+			{
+				var keyMoved = keyEnumerator.MoveNext();
+				var valueMoved = valueEnumerator.MoveNext();
+
+				if (keyMoved && valueMoved)
+				{
+					yield return new KeyValuePair<TKey, TValue>(keyEnumerator.Current, valueEnumerator.Current);
+				}
+				else if (keyMoved)
+				{
+					throw new ArgumentException("The 'keys' collection has more items than the 'values' collection");
+				}
+				else if (valueMoved)
+				{
+					throw new ArgumentException("The 'values' collection has more items than the 'keys' collection");
+				}
+			}
+		}
 
 		/// <summary>
 		/// Checks if collection contains single element and returns first element
@@ -1627,6 +1778,33 @@ namespace MySpace.Common
 			};
 		}
 
+		/// <summary>
+		///	<para>A readable lazily initialized indexer. You provide a factory method that will be called to 
+		///	construct values for keys that have not yet been encountered. You also provide
+		///	an <see cref="IEqualityComparer{TKey}"/> implementation that will be used to compare keys.
+		///	This is a thread-safe pattern.</para>
+		/// </summary>
+		/// <typeparam name="TKey">The type indexer argument.</typeparam>
+		/// <typeparam name="TValue">The type values stored in the indexer.</typeparam>
+		/// <param name="valueFactory">
+		///	<para>A factory method for creating values given a key. This method will
+		///	only be called once for each key.</para>
+		/// </param>
+		/// <param name="comparer">
+		///	<para>The <see cref="T:System.Collections.Generic.IEqualityComparer`1" /> implementation to use when comparing keys,
+		///	or <see langword="null"/> to use the default <see cref="T:System.Collections.Generic.EqualityComparer`1" /> for the type of the key.</para>
+		/// </param>
+		/// <returns>
+		///	<para>A lazily initialized <typeparamref name="TValue"/> given a <typeparamref name="TKey"/>.</para>
+		/// </returns>
+		/// <exception cref="ArgumentNullException">
+		///	<para><paramref name="valueFactory"/> is <see langword="null"/>.</para>
+		/// </exception>
+		public static ReadableLazyIndexer<TKey, TValue> LazyIndexerReadable<TKey, TValue>(Factory<TKey, TValue> valueFactory, IEqualityComparer<TKey> comparer)
+		{
+			return new ReadableLazyIndexer<TKey, TValue>(valueFactory, comparer);
+		}
+
 		public static Factory<T> OnceProperty<T>(Factory<T> factory) where T : class
 		{
 			T value = default(T);
@@ -1666,37 +1844,56 @@ namespace MySpace.Common
 		public static ParameterlessDelegate FrequencyBoundMethod(ParameterlessDelegate action, TimeSpan minInterval)
 		{
 			long lastRan = 0;
-			if (IntPtr.Size >= sizeof(long))
-			{
-				return () =>
-				{
-					if (DateTime.UtcNow.Subtract(minInterval).Ticks > lastRan)
-					{
-						try
-						{
-							action();
-						}
-						finally
-						{
-							lastRan = DateTime.UtcNow.Ticks;
-						}
-					}
-				};
-			}
 
 			return () =>
 			{
-				if (DateTime.UtcNow.Subtract(minInterval).Ticks > Interlocked.Read(ref lastRan))
+				var now = DateTime.UtcNow.Ticks;
+				var limit = Interlocked.Read(ref lastRan) + minInterval.Ticks;
+				if(now >= limit)
 				{
-					try
+					var oldTicks = Interlocked.Exchange(ref lastRan, now);
+					if (oldTicks < limit)
 					{
 						action();
 					}
-					finally
+				}
+			};
+		}
+
+		/// <summary>
+		///	<para>Creates a method that, if called repeatedly, will run no more than once every
+		///	<paramref name="minInterval"/> amount of time and will provide the number of times the method
+		///	was suppressed between calls.</para>
+		/// </summary>
+		/// <param name="action">
+		///	<para>The action to execute. The value passed to the method is the number of times this method was suppressed within
+		///	the given <paramref name="minInterval"/>.</para>
+		/// </param>
+		/// <param name="minInterval">
+		///	<para>The minimum time that must elapse before the next method can run.</para>
+		/// </param>
+		/// <returns>
+		/// A method that will only run if it hasn't already run within <paramref name="minInterval"/>.
+		/// </returns>
+		public static ParameterlessDelegate FrequencyBoundMethod(Action<long> action, TimeSpan minInterval)
+		{
+			long lastRan = 0;
+			long callsSinceLastRan = 0;
+			return () =>
+			{
+				var now = DateTime.UtcNow.Ticks;
+				var limit = Interlocked.Read(ref lastRan) + minInterval.Ticks;
+				if (now >= limit)
+				{
+					var oldTicks = Interlocked.Exchange(ref lastRan, now);
+					if (oldTicks < limit)
 					{
-						Interlocked.Exchange(ref lastRan, DateTime.UtcNow.Ticks);
+						long calls = Interlocked.Exchange(ref callsSinceLastRan, 0);
+						action(calls);
+						return;
 					}
 				}
+				Interlocked.Increment(ref callsSinceLastRan);
 			};
 		}
 
@@ -1820,6 +2017,54 @@ namespace MySpace.Common
 
 			while (firstItemIndex + listCounts[listIndex] <= itemIndex)
 				firstItemIndex += listCounts[listIndex++];
+		}
+
+		#endregion
+
+		#region hash
+
+		public const uint DefaultMurmer64HashSeed = 564328714;
+
+		public unsafe static ulong GetMurmur64AHash(byte[] value, uint seed = DefaultMurmer64HashSeed)
+		{
+			ArgumentAssert.IsNotNull(value, "value");
+
+			const ulong m = 0xc6a4a7935bd1e995;
+			const int r = 47;
+			var byteLength = value.Length;
+
+			ulong h = seed ^ ((ulong)byteLength * m);
+
+			fixed (byte* bytes = value)
+			{
+				ulong* data = (ulong*)bytes;
+				ulong* end = data + (byteLength / 8);
+
+				while (data != end)
+				{
+					ulong k = *data++;
+
+					k *= m;
+					k ^= k >> r;
+					k *= m;
+
+					h ^= k;
+					h *= m;
+				}
+
+				byte* data2 = (byte*)data;
+
+				for (int i = byteLength & 7 - 1; i >= 0; --i)
+				{
+					h ^= (ulong)data2[i] << (8 * i);
+				}
+				h *= m;
+
+				h ^= h >> r;
+				h *= m;
+				h ^= h >> r;
+			}
+			return h;
 		}
 
 		#endregion

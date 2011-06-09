@@ -77,6 +77,19 @@ namespace MySpace.Common
 		public int MinDeserializeVersion { get; set; }
 
 		/// <summary>
+		/// Gets the minimum framework version to use when writing this type.
+		/// E.g. if the global write version is 0 and this value is 1 then
+		/// framework version 1 will be used to encode binary data.
+		/// If the global write version is 2 and this value is 1 then
+		/// framework version 2 will be used to encode binary data.
+		/// The first version of the auto serialization framework is considered
+		/// framework version 0. The first version of Barf is considered
+		/// framework version 1.
+		/// </summary>
+		/// <value>The minimum framework version to use when writing this type.</value>
+		public int MinWriteFrameworkVersion { get; set; }
+
+		/// <summary>
 		/// <para>Indicates that this is a simple, struct-like class that can be serialized inline with its
 		/// container class. Inline classes have the following limitations:</para>
 		/// <para>1. They cannot be serialized standalone</para>
@@ -144,6 +157,16 @@ namespace MySpace.Common
 		/// 	consumers about bad serialization practices when serializing this type; otherwise, <see langword="false"/>.</para>
 		/// </value>
 		public bool SuppressWarningExceptions { get; set; }
+
+		/// <summary>
+		/// 	<para>Gets or sets a value indicating whether dynamic auto-serialization code should only be
+		/// 	generated at run time. This is only intended to be used to prevent class with intentional invalid
+		/// 	serialization attributes from failing the build. This option should only be used for test-purposes.</para>
+		/// </summary>
+		/// <value>
+		/// 	<para><see langword="true"/> to only allow code generation at run-time for this type; otherwise, <see langword="false"/>.</para>
+		/// </value>
+		public bool RuntimeOnly { get; set; }
 
 		#endregion
 

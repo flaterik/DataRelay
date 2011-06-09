@@ -7,6 +7,19 @@ namespace MySpace.Common.HelperObjects
 {
     public static class StringUtility
     {
+        public static string ConvertIPAddressToString(byte[] ipAddress)
+        {
+            if (ipAddress == null || ipAddress[0] == 0) // If ipAddress was not determined.
+                return string.Empty;
+
+            string result = ipAddress[0].ToString();
+
+            for (int i = 1; i < 4; ++i)
+            {
+                result = result + '.' + ipAddress[i];
+            }
+            return result;
+        }
         /// <summary>
         /// Indicates whether the specified <see cref="String"/> object is null or an <see cref="string.Empty"/> string.
         /// </summary>

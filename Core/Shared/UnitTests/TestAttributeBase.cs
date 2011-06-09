@@ -31,6 +31,8 @@ namespace MySpace.Common.UnitTests
             internal set { testClassInstance = value; }
         }
 
+		public int Priority { get; set; }
+
         public virtual void WriteLineToUnitTest(string message, params object[] args)
         {
             UnitTestBase currentUnitTestClass = testClassInstance as UnitTestBase;

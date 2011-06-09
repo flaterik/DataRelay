@@ -943,7 +943,7 @@ namespace MySpace.Common.IO
 
 					//  if (typeIndex == -1) goto :dynamicInstanceNull
 					il.PushLocal(dynamicTypeIndexVar);
-					il.PushInt(TypeSerializationInfo.NullVersion);
+					il.PushInt(SerializerHeaders.NullVersion);
 					il.GotoIfNotEqual(dynamicTypeNotNullLabel);
 
 					//  return null

@@ -110,7 +110,7 @@ namespace MySpace.Common.Storage
 		/// </param>
 		public bool Equals(StorageKey other)
 		{
-			return Key.Equals(other.Key) && PartitionId == other.PartitionId;
+			return PartitionId == other.PartitionId && Key.Equals(other.Key);
 		}
 
 		/// <summary>

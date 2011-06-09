@@ -84,6 +84,7 @@ namespace MySpace.Common.HelperObjects
 		{
 		}
 
+#pragma warning disable 618,612
 		private static frameworkPolicy Translate(LockRecursionPolicy policy)
 		{
 			switch(policy)
@@ -97,6 +98,7 @@ namespace MySpace.Common.HelperObjects
 						"Policy {0} not supported", policy));
 			}
 		}
+#pragma warning restore 618,612
 
 		/// <summary>
 		/// 	<para>Initializes a new instance of the <see cref="ReaderWriterLock"/> class.</para>
