@@ -6,10 +6,10 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("MySpace.Logging")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Wrapper for log4net")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("MySpace")]
-[assembly: AssemblyProduct("MySpace.Logging")]
+[assembly: AssemblyProduct("MySpace Shared Libraries")]
 [assembly: AssemblyCopyright("Copyright © MySpace 2006")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
