@@ -1,110 +1,69 @@
 ﻿using System.Collections.Generic;
 using MySpace.Common;
+using MySpace.Common.IO;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
     public class RandomQueryResult : IVersionSerializable
     {
         #region Data Members
-        private bool indexExists;
-        public bool IndexExists
-        {
-            get
-            {
-                return indexExists;
-            }
-            set
-            {
-                indexExists = value;
-            }
-        }
 
-        private int indexSize;
-        public int IndexSize
-        {
-            get
-            {
-                return indexSize;
-            }
-            set
-            {
-                indexSize = value;
-            }
-        }
+        public bool IndexExists { get; set; }
 
-        private byte[] metadata;
-        public byte[] Metadata
-        {
-            get
-            {
-                return metadata;
-            }
-            set
-            {
-                metadata = value;
-            }
-        }
+        public int IndexSize { get; set; }
 
-        private List<ResultItem> resultItemList;
-        public List<ResultItem> ResultItemList
-        {
-            get
-            {
-                return resultItemList;
-            }
-            set
-            {
-                resultItemList = value;
-            }
-        }
+        public byte[] Metadata { get; set; }
 
-        private int virtualCount;
-        public int VirtualCount
-        {
-            get
-            {
-                return virtualCount;
-            }
-            set
-            {
-                virtualCount = value;
-            }
-        }
+        public MetadataPropertyCollection MetadataPropertyCollection { get; set; }
 
-        private string exceptionInfo;
-        public string ExceptionInfo
-        {
-            get
-            {
-                return exceptionInfo;
-            }
-            set
-            {
-                exceptionInfo = value;
-            }
-        }
+        public List<ResultItem> ResultItemList { get; set; }
+
+        public int VirtualCount { get; set; }
+
+        public int IndexCap { get; set; }
+
+        public string ExceptionInfo { get; set; }
+
         #endregion
 
         #region Ctors
+
         public RandomQueryResult()
         {
-            Init(false, -1, null, null, -1, null);
+            Init(false, -1, null, null, null, -1, 0, null);
         }
 
-        public RandomQueryResult(bool indexExists, int indexSize, byte[] metadata, List<ResultItem> resultItemList, int virtualCount, string exceptionInfo)
+        public RandomQueryResult(bool indexExists, 
+            int indexSize, 
+            byte[] metadata,
+            MetadataPropertyCollection metadataPropertyCollection,
+            List<ResultItem> resultItemList, 
+            int virtualCount,
+            int indexCap, 
+            string exceptionInfo)
         {
-            Init(indexExists, indexSize, metadata, resultItemList, virtualCount, exceptionInfo);
+            Init(indexExists, indexSize, metadata, metadataPropertyCollection, resultItemList, virtualCount, indexCap, exceptionInfo);
         }
 
-        private void Init(bool indexExists, int indexSize, byte[] metadata, List<ResultItem> resultItemList, int virtualCount, string exceptionInfo)
+        private void Init(bool indexExists, 
+            int indexSize, 
+            byte[] metadata,
+            MetadataPropertyCollection metadataPropertyCollection,
+            List<ResultItem> resultItemList, 
+            int virtualCount,
+            int indexCap, 
+            string exceptionInfo)
         {
-            this.indexExists = indexExists;
-            this.indexSize = indexSize;
-            this.metadata = metadata;
-            this.resultItemList = resultItemList;
-            this.virtualCount = virtualCount;
-            this.exceptionInfo = exceptionInfo;
+            IndexExists = indexExists;
+            IndexSize = indexSize;
+            Metadata = metadata;
+            MetadataPropertyCollection = metadataPropertyCollection;
+            ResultItemList = resultItemList;
+            VirtualCount = virtualCount;
+            IndexCap = indexCap;
+            ExceptionInfo = exceptionInfo;
         }
+
         #endregion
 
         #region IVersionSerializable Members
@@ -113,41 +72,55 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             using (writer.CreateRegion())
             {
                 //IndexExists
-                writer.Write(indexExists);
+                writer.Write(IndexExists);
 
                 //IndexSize
-                writer.Write(indexSize);
+                writer.Write(IndexSize);
 
                 //Metadata
-                if (metadata == null || metadata.Length == 0)
+                if (Metadata == null || Metadata.Length == 0)
                 {
                     writer.Write((ushort) 0);
                 }
                 else
                 {
-                    writer.Write((ushort) metadata.Length);
-                    writer.Write(metadata);
+                    writer.Write((ushort) Metadata.Length);
+                    writer.Write(Metadata);
                 }
 
                 //ResultItemList
-                if (resultItemList == null || resultItemList.Count == 0)
+                if (ResultItemList == null || ResultItemList.Count == 0)
                 {
                     writer.Write(0);
                 }
                 else
                 {
-                    writer.Write(resultItemList.Count);
-                    foreach (ResultItem resultItem in resultItemList)
+                    writer.Write(ResultItemList.Count);
+                    foreach (ResultItem resultItem in ResultItemList)
                     {
                         resultItem.Serialize(writer);
                     }
                 }
 
                 //ExceptionInfo
-                writer.Write(exceptionInfo);
+                writer.Write(ExceptionInfo);
 
                 //VirtualCount
-                writer.Write(virtualCount);
+                writer.Write(VirtualCount);
+
+                //IndexCap
+                writer.Write(IndexCap);
+
+                //MetadataPropertyCollection
+                if (MetadataPropertyCollection == null)
+                {
+                    writer.Write(false);
+                }
+                else
+                {
+                    writer.Write(true);
+                    Serializer.Serialize(writer.BaseStream, MetadataPropertyCollection);
+                }
             }
         }
 
@@ -156,21 +129,21 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             using (reader.CreateRegion())
             {
                 //IndexExists
-                indexExists = reader.ReadBoolean();
+                IndexExists = reader.ReadBoolean();
 
                 //IndexSize
-                indexSize = reader.ReadInt32();
+                IndexSize = reader.ReadInt32();
 
                 //Metadata
                 ushort len = reader.ReadUInt16();
                 if (len > 0)
                 {
-                    metadata = reader.ReadBytes(len);
+                    Metadata = reader.ReadBytes(len);
                 }
 
                 //ResultItemList
                 int listCount = reader.ReadInt32();
-                resultItemList = new List<ResultItem>(listCount);
+                ResultItemList = new List<ResultItem>(listCount);
                 if (listCount > 0)
                 {
                     ResultItem resultItem;
@@ -178,19 +151,35 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                     {
                         resultItem = new ResultItem();
                         resultItem.Deserialize(reader);
-                        resultItemList.Add(resultItem);
+                        ResultItemList.Add(resultItem);
                     }
                 }
 
                 //ExceptionInfo
-                exceptionInfo = reader.ReadString();
+                ExceptionInfo = reader.ReadString();
 
                 //VirtualCount
-                virtualCount = reader.ReadInt32();
+                VirtualCount = reader.ReadInt32();
+
+                //IndexCap
+                if (version >= 2)
+                {
+                    IndexCap = reader.ReadInt32();
+                }
+
+                if (version >= 3)
+                {
+                    //MetadataPropertyCollection
+                    if (reader.ReadBoolean())
+                    {
+                        MetadataPropertyCollection = new MetadataPropertyCollection();
+                        Serializer.Deserialize(reader.BaseStream, MetadataPropertyCollection);
+                    }
+                }
             }
         }
 
-        private const int CURRENT_VERSION = 1;
+        private const int CURRENT_VERSION = 3;
         public int CurrentVersion
         {
             get

@@ -3,9 +3,8 @@ using System.Configuration;
 using System.Reflection;
 using System.IO;
 using System.Threading;
+using MySpace.Logging;
 using Wintellect.PowerCollections;
-
-
 
 namespace MySpace.DataRelay
 {
@@ -27,23 +26,25 @@ namespace MySpace.DataRelay
 		/// The name of the folder where the assemblies are loaded from.
 		/// </summary>
 		internal readonly static string AssemblyFolderName = "RelayAssemblies";
-		private static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
+		private static readonly LogWrapper _log = new LogWrapper();
 
-		private FileSystemWatcher watcher;
-		private string appPath;
-		private string assemblyPath;
-		private string shadowCacheFolder;
-		private object resourceLock = new object();
-		private Set<string> pendingAssemblyReloadMinute = new Set<string>(StringComparer.OrdinalIgnoreCase);
-		private Set<string> pendingAssemblyFileNames = new Set<string>(StringComparer.OrdinalIgnoreCase);
-		private static AssemblyLoader instance;
-		private static readonly object padlock = new object();
-		private AppDomain nodeDomain;
-		private readonly object nodeLock = new object();
-		private string nodeFileName;
-		private LoadedAssemblyChangeDelegate nodeChanged;
-		private static bool reloadOnAssemblyChanges = true;
-		private static System.Threading.Timer _reloadTimer;
+		private FileSystemWatcher _watcher;
+		private string _appPath;
+		private string _assemblyPath;
+		private string _shadowCacheFolder;
+		private object _resourceLock = new object();
+		private static AssemblyLoader _instance;
+		private static readonly object _padlock = new object();
+		private AppDomain _nodeDomain;
+		private readonly object _nodeLock = new object();
+        private Set<string> _pendingAssemblyFileNames = new Set<string>(StringComparer.OrdinalIgnoreCase);
+		private string _nodeFileName;
+		private LoadedAssemblyChangeDelegate _nodeChanged;
+		private static bool _reloadOnAssemblyChanges = true;
+		private static Timer _reloadTimer;
+	    private static DateTime? _currentFileSetChangeTime;
+	    private static int _reloadWindowSeconds = 10; //not const to allow test to change
+
 		#endregion
 
 		#region Ctor
@@ -58,17 +59,17 @@ namespace MySpace.DataRelay
 					bool reload;
 					if (bool.TryParse(value, out reload))
 					{
-						reloadOnAssemblyChanges = reload;
+						_reloadOnAssemblyChanges = reload;
 					}
 					else
 					{
-						log.WarnFormat("Invalid appSetting value for key 'ReloadOnFileChanges': {0}", value ?? "null");
+						_log.WarnFormat("Invalid appSetting value for key 'ReloadOnFileChanges': {0}", value ?? "null");
 					}
 				}
 			}
 			catch (Exception ex)
 			{
-				log.Error("Couldn't access app settings", ex);
+				_log.Error("Couldn't access app settings", ex);
 			}
 		}
 
@@ -78,31 +79,59 @@ namespace MySpace.DataRelay
 		/// </summary>
 		private AssemblyLoader()
 		{
-			appPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-			shadowCacheFolder = Path.Combine(appPath, "ShadowCopy");
+			_appPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+			_shadowCacheFolder = Path.Combine(_appPath, "ShadowCopy");
 			
-			if (!Directory.Exists(shadowCacheFolder))
+			if (!Directory.Exists(_shadowCacheFolder))
 			{
-				Directory.CreateDirectory(shadowCacheFolder);
+				Directory.CreateDirectory(_shadowCacheFolder);
 			}
 			
-			assemblyPath = Path.Combine(appPath, AssemblyFolderName);
+			_assemblyPath = Path.Combine(_appPath, AssemblyFolderName);
 			
-			if (!Directory.Exists(assemblyPath))
+			if (!Directory.Exists(_assemblyPath))
 			{
-				Directory.CreateDirectory(assemblyPath);
+				Directory.CreateDirectory(_assemblyPath);
 			}
 		
-			watcher = new FileSystemWatcher(assemblyPath);
-			watcher.Changed += new FileSystemEventHandler(AssemblyDirChanged);
-			watcher.Created += new FileSystemEventHandler(AssemblyDirChanged);
-			watcher.Deleted += new FileSystemEventHandler(AssemblyDirChanged);
-			watcher.EnableRaisingEvents = true; 
+			_watcher = new FileSystemWatcher(_assemblyPath);
+			_watcher.Changed += new FileSystemEventHandler(AssemblyDirChanged);
+			_watcher.Created += new FileSystemEventHandler(AssemblyDirChanged);
+			_watcher.Deleted += new FileSystemEventHandler(AssemblyDirChanged);
+			_watcher.EnableRaisingEvents = true;
+
+		    int reloadMs = _reloadWindowSeconds * 1000;
+             
+            //setup a timer to defer the reload to ensure all files in the directory have changed
+            //this would allow time for files being copied to complete
+            //assigning to a static variable because you need to keep a reference to timers to keep them from being GC'd and breaking
+            _reloadTimer = new Timer(CheckForReload, null, reloadMs, reloadMs); 
 		}
 
 		#endregion
 
 		#region Private Methods
+
+        /// <summary>
+        /// Determines if based on when files were last changed if we should execute our Assembly Changed logic. 
+        /// </summary>
+        /// <param name="notUsed"></param>
+        private void CheckForReload(object notUsed)
+        {
+            DateTime? lastChange;
+            lock (_resourceLock)
+            {
+                lastChange = _currentFileSetChangeTime;
+            }
+
+            DateTime now = DateTime.UtcNow; //the cost of this should be low, because this method is called infrequently
+            int elapsed = (int)(now - lastChange.GetValueOrDefault(now)).TotalSeconds;
+
+            if (elapsed >= _reloadWindowSeconds)
+            {
+                ProcessAssemblyChange();
+            }
+        }
 
 		/// <summary>
 		/// Handles the case when the Assembly Directory's contents changes.
@@ -111,53 +140,37 @@ namespace MySpace.DataRelay
 		/// <param name="e"></param>
 		private void AssemblyDirChanged(object sender, FileSystemEventArgs e)
 		{
-			if (!reloadOnAssemblyChanges)
+			if (!_reloadOnAssemblyChanges)
 			{
-				if(log.IsDebugEnabled)
-					log.DebugFormat("File {0} changed but reloads are disabled.", e.Name);
+				if(_log.IsDebugEnabled)
+					_log.DebugFormat("File {0} changed but reloads are disabled.", e.Name);
 				return;
 			}
 			
 			if (!FileCausesRestart(e.Name))
 			{
-				if(log.IsDebugEnabled)
-					log.DebugFormat("Ignored file {0} changed", e.Name);
+				if(_log.IsDebugEnabled)
+					_log.DebugFormat("Ignored file {0} changed", e.Name);
 				return;
 			}
 			
-			string thisMinute = System.DateTime.Now.Hour.ToString() + ":" + System.DateTime.Now.Minute.ToString();
+			string thisMinute = DateTime.Now.Hour.ToString() + ":" + DateTime.Now.Minute.ToString();
 
-			lock (resourceLock)
+			lock (_resourceLock)
 			{
-				//checks to see if a reload was already scheduled keyed by hh:mm, if so
-				//checks to see if it contained the specific file 
-				if (pendingAssemblyReloadMinute.Contains(thisMinute))
-				{
-					if (!pendingAssemblyFileNames.Contains(e.Name) && FileCausesRestart(e.Name))
-					{
-						pendingAssemblyFileNames.Add(e.Name);
-						if (log.IsInfoEnabled)
-							log.InfoFormat("Got change for {0}. Processing with other changes made during {1}",
-										   e.Name, thisMinute);
-					}
-					return;
-				}
-
-
-				//store this reload to ensure we only reload once for multiple files being changed.
-
-				if (log.IsInfoEnabled)
-					log.InfoFormat("Got change for {0} during {1}. Processing in five seconds.", e.Name,
-								   thisMinute);
-				pendingAssemblyReloadMinute.Add(thisMinute);
-				pendingAssemblyFileNames.Add(e.Name);
-
+                if (_log.IsInfoEnabled)
+                {
+                    if (_pendingAssemblyFileNames.Add(e.Name) == false) //returns false if the item didn't already exist
+                    {
+                        _log.InfoFormat(
+                            "Got change for {0} during {1}. Processing {2} seconds after the last file change hasn't occured for {2} seconds",
+                            e.Name,
+                            thisMinute,
+                            _reloadWindowSeconds);
+                    }
+                }
+			    _currentFileSetChangeTime = DateTime.UtcNow;
 			}
-
-			//setup a timer to defer the reload to ensure all files in the directory have changed
-			//this would allow time for files being copied to complete
-			//assigning to a static variable because you need to keep a reference to timers to keep them from being GC'd and breaking
-			_reloadTimer = new Timer(ProcessAssemblyChange, thisMinute, 5000, Timeout.Infinite); 
 		}
 
 		private static bool FileCausesRestart(string fileName)
@@ -169,25 +182,22 @@ namespace MySpace.DataRelay
 		/// <summary>
 		/// Handles the <see cref="AssemblyDirChanged"/> event, to signal for the assembly change.
 		/// </summary>
-		/// <param name="ar"></param>
-		private void ProcessAssemblyChange(object ar)
+		private void ProcessAssemblyChange()
 		{
-			string thisMinute = (string)ar;
-
-			lock (resourceLock)
+			lock (_resourceLock)
 			{
-				pendingAssemblyReloadMinute.Remove(thisMinute);
-				pendingAssemblyFileNames.Clear();
-				if (nodeChanged != null)
+                _currentFileSetChangeTime = null;
+                _pendingAssemblyFileNames.Clear();
+				if (_nodeChanged != null)
 				{
 					try
 					{
-						nodeChanged();
+						_nodeChanged();
 					}
 					catch (Exception ex)
 					{
-						if (log.IsErrorEnabled)
-							log.ErrorFormat("Error Changing Node Assembly: {0}", ex);
+						if (_log.IsErrorEnabled)
+							_log.ErrorFormat("Error Changing Node Assembly: {0}", ex);
 					}
 				}
 			}
@@ -198,19 +208,19 @@ namespace MySpace.DataRelay
 		/// </summary>
 		private void EnsureDomainIsLoaded()
 		{
-			if (nodeDomain == null) //double checked locking pattern
+			if (_nodeDomain == null) //double checked locking pattern
 			{
-				lock (nodeLock)
+				lock (_nodeLock)
 				{
-					if (nodeDomain == null)
+					if (_nodeDomain == null)
 					{
 						AppDomainSetup ads = new AppDomainSetup();
 						ads.ApplicationBase = AppDomain.CurrentDomain.BaseDirectory;
-						ads.CachePath = shadowCacheFolder;
+						ads.CachePath = _shadowCacheFolder;
 						ads.ShadowCopyFiles = "true";
 						ads.ConfigurationFile = @"ConfigurationFiles\RelayNode.app.config";
 						ads.PrivateBinPath = AssemblyFolderName;
-						nodeDomain = AppDomain.CreateDomain("RelayNode", null, ads);
+						_nodeDomain = AppDomain.CreateDomain("RelayNode", null, ads);
 					}
 				}
 			}
@@ -227,17 +237,17 @@ namespace MySpace.DataRelay
 		{
 			get
 			{
-				if (instance == null)
+				if (_instance == null)
 				{
-					lock (padlock)
+					lock (_padlock)
 					{
-						if (instance == null)
+						if (_instance == null)
 						{
-							instance = new AssemblyLoader();
+							_instance = new AssemblyLoader();
 						}
 					}
 				}
-				return instance;
+				return _instance;
 			}
 		}
 
@@ -256,23 +266,23 @@ namespace MySpace.DataRelay
 
 			try
 			{
-				Factory nodeFactory = (Factory)nodeDomain.CreateInstanceFromAndUnwrap(
+				Factory nodeFactory = (Factory)_nodeDomain.CreateInstanceFromAndUnwrap(
 					"MySpace.DataRelay.NodeFactory.dll", "MySpace.DataRelay.Factory"
-					);								
-				nodeChanged = changedDelegate;
-				if (log.IsInfoEnabled)
-					log.Info("Loaded relay node domain.");
-				return (IRelayNode)nodeFactory.LoadClass("MySpace.DataRelay.RelayNode", "MySpace.DataRelay.RelayNode", out nodeFileName);
+					);
+                _nodeChanged = changedDelegate;
+				if (_log.IsInfoEnabled)
+					_log.Info("Loaded relay node domain.");
+				return (IRelayNode)nodeFactory.LoadClass("MySpace.DataRelay.RelayNode", "MySpace.DataRelay.RelayNode", out _nodeFileName);
 			}
 			catch (Exception ex)
 			{
-				if (log.IsErrorEnabled)
-					log.ErrorFormat("Error loading relay node: {0}", ex);
+				if (_log.IsErrorEnabled)
+					_log.ErrorFormat("Error loading relay node: {0}", ex);
 				return null;
 			}
 		}
 
-		#endregion
+	    #endregion
 
 		/// <summary>
 		/// Gets or set a value that indicates if events are raised, most
@@ -280,8 +290,8 @@ namespace MySpace.DataRelay
 		/// </summary>
 		internal bool EnableRaisingEvents
 		{
-			get { return watcher.EnableRaisingEvents; }
-			set { watcher.EnableRaisingEvents = value; }
+			get { return _watcher.EnableRaisingEvents; }
+			set { _watcher.EnableRaisingEvents = value; }
 		}
 
 		#region ReleaseRelayNode
@@ -292,12 +302,12 @@ namespace MySpace.DataRelay
 		/// </summary>
 		internal void ReleaseRelayNode()
 		{
-			if (nodeDomain != null)
+			if (_nodeDomain != null)
 			{
-				AppDomain.Unload(nodeDomain);
-				nodeDomain = null;
-				if (log.IsInfoEnabled)
-					log.Info("Unloaded relay node domain.");
+				AppDomain.Unload(_nodeDomain);
+				_nodeDomain = null;
+				if (_log.IsInfoEnabled)
+					_log.Info("Unloaded relay node domain.");
 			}
 		}
 

@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Xml;
 using System.Xml.Serialization;
+using MySpace.Logging;
 
 namespace MySpace.DataRelay.Common.Schemas
 {
@@ -36,7 +37,16 @@ namespace MySpace.DataRelay.Common.Schemas
 
 	public class TypeSettingCollection : KeyedCollection<string, TypeSetting>
 	{
-		private readonly Dictionary<int, TypeSetting> idMapping = new Dictionary<int, TypeSetting>();
+		//this is used as settings are added or removed to keep track of them...
+		private readonly Dictionary<int, TypeSetting> _idMapping = new Dictionary<int, TypeSetting>();
+		//but this is actually used for reads because arrays are so much faster than dictionaries
+		private TypeSetting[] _typeSettingArray;
+		//but we don't want to rebuild it on every change, so we'll keep track of whether it's
+		//consistent and check that before reading from it. this first read after a change will
+		//trigger building the array. since items tend to be added all at once this should be fine
+		//TODO test how this handles config reloads under load!
+		private bool _typeSettingArrayConsistent;
+		private readonly object _typeSettingArrayLock = new object();
 
 		public short MaxTypeId { get; private set; }
 
@@ -51,7 +61,8 @@ namespace MySpace.DataRelay.Common.Schemas
 			{
 				MaxTypeId = item.TypeId;
 			}
-			idMapping.Add(item.TypeId, item);
+			_idMapping.Add(item.TypeId, item);
+			_typeSettingArrayConsistent = false;
 			base.Add(item);
 		}
 
@@ -59,7 +70,8 @@ namespace MySpace.DataRelay.Common.Schemas
 		{
 			if (Contains(item))
 			{
-				idMapping.Remove(item.TypeId);
+				_idMapping.Remove(item.TypeId);
+				_typeSettingArrayConsistent = false;
 			}
 			return base.Remove(item);
 		}
@@ -99,9 +111,24 @@ namespace MySpace.DataRelay.Common.Schemas
 		{
 			get
 			{
-				TypeSetting result;
-				idMapping.TryGetValue(typeId, out result);
-				return result;
+				if(typeId > MaxTypeId)
+					return null;
+				if(!_typeSettingArrayConsistent)
+				{
+					lock(_typeSettingArrayLock)
+					{
+						if (!_typeSettingArrayConsistent)
+						{
+							_typeSettingArray = new TypeSetting[MaxTypeId + 1];
+							foreach(TypeSetting typeSetting in _idMapping.Values)
+							{
+								_typeSettingArray[typeSetting.TypeId] = typeSetting;
+							}
+							_typeSettingArrayConsistent = true;
+						}
+					}
+				}
+				return _typeSettingArray[typeId];
 			}
 		}
 
@@ -110,6 +137,8 @@ namespace MySpace.DataRelay.Common.Schemas
 
 	public class TypeSetting
 	{
+		private static readonly LogWrapper _log = new LogWrapper();
+
 		private readonly object _syncRoot = new object();
 		private string _typeName;
 		private string _assemblyQualifiedTypeName;
@@ -142,6 +171,8 @@ namespace MySpace.DataRelay.Common.Schemas
 		public bool Disabled;
 		[XmlElement("Compress")]
 		public bool Compress;
+		[XmlElement("LocalCacheTTLSeconds")]
+		public int? LocalCacheTTLSeconds;
 		[XmlElement("GroupName")]
 		public string GroupName;
 		[XmlElement("RelatedIndexTypeId")]
@@ -151,10 +182,18 @@ namespace MySpace.DataRelay.Common.Schemas
 		[XmlElement("TTLSetting")]
 		public TTLSetting TTLSetting;
 
+        [XmlElement("FlexCacheMode")]
+        public FlexCacheMode FlexCacheMode;
+
 		[XmlElement("SyncInMessages")]
 		public bool SyncInMessages;
 		[XmlElement("ThrowOnSyncFailure")]
 		public bool ThrowOnSyncFailure;
+
+		[XmlAttribute("GatherStatistics")]
+		public bool GatherStatistics = true;//default to true
+		[XmlElement("Description")]
+		public string Description;
 
 		/// <summary>
 		/// Gets or sets the assembly qualified type name of the target object.
@@ -200,8 +239,17 @@ namespace MySpace.DataRelay.Common.Schemas
 					try
 					{
 						if (string.IsNullOrEmpty(_assemblyQualifiedTypeName)) return _hydrationPolicy;
+						Type type;
+						try
+						{
+							type = Type.GetType(_assemblyQualifiedTypeName, false);
+						}
+						catch (Exception ex)
+						{
+							type = null;
+							_log.Error("Failed to load type. Error = " + ex);
+						}
 
-						var type = Type.GetType(_assemblyQualifiedTypeName, false);
 						if (type == null) return _hydrationPolicy;
 
 						var policies = (RelayHydrationPolicyAttribute[])Attribute.GetCustomAttributes(type, typeof(RelayHydrationPolicyAttribute));
@@ -229,7 +277,7 @@ namespace MySpace.DataRelay.Common.Schemas
 		public override string ToString()
 		{
 			var hydrationPolicy = HydrationPolicy;
-			return String.Format("{0} {1} Id: {2} {3} {4} {5} {6} {7} HydrationPolicy - {8}",
+			return String.Format("{0} {1} Id: {2} {3} {4} {5} {6} {7} {8} HydrationPolicy - {9}",
 				TypeName,
 				GroupName,
 				TypeId,
@@ -238,6 +286,7 @@ namespace MySpace.DataRelay.Common.Schemas
 				CheckRaceCondition ? "Checking Race Condition" : String.Empty,
 				TTLSetting,
 				RelatedIndexTypeId,
+				LocalCacheTTLSeconds.HasValue ? LocalCacheTTLSeconds.Value.ToString() : "null",
 				hydrationPolicy == null
 					? "None"
 					: string.Format(
@@ -264,6 +313,29 @@ namespace MySpace.DataRelay.Common.Schemas
 			return "No Default TTL";
 		}
 	}
+
+    /// <summary>
+    /// Controls if a type is stored in Flex Cache, Data Relay, or both.
+    /// </summary>
+    public enum FlexCacheMode
+    {
+        /// <summary>
+        /// Disabled Flex Cache for this relay type.  This is the default setting if omitted.  Set Disabled to 0 to force the default value.
+        /// </summary>
+        Disabled = 0, 
+
+        /// <summary>
+        /// Enables Flex Cache for this relay type.
+        /// </summary>
+        Enabled, 
+
+        /// <summary>
+        /// Enables Flex Cache for this relay type, and will drain objects from classic relay nodes.
+        /// Read Miss will fall back to classic relay nodes, and save the data to Flex Cache, and then delete from Data Relay 
+        /// All Updates will update Flex Cache and issue deletes to Data Relay.
+        /// </summary>
+        EnabledWithRelayDrain
+    }
 	#endregion
 
 	#region ConfigLoader for Legacy config file

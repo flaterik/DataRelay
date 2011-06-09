@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace MySpace.DataRelay
 {
-	public class SerializedMessageList
+	internal class SerializedMessageList
 	{		
 		public List<RelayMessage> OutMessages;
 		public List<SerializedRelayMessage> InMessages;

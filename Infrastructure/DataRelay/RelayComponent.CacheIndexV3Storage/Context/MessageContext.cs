@@ -58,8 +58,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         public List<IPAddress> AddressHistory
         {
             get; set;
-        }
-
+        }       
         #endregion
     }
 }

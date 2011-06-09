@@ -33,4 +33,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyFileVersion("1.1.1.1")]
 [assembly:
 	InternalsVisibleTo("MySpace.DataRelay.RelayNode.Test"),
+    InternalsVisibleTo("MySpace.DataRelay.CacheClient.Test"),
 	InternalsVisibleTo("MySpace.RelayComponent.Forwarding.Test")]

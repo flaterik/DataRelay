@@ -1,10 +1,12 @@
 #pragma once
 
-using namespace System;
-using namespace System::Runtime::InteropServices;
 
 namespace BerkeleyDbWrapper
 {
+	using namespace System;
+	using namespace System::Runtime::InteropServices;
+
+
 	class CStr
 	{
 	public:

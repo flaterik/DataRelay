@@ -5,7 +5,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 {
 	internal class ErrorQueueState : IVersionSerializable
 	{
-		internal Dictionary<string, Dictionary<string, MessageQueue>> ErrorQueues;
+		internal Dictionary<string, Dictionary<string, ErrorQueue>> ErrorQueues;
 
 		#region IVersionSerializable Members
 
@@ -18,7 +18,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				foreach (string key in ErrorQueues.Keys)
 				{
 					writer.Write(key);
-					Dictionary<string, MessageQueue> groupQueue = ErrorQueues[key];
+					Dictionary<string, ErrorQueue> groupQueue = ErrorQueues[key];
 					if (groupQueue != null)
 					{
 						writer.Write(true);
@@ -49,18 +49,18 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			if (reader.ReadBoolean())
 			{
 				int groupsCount = reader.ReadInt32();
-				ErrorQueues = new Dictionary<string, Dictionary<string, MessageQueue>>(groupsCount);
+				ErrorQueues = new Dictionary<string, Dictionary<string, ErrorQueue>>(groupsCount);
 				for (int i = 0; i < groupsCount; i++)
 				{
 					string group = reader.ReadString();
 					if(reader.ReadBoolean())
 					{
 						int serviceCount = reader.ReadInt32();
-						Dictionary<string, MessageQueue> groupQueues = new Dictionary<string, MessageQueue>(serviceCount);
+						Dictionary<string, ErrorQueue> groupQueues = new Dictionary<string, ErrorQueue>(serviceCount);
 						for (int j = 0; j < serviceCount; j++)
 						{
 							string serviceName = reader.ReadString();
-							groupQueues.Add(serviceName, reader.Read<MessageQueue>());
+							groupQueues.Add(serviceName, reader.Read<ErrorQueue>());
 						}
 						ErrorQueues.Add(group, groupQueues);
 					}					

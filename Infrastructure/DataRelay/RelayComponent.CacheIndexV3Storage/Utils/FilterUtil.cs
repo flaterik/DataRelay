@@ -13,11 +13,16 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
         /// <param name="internalItem">The internal item.</param>
         /// <param name="filter">The filter.</param>
         /// <param name="inclusiveFilter">if set to <c>true</c> includes the items that pass the filter; otherwise , <c>false</c>.</param>
-        /// <param name="tagHashCollection">The tag hash collection.</param>
+        /// <param name="tagHashCollection">The TagHashCollection.</param>
+        /// <param name="metadataPropertyCollection">The MetadataPropertyCollection.</param>
         /// <returns><c>true</c> if item passes the filter; otherwise, <c>false</c></returns>
-        internal static bool ProcessFilter(InternalItem internalItem, Filter filter, bool inclusiveFilter, TagHashCollection tagHashCollection)
+        internal static bool ProcessFilter(InternalItem internalItem, 
+            Filter filter, 
+            bool inclusiveFilter, 
+            TagHashCollection tagHashCollection, 
+            MetadataPropertyCollection metadataPropertyCollection)
         {
-            bool retVal = DoProcessFilter(internalItem, filter, tagHashCollection);
+            bool retVal = DoProcessFilter(internalItem, filter, tagHashCollection, metadataPropertyCollection);
 
             if (inclusiveFilter)
             {
@@ -32,9 +37,13 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
         /// <typeparam name="T"></typeparam>
         /// <param name="internalItem">The internal item.</param>
         /// <param name="filter">The filter.</param>
-        /// <param name="tagHashCollection">The tag hash collection.</param>
+        /// <param name="tagHashCollection">The TagHashCollection.</param>
+        /// <param name="metadataPropertyCollection">The MetadataPropertyCollection.</param>
         /// <returns><c>true</c> if item passes the filter; otherwise, <c>false</c></returns>
-        private static bool ProcessAggregateFilter<T>(InternalItem internalItem, T filter, TagHashCollection tagHashCollection)
+        private static bool ProcessAggregateFilter<T>(InternalItem internalItem, 
+            T filter, 
+            TagHashCollection tagHashCollection, 
+            MetadataPropertyCollection metadataPropertyCollection)
             where T : AggregateFilter
         {
             bool retVal = !filter.ShortCircuitHint;
@@ -46,7 +55,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
                 if (filter[i] is Condition)
                 {
                     // evaluate now
-                    retVal = DoProcessFilter(internalItem, filter[i], tagHashCollection);
+                    retVal = DoProcessFilter(internalItem, filter[i], tagHashCollection, metadataPropertyCollection);
                     if (retVal == filter.ShortCircuitHint)
                         break;
                 }
@@ -62,7 +71,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
             {
                 foreach (Filter f in later)
                 {
-                    retVal = DoProcessFilter(internalItem, f, tagHashCollection);
+                    retVal = DoProcessFilter(internalItem, f, tagHashCollection, metadataPropertyCollection);
                     if (retVal == filter.ShortCircuitHint)
                         break;
                 }
@@ -75,24 +84,28 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
         /// </summary>
         /// <param name="internalItem">The internal item.</param>
         /// <param name="filter">The filter.</param>
-        /// <param name="tagHashCollection">The tag hash collection.</param>
+        /// <param name="tagHashCollection">The TagHashCollection.</param>
+        /// <param name="metadataPropertyCollection">The MetadataPropertyCollection.</param>
         /// <returns><c>true</c> if item passes the filter; otherwise, <c>false</c></returns>
-        private static bool DoProcessFilter(InternalItem internalItem, Filter filter, TagHashCollection tagHashCollection)
+        private static bool DoProcessFilter(InternalItem internalItem, 
+            Filter filter, 
+            TagHashCollection tagHashCollection, 
+            MetadataPropertyCollection metadataPropertyCollection)
         {
             bool retVal = false;
 
             switch (filter.FilterType)
             {
                 case FilterType.Condition:
-                    retVal = ProcessCondition(internalItem, filter as Condition);
+                    retVal = ProcessCondition(internalItem, filter as Condition, metadataPropertyCollection);
                     break;
 
                 case FilterType.And:
-                    retVal = ProcessAggregateFilter(internalItem, filter as AndFilter, tagHashCollection);
+                    retVal = ProcessAggregateFilter(internalItem, filter as AndFilter, tagHashCollection, metadataPropertyCollection);
                     break;
 
                 case FilterType.Or:
-                    retVal = ProcessAggregateFilter(internalItem, filter as OrFilter, tagHashCollection);
+                    retVal = ProcessAggregateFilter(internalItem, filter as OrFilter, tagHashCollection, metadataPropertyCollection);
                     break;
             }
 
@@ -104,9 +117,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils
         /// </summary>
         /// <param name="internalItem">The internal item.</param>
         /// <param name="condition">The condition.</param>
+        /// <param name="metadataPropertyCollection">The MetadataPropertyCollection.</param>
         /// <returns><c>true</c> if item passes the condition; otherwise, <c>false</c></returns>
-        private static bool ProcessCondition(InternalItem internalItem, Condition condition)
+        private static bool ProcessCondition(InternalItem internalItem, 
+            Condition condition, 
+            MetadataPropertyCollection metadataPropertyCollection)
         {
+            IndexCacheUtils.ProcessMetadataPropertyCondition(condition, metadataPropertyCollection);
+            
             if (condition.IsTag)
             {
                 byte[] tagValue;

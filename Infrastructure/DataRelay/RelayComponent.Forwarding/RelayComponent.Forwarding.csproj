@@ -1,4 +1,5 @@
-﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -14,12 +15,25 @@
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
     <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
-    <OldToolsVersion>2.0</OldToolsVersion>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileUpgradeFlags></FileUpgradeFlags>
+    <UpgradeBackupLocation></UpgradeBackupLocation>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -30,6 +44,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -39,6 +54,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|AnyCPU' ">
     <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
@@ -50,6 +66,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -61,6 +78,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
@@ -72,6 +90,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x86' ">
     <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
@@ -83,6 +102,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <DebugSymbols>true</DebugSymbols>
@@ -94,6 +114,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
@@ -105,6 +126,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x64' ">
     <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
@@ -116,6 +138,7 @@
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
     <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.Forwarding.XML</DocumentationFile>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Ccr.Core, Version=2.0.913.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -141,14 +164,17 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Configuration.Install" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Management" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BatchedQueue.cs" />
+    <Compile Include="ComponentTestManager.cs" />
+    <Compile Include="ErrorQueuePersistence.cs" />
+    <Compile Include="MockTransport.cs" />
+    <Compile Include="RelayTransportStack.cs" />
     <Compile Include="Status\BulkMessageInfo.cs" />
     <Compile Include="Status\HydrationPolicyStatus.cs" />
     <Compile Include="Status\MessageCountInfo.cs" />
@@ -165,7 +191,9 @@
     <Compile Include="Status\RelayInfo.cs" />
     <Compile Include="Status\RelayStatistics.cs" />
     <Compile Include="Status\ServerUnreachableErrorInfo.cs" />
+    <Compile Include="Status\TTLSettingStatus.cs" />
     <Compile Include="Status\TypeSettingStatus.cs" />
+    <Compile Include="Status\TypeSpecificMessageCountInfo.cs" />
     <Compile Include="SynchronousAsyncResult.cs" />
     <Compile Include="SyncRelayOperationException.cs" />
     <Compile Include="CounterInstaller.cs">
@@ -182,7 +210,7 @@
       <DependentUpon>ForwardingConfig.xsd</DependentUpon>
     </Compile>
     <Compile Include="ForwardingCounters.cs" />
-    <Compile Include="MessageQueue.cs" />
+    <Compile Include="ErrorQueue.cs" />
     <Compile Include="Node.cs" />
     <Compile Include="NodeCluster.cs" />
     <Compile Include="NodeGroup.cs" />
@@ -190,14 +218,13 @@
     <Compile Include="NodeManager.cs" />
     <Compile Include="NodeWithMessages.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SimpleLinkedList.cs" />
     <Compile Include="TransportFactory.cs" />
+    <Compile Include="TypeSpecificStatisticsManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram1.cd" />
     <None Include="ForwardingConfig.xsd">
-      <SubType>
-      </SubType>
+      <SubType></SubType>
     </None>
     <None Include="ForwardingConfig.xsx">
       <DependentUpon>ForwardingConfig.xsd</DependentUpon>
@@ -219,6 +246,23 @@
       <Project>{8EE6155E-AD75-4D62-9E74-945E27565698}</Project>
       <Name>DataRelay.Transports.Socket</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

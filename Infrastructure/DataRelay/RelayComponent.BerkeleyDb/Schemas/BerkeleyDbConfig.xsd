@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="http://myspace.com/BerkeleyDbConfig.xsd" 
+	elementFormDefault="qualified" 
+	targetNamespace="http://myspace.com/BerkeleyDbConfig.xsd" 
+	xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:import namespace="http://myspace.com/EnvironmentConfig.xsd"  schemaLocation="EnvironmentConfig.xsd"/>
+	<xs:element name="BerkeleyDbConfig" nillable="true" type="tns:BerkeleyDbConfig" />
+	<xs:complexType name="BerkeleyDbConfig">
+		<xs:sequence>
+			<xs:element minOccurs="1" maxOccurs="1" name="MinTypeId" type="xs:short" />
+			<xs:element minOccurs="1" maxOccurs="1" name="MaxTypeId" type="xs:short" />
+			<xs:element minOccurs="1" maxOccurs="1" name="BufferSize" type="xs:int" />
+			<xs:element minOccurs="1" maxOccurs="1" name="ShutdownWindow" type="xs:long" />
+			<xs:element minOccurs="0" maxOccurs="1" name="EnvironmentConfig" 
+			   xmlns:q1="http://myspace.com/EnvironmentConfig.xsd" type="q1:EnvironmentConfig" />
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Configuration;
 using System.Text;
 using System.Threading;
 using System.Collections.Generic;
@@ -7,10 +8,15 @@ using MySpace.DataRelay.Common.Schemas;
 using MySpace.DataRelay.Configuration;
 using MySpace.DataRelay.RelayComponent.BerkeleyDb;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config;
-using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Enums;
+using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.DomainSpecificConfigs;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.PerfCounters;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
 using MySpace.DataRelay.RelayComponent.Forwarding;
+using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Enums;
+using MySpace.BinaryStorage.Store;
+using MySpace.Storage;
+using MySpace.ResourcePool;
+using System.IO;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
 {
@@ -67,16 +73,24 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             }
         }
 
+        /// <summary>
+        /// Gets or sets the domain specific config.
+        /// </summary>
+        /// <value>The domain specific config.</value>
+        public DomainSpecificConfig DomainSpecificConfig
+        {
+            get; set;
+        }
 
         /// <summary>
         /// Gets or sets the index storage component.
         /// </summary>
         /// <value>The index storage component.</value>
-        public IRelayComponent IndexStorageComponent
+        public IBinaryStorage IndexStorageComponent
         {
-            get; set;
+            get;
+            set;
         }
-
 
         /// <summary>
         /// Gets or sets the forwarder component.
@@ -155,7 +169,19 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             }
         }
 
+        /// <summary>
+        /// Gets or sets the remote query call timeout
+        /// </summary>
+        public int RemoteClusteredQueryTimeOut
+        {
+            get
+            {
+                return storageConfiguration.CacheIndexV3StorageConfig.RemoteClusterQueryTimeOut;
+            }
+        }
+
         private int myClusterPosition;
+        
         /// <summary>
         /// Gets or sets my cluster position.
         /// </summary>
@@ -169,6 +195,17 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             set
             {
                 myClusterPosition = value;
+            }
+        }
+
+        /// <summary>
+        /// gets the partial get bytes length
+        /// </summary>
+        public int PartialGetLength
+        {
+            get
+            {
+                return storageConfiguration.CacheIndexV3StorageConfig.PartialGetLength;
             }
         }
 
@@ -206,6 +243,19 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             }
         }
 
+        private MemoryStreamPool myMemoryPool;
+
+        /// <summary>
+        /// Gets or sets memory pool
+        /// </summary>
+        public MemoryStreamPool MemoryPool
+        {
+            get
+            {
+                return this.myMemoryPool;
+            }
+        }
+
         #endregion
 
         #region Ctors
@@ -217,8 +267,6 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
 
         #endregion
 
-        #region Init Methods
-        
         /// <summary>
         /// Initializes the reload config.
         /// </summary>
@@ -267,8 +315,17 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             
             #endregion
 
+            #region init memoryPool
+            if (this.myMemoryPool == null)
+            {
+                this.myMemoryPool = new MemoryStreamPool(
+                    storageConfiguration.CacheIndexV3StorageConfig.MemPoolItemInitialSizeInBytes,
+                    ResourcePool.ResourcePool<MemoryStream>.InfiniteReuse,
+                    storageConfiguration.CacheIndexV3StorageConfig.MemPoolMinItemNumber);
+            }
+
             #region init DataMembers
-            
+
             Interlocked.Exchange(ref relatedTypeIds, InitializeRelatedTypeIds(nodeConfig));
 
             Interlocked.Exchange(ref compressOptions, InitializeCompressOptions(nodeConfig));
@@ -279,32 +336,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
 
             LegacySerializationUtil.Instance.InitializeLegacySerializtionTypes(nodeConfig.TypeSettings, storageConfiguration.CacheIndexV3StorageConfig.SupportLegacySerialization);
 
-            List<short> typeIdList = new List<short>();
 
-            #region Index Capping Check
-            
-            // Index Capping feature for multiple indexes not supported
-            // TBD - Remove this check when feature is supported
+            #region init performance counters
+
+            List<short> typeIdList = new List<short>();
             foreach (IndexTypeMapping indexTypeMapping in storageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection)
             {
                 typeIdList.Add(indexTypeMapping.TypeId);
-
-                if (indexTypeMapping.IndexCollection.Count > 1 && indexTypeMapping.IndexServerMode == IndexServerMode.Databound)
-                {
-                    foreach (Index indexInfo in indexTypeMapping.IndexCollection)
-                    {
-                        if (indexInfo.MaxIndexSize > 0)
-                        {
-                            LoggingUtil.Log.ErrorFormat("TypeId {0} -- Index Capping feature for multiple indexes not supported", indexTypeMapping.TypeId);
-                            throw new Exception("Index Capping feature for multiple indexes not supported");
-                        }
-                    }
-                }
             }
-
-            #endregion
-
-            #region init performance counters
 
             // get the max type id
             short maxTypeId = config.TypeSettings.MaxTypeId;
@@ -325,6 +364,15 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             Interlocked.Exchange(ref stringHashCollection, InitializeStringHashCollection(storageConfiguration));
             
             #endregion
+
+            #endregion
+
+            #region Init Domain Specific Config
+
+            DomainSpecificConfig = new DomainSpecificConfig
+                                       {
+                                           StreamRecencyConfig = ConfigurationManager.GetSection("StreamRecencyConfig") as StreamRecencyConfig
+                                       };
 
             #endregion
         }
@@ -349,7 +397,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
             CacheIndexV3StorageConfiguration configObj = config.RelayComponents.GetConfigFor(COMPONENT_NAME) as CacheIndexV3StorageConfiguration;
             if (configObj != null)
             {
-                configObj.InitializeCustomFields();
+                configObj.SanityCheckAndInitializeCustomFields();
             }
             return configObj;
         }
@@ -388,20 +436,22 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         /// Initializes the storage component.
         /// </summary>
         /// <param name="berkeleyDbConfig">The berkeley db config.</param>
-        /// <returns>Storage Component</returns>
-        private static IRelayComponent InitializeStorageComponent(BerkeleyDbConfig berkeleyDbConfig)
+        /// <returns>IBinaryStorage Component</returns>
+        private static IBinaryStorage InitializeStorageComponent(BerkeleyDbConfig berkeleyDbConfig)
         {
             // create and init bdb component
-            BerkeleyDbComponent bdbComponent = new BerkeleyDbComponent();
+            IBinaryStorage bdbComponent = new BerkeleyBinaryStore();
+
             try
             {
-                bdbComponent.Initialize(berkeleyDbConfig, COMPONENT_NAME, null);
+                bdbComponent.Initialize(berkeleyDbConfig);
             }
             catch (Exception ex)
             {
                 LoggingUtil.Log.ErrorFormat("Failed to Initialize BerkeleyDbComponent : {0}", ex);
                 throw ex;
             }
+
             return bdbComponent;
         }
 
@@ -410,16 +460,9 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         /// </summary>
         /// <param name="berkeleyDbConfig">The berkeley db config.</param>
         /// <param name="relayComponent">The relay component.</param>
-        private static void ReloadStorageComponent(BerkeleyDbConfig berkeleyDbConfig, IRelayComponent relayComponent)
+        private static void ReloadStorageComponent(BerkeleyDbConfig berkeleyDbConfig, IBinaryStorage binaryStorage)
         {
-            if (relayComponent is BerkeleyDbComponent)
-            {
-                (relayComponent as BerkeleyDbComponent).ReloadConfig(berkeleyDbConfig);
-            }
-            else
-            {
-                throw new Exception("Reload of CacheIndexStoreV3 Failed. Expected underlying storage to be a BDB component.");
-            }
+            binaryStorage.Reinitialize(berkeleyDbConfig);
         }
 
         /// <summary>
@@ -573,7 +616,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         /// </summary>
         internal void ShutDown()
         {
-            IndexStorageComponent.Shutdown();
+            IndexStorageComponent.Dispose();
+
             StringBuilder exceptionString = new StringBuilder();
             try
             {
@@ -603,7 +647,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
                 throw new Exception(exceptionString.ToString());
             }
 
-            // dispose al the performance counters
+            // dispose all the performance counters
             PerformanceCounters.Instance.DisposeCounters();
         }
         

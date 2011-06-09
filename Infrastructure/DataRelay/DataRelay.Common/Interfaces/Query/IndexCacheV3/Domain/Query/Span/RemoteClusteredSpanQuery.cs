@@ -18,12 +18,12 @@
         {
             get
             {
-                if (this.primaryId == IndexCacheUtils.MUTILEINDEXQUERYDEFAULTPRIMARYID)
+                if (primaryId == IndexCacheUtils.MULTIINDEXQUERY_DEFAULT_PRIMARYID)
                 {
                     return IndexCacheUtils.GetRandomPrimaryId(PrimaryIdList, IndexIdList);
                 }
 
-                return this.primaryId;
+                return primaryId;
             }
         }
         #endregion

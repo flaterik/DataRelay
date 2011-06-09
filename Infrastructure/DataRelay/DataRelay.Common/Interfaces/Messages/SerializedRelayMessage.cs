@@ -16,6 +16,7 @@ namespace MySpace.DataRelay
 		public MessageType MessageType;
 		public MemoryStream MessageStream;
 		public int PayloadLength;
+		public short TypeId;
 
 		/// <summary>
 		/// Used to capture a performance metric of when the message arrived on the 
@@ -45,27 +46,13 @@ namespace MySpace.DataRelay
 			RelayMessageFormatter.WriteRelayMessage(message, MessageStream);
 			MessageStream.Seek(0, SeekOrigin.Begin);
 			MessageType = message.MessageType;
+			TypeId = message.TypeId;
 			EnteredCurrentSystemAt = message.EnteredCurrentSystemAt;
 
 			if (message.Payload != null && message.Payload.ByteArray != null)
 			{
 				PayloadLength = message.Payload.ByteArray.Length;
 			}
-		}
-
-		public SerializedRelayMessage(MessageType messageType, MemoryStream messageStream)
-		{
-			EnteredCurrentSystemAt = Stopwatch.GetTimestamp();
-			MessageType = messageType;
-			MessageStream = messageStream;
-		}
-
-		public SerializedRelayMessage(MessageType messageType, MemoryStream messageStream, int payloadLength)
-		{
-			EnteredCurrentSystemAt = Stopwatch.GetTimestamp();
-			MessageType = messageType;
-			MessageStream = messageStream;
-			PayloadLength = payloadLength;
 		}
 
 		public override string ToString()
@@ -99,11 +86,12 @@ namespace MySpace.DataRelay
 			{
 				writer.Write(-1);
 			}
+			writer.Write(TypeId);
 		}
 
 		public void Deserialize(IPrimitiveReader reader, int version)
 		{
-			if (version == CurrentVersion)
+			if (version >= 1)
 			{
 				MessageType = (MessageType)reader.ReadInt32();
 				PayloadLength = reader.ReadInt32();
@@ -114,11 +102,15 @@ namespace MySpace.DataRelay
 					MessageStream = new MemoryStream(bytes);
 				}
 			}
+			if(version >= 2)
+			{
+				TypeId = reader.ReadInt16();
+			}
 		}
 
 		public int CurrentVersion
 		{
-			get { return 1; }
+			get { return 2; }
 		}
 
 		public bool Volatile

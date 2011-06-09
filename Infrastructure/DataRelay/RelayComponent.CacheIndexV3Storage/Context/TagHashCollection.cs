@@ -229,6 +229,27 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
         }
 
         /// <summary>
+        /// Tries the get tag names for the specified typeId.
+        /// </summary>
+        /// <param name="typeId">The typeId.</param>
+        /// <param name="tagNames">The tag names.</param>
+        /// <returns><c>true</c>if typeId exists in the TagHashCollection; otherwise, </returns>
+        internal bool TryGetTagNames(short typeId, out string[] tagNames)
+        {
+            tagNames = null;
+            bool typeExists = false;
+            Dictionary<int /*TagHashCode*/, string /*TagName*/> tagCollection;
+
+            if(typeTagHashCollection.TryGetValue(typeId, out tagCollection))
+            {
+                typeExists = true;
+                tagNames = new string[tagCollection.Count];
+                tagCollection.Values.CopyTo(tagNames, 0);
+            }
+            return typeExists;
+        }
+
+        /// <summary>
         /// Persists the state.
         /// </summary>
         internal void PersistState()

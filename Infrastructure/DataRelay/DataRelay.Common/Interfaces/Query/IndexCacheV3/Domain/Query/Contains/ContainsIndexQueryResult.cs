@@ -6,105 +6,63 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 	public class ContainsIndexQueryResult : IVersionSerializable
 	{
 		#region Data Members
-        private MultiItemResult multiItemResult;
-        public MultiItemResult MultiItemResult
-		{
-			get
-			{
-				return multiItemResult;
-			}
-			set
-			{
-				multiItemResult = value;
-			}
-		}
 
-		private byte[] metadata;
-		public byte[] Metadata
-		{
-			get
-			{
-				return metadata;
-			}
-			set
-			{
-				metadata = value;
-			}
-		}
+	    public MultiItemResult MultiItemResult { get; set; }
 
-		private int indexSize;
-		public int IndexSize
-		{
-			get
-			{
-				return indexSize;
-			}
-			set
-			{
-				indexSize = value;
-			}
-		}
+	    public byte[] Metadata { get; set; }
+        
+        public MetadataPropertyCollection MetadataPropertyCollection { get; set; }
 
-		private bool indexExists;
-		public bool IndexExists
-		{
-			get
-			{
-				return indexExists;
-			}
-			set
-			{
-				indexExists = value;
-			}
-		}
+	    public int IndexSize { get; set; }
 
-        private int virtualCount;
-        public int VirtualCount
-        {
-            get
-            {
-                return virtualCount;
-            }
-            set
-            {
-                virtualCount = value;
-            }
-        }
+	    public bool IndexExists { get; set; }
 
-		private string exceptionInfo;
-		public string ExceptionInfo
-		{
-			get
-			{
-				return exceptionInfo;
-			}
-			set
-			{
-				exceptionInfo = value;
-			}
-		}
-		#endregion
+	    public int VirtualCount { get; set; }
+
+        public int IndexCap { get; set; }
+
+	    public string ExceptionInfo { get; set; }
+
+	    #endregion
 
 		#region Ctors
+
 		public ContainsIndexQueryResult()
 		{
-			Init(null, null, -1, false, -1, null);
+			Init(null, null, null, -1, false, -1, 0, null);
 		}
 
-        public ContainsIndexQueryResult(MultiItemResult multiItemResult, byte[] metadata, int indexSize, bool indexExists, int virtualCount, string exceptionInfo)
+        public ContainsIndexQueryResult(MultiItemResult multiItemResult, 
+            byte[] metadata,
+            MetadataPropertyCollection metadataPropertyCollection,
+            int indexSize, 
+            bool indexExists, 
+            int virtualCount, 
+            int indexCap, 
+            string exceptionInfo)
 		{
-            Init(multiItemResult, metadata, indexSize, indexExists, virtualCount, exceptionInfo);
+            Init(multiItemResult, metadata, metadataPropertyCollection, indexSize, indexExists, virtualCount, indexCap, exceptionInfo);
 		}
 
-        private void Init(MultiItemResult multiItemResult, byte[] metadata, int indexSize, bool indexExists, int virtualCount, string exceptionInfo)
+        private void Init(MultiItemResult multiItemResult, 
+            byte[] metadata,
+            MetadataPropertyCollection metadataPropertyCollection,
+            int indexSize, 
+            bool indexExists, 
+            int virtualCount,
+            int indexCap, 
+            string exceptionInfo)
 		{
-            this.multiItemResult = multiItemResult;
-			this.metadata = metadata;
-			this.indexSize = indexSize;
-			this.indexExists = indexExists;
-            this.virtualCount = virtualCount;
-			this.exceptionInfo = exceptionInfo;
+            MultiItemResult = multiItemResult;
+			Metadata = metadata;
+            MetadataPropertyCollection = metadataPropertyCollection;
+			IndexSize = indexSize;
+			IndexExists = indexExists;
+            VirtualCount = virtualCount;
+			ExceptionInfo = exceptionInfo;
+            IndexCap = indexCap;
 		}
+
 		#endregion
 
 		#region Methods
@@ -114,38 +72,52 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 		public void Serialize(IPrimitiveWriter writer)
 		{
             //MultiItemResult
-            if(multiItemResult == null || multiItemResult.Count == 0)
+            if(MultiItemResult == null || MultiItemResult.Count == 0)
             {
                 writer.Write((byte)0);
             }
             else
             {
                 writer.Write((byte)1);
-                multiItemResult.Serialize(writer);
+                MultiItemResult.Serialize(writer);
             }
 
 			//Metadata
-			if (metadata == null || metadata.Length == 0)
+			if (Metadata == null || Metadata.Length == 0)
 			{
 				writer.Write((ushort)0);
 			}
 			else
 			{
-				writer.Write((ushort)metadata.Length);
-				writer.Write(metadata);
+				writer.Write((ushort)Metadata.Length);
+				writer.Write(Metadata);
 			}
 
 			//IndexSize
-			writer.Write(indexSize);
+			writer.Write(IndexSize);
 
 			//IndexExists
-			writer.Write(indexExists);
+			writer.Write(IndexExists);
 
 			//ExceptionInfo
-			writer.Write(exceptionInfo);
+			writer.Write(ExceptionInfo);
 
             //VirtualCount
-            writer.Write(virtualCount);
+            writer.Write(VirtualCount);
+
+            //IndexCap
+            writer.Write(IndexCap);
+
+            //MetadataPropertyCollection
+            if (MetadataPropertyCollection == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, MetadataPropertyCollection);
+            }
 		}
 
 		public void Deserialize(IPrimitiveReader reader, int version)
@@ -153,34 +125,50 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             //MultiItemResult
             if (reader.ReadByte() != 0)
             {
-                multiItemResult = new MultiItemResult();
-                multiItemResult.Deserialize(reader);
+                MultiItemResult = new MultiItemResult();
+                MultiItemResult.Deserialize(reader);
             }
 
             //Metadata
             ushort len = reader.ReadUInt16();
             if (len > 0)
             {
-                metadata = reader.ReadBytes(len);
+                Metadata = reader.ReadBytes(len);
             }
 
             //IndexSize
-            indexSize = reader.ReadInt32();
+            IndexSize = reader.ReadInt32();
 
             //IndexExists
-            indexExists = reader.ReadBoolean();
+            IndexExists = reader.ReadBoolean();
 
             //ExceptionInfo
-            exceptionInfo = reader.ReadString();
+            ExceptionInfo = reader.ReadString();
 
             //VirtualCount
             if(version >= 2)
             {
-                virtualCount = reader.ReadInt32();
+                VirtualCount = reader.ReadInt32();
+            }
+
+            //IndexCap
+            if (version >= 3)
+            {
+                IndexCap = reader.ReadInt32();
+            }
+
+            if (version >= 4)
+            {
+                //MetadataPropertyCollection
+                if (reader.ReadBoolean())
+                {
+                    MetadataPropertyCollection = new MetadataPropertyCollection();
+                    Serializer.Deserialize(reader.BaseStream, MetadataPropertyCollection);
+                }
             }
         }
 
-        private const int CURRENT_VERSION = 2;
+        private const int CURRENT_VERSION = 4;
         public int CurrentVersion
         {
             get

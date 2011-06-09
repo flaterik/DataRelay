@@ -29,7 +29,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 	/// </remarks>
 	internal class NodeWithMessagesCollection : KeyedCollection<NodeWithInfo, NodeWithMessages>
 	{
-		internal void Add(RelayMessage message, SimpleLinkedList<Node> nodes)
+		internal void Add(RelayMessage message, LinkedListStack<Node> nodes)
 		{
 			TypeSetting typeSetting = NodeManager.Instance.Config.TypeSettings.TypeSettingCollection[message.TypeId];
 

@@ -33,4 +33,4 @@ using System.Runtime.InteropServices;
 // by using the '*' as shown below:
 [assembly: AssemblyVersion("1.3.1.0")]
 [assembly: AssemblyFileVersion("1.3.1.0")]
-[assembly: InternalsVisibleTo("MySpace.DataRelay.Client.Test")]
+[assembly: InternalsVisibleTo("MySpace.DataRelay.Client.Test"), InternalsVisibleTo("MySpace.DataRelay.CacheClient.Test")]

@@ -1,52 +1,84 @@
 using System;
-using System.IO;
-using System.Net.Sockets;
-using System.Net;
-using System.Threading;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+using MySpace.Common;
+using MySpace.Logging;
 
 namespace MySpace.SocketTransport
 {
-	internal delegate MemoryStream CreateSyncMessageDelegate(Int32 commandID, MemoryStream messageStream, bool useNetworkOrder);
-
 	/// <summary>
 	/// Provides a base for sockets managed by socket pools.
 	/// </summary>
 	internal class ManagedSocket : Socket
 	{
-        private static readonly MySpace.Logging.LogWrapper log = new MySpace.Logging.LogWrapper();
+		private static readonly LogWrapper log = new LogWrapper();
 		internal static Int32 ReplyEnvelopeLength = 4; //NOT for async receives
-		internal bool Idle = false;
+		private static readonly Byte[] emptyReplyBytes = {241, 216, 255, 255};
+		
+		private const short ServerCapabilityRequestCommandId = Int16.MinValue;
+		private static readonly byte[] ServerCapabilityRequestMessage, ServerCapabilityRequestMessageNetworkOrdered;
+		
+		private readonly SocketPool myPool;
 		internal long CreatedTicks;
-		internal byte[] receiveBuffer;
-		internal MemoryStream messageBuffer;
-
-		internal SocketSettings settings;
-
-		private ManualResetEvent connectResetEvent = new ManualResetEvent(false);
-		private AsyncCallback buildSocketCallBack;
-		private AsyncCallback receiveCallBack;
-
-		private SocketPool myPool = null;
-
+		internal bool Idle;
 		internal SocketError LastError = SocketError.Success;
+		
+		private MemoryStream _messageBuffer;
+		private byte[] _receiveBuffer;
+		private readonly SocketSettings _settings;
+		
+		private IPEndPoint _remoteEndPoint;  // a copy of remote endpoint captured during Connect so that we can log even if the socket has been disposed.
+		
+		internal bool ServerSupportsAck { get; private set; }
 
+		static ManagedSocket()
+		{
+			MemoryStream serverCapabilityRequestStream = null, serverCapabilityRequestStreamNetworkOrdered = null;
+			try
+			{
+				serverCapabilityRequestStream = new MemoryStream();
+				serverCapabilityRequestStreamNetworkOrdered = new MemoryStream();
+
+				SocketClient.WriteMessageToStream(ServerCapabilityRequestCommandId, 1, null, true, false,
+												  serverCapabilityRequestStream);
+				serverCapabilityRequestStream.Seek(0, SeekOrigin.Begin);
+				ServerCapabilityRequestMessage = serverCapabilityRequestStream.ToArray();
+
+				SocketClient.WriteMessageToStream(ServerCapabilityRequestCommandId, 1, null, true, true,
+												  serverCapabilityRequestStreamNetworkOrdered);
+				serverCapabilityRequestStreamNetworkOrdered.Seek(0, SeekOrigin.Begin);
+				ServerCapabilityRequestMessageNetworkOrdered = serverCapabilityRequestStreamNetworkOrdered.ToArray();
+			}
+			catch (Exception e)
+			{
+				log.ErrorFormat("Error initializing server capability streams: {0}", e);
+			}
+			finally
+			{
+				if(serverCapabilityRequestStream != null)
+					serverCapabilityRequestStream.Close();
+				if(serverCapabilityRequestStreamNetworkOrdered != null)
+					serverCapabilityRequestStreamNetworkOrdered.Close();
+
+			}
+		}
+		
 		internal ManagedSocket(SocketSettings settings, SocketPool socketPool)
 			: base(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
 		{
-			this.CreatedTicks = DateTime.UtcNow.Ticks;
-			this.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, settings.SendBufferSize);
-			this.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, settings.ReceiveBufferSize);
-			this.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, settings.SendTimeout);
-			this.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, settings.ReceiveTimeout);
-			this.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, 1);
-			this.settings = settings;
-			buildSocketCallBack = new AsyncCallback(BuildSocketCallBack);
-			receiveCallBack = new AsyncCallback(ReceiveCallback);
-			this.myPool = socketPool;
+			CreatedTicks = DateTime.UtcNow.Ticks;
+			SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, settings.SendBufferSize);
+			SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, settings.ReceiveBufferSize);
+			SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, settings.SendTimeout);
+			SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, settings.ReceiveTimeout);
+			SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, 1);
+			_settings = settings;
+			myPool = socketPool;
 		}
-
-
 
 		protected void ReceiveCallback(IAsyncResult state)
 		{
@@ -55,146 +87,97 @@ namespace MySpace.SocketTransport
 
 			try
 			{
-				received = this.EndReceive(state, out error);
+				received = EndReceive(state, out error);
 			}
 			catch (ObjectDisposedException)
 			{
+				// no logging, because we expect this when sockets are closed due to timing out.
+				PostError(SocketError.SocketError);
 				return;
 			}
-			catch (SocketException sex) //this really shouldn't happen given which EndReceive overload was called
+			catch (SocketException sex) 
 			{
-                if (log.IsErrorEnabled)
-                    log.ErrorFormat("Socket Exception {0} while doing endReceive from {1}", sex.Message, RemoteEndPoint);
-				LastError = sex.SocketErrorCode;
+				// this really shouldn't happen given which EndReceive overload was called
+				log.ErrorFormat("Socket Exception {0} while calling EndReceive from {1}", sex.Message, _remoteEndPoint);
+				PostError(sex.SocketErrorCode);
 			}
 			catch (Exception ex)
 			{
-                if (log.IsErrorEnabled)
-                    log.ErrorFormat("Exception {0} while doing endReceive from {1}", ex, RemoteEndPoint);
+				log.ErrorFormat("Exception {0} while calling EndReceive from {1}", ex, _remoteEndPoint);
+				PostError(SocketError.SocketError);
 			}
 
-			if (error == SocketError.OperationAborted)
-			{
-				Debug.WriteLine("Got operation aborted on thread id " + System.Threading.Thread.CurrentThread.ManagedThreadId);
-				try
-				{
-					BeginReceive(GetReceiveBuffer(settings.ReceiveBufferSize), 0, settings.ReceiveBufferSize, SocketFlags.None, receiveCallBack, null);
-				}
-				catch (ObjectDisposedException) { } //operation aborted might be caused by shutdown, if so an ODE will be thrown and we can ignore it and stop processing because the process is dead
-				catch (SocketException sex)
-				{
-					LastError = sex.SocketErrorCode;
-				}
-				return;
-			}
+
 			if (error == SocketError.Success)
 			{
-				short messageId = 0;
 				if (received == 0)
 				{
+					// Socket has been closed by the remote side.
 					PostError(SocketError.ConnectionReset);
 					return;
 				}
+
 				try
 				{
-					MemoryStream messageBuffer = GetMessageBuffer(settings.MaximumReplyMessageSize);
-					MemoryStream replyStream = null;
+					MemoryStream messageBuffer = GetMessageBuffer(_settings.MaximumReplyMessageSize);
+					MemoryStream replyStream;
 
-					//while (received < socketMessagingProvider.ReplyEnvelopeSize)
 					const int envelopeLength = 6;
-					while (received < envelopeLength)//TODO: fix this hard coded value!
+					while (received < envelopeLength) //TODO: fix this hard coded value!
 					{
-						received += Receive(receiveBuffer, received, receiveBuffer.Length - received, SocketFlags.None);
-					} //Now we have at least the messageSize & messageId
-					int messageSize = BitConverter.ToInt32(receiveBuffer, 0);
-					messageId = BitConverter.ToInt16(receiveBuffer, 4);
-					if (settings.UseNetworkOrder)
+						received += Receive(_receiveBuffer, received, _receiveBuffer.Length - received, SocketFlags.None);
+					} 
+
+					//Now we have at least the messageSize & messageId
+					int messageSize = BitConverter.ToInt32(_receiveBuffer, 0);
+					short messageId = BitConverter.ToInt16(_receiveBuffer, 4);
+					if (_settings.UseNetworkOrder)
 					{
 						messageSize = IPAddress.NetworkToHostOrder(messageSize);
 						messageId = IPAddress.NetworkToHostOrder(messageId);
 					}
 
-					messageBuffer.Write(receiveBuffer, envelopeLength, received - envelopeLength);
+					messageBuffer.Write(_receiveBuffer, envelopeLength, received - envelopeLength);
 
 					int replyLength = messageSize - envelopeLength;
 
+					// synchronously wait until the entire message has been received on the socket
 					while (messageBuffer.Position < replyLength)
 					{
-						received = Receive(receiveBuffer);
-						messageBuffer.Write(receiveBuffer, 0, received);
+						received = Receive(_receiveBuffer);
+						messageBuffer.Write(_receiveBuffer, 0, received);
 					}
 
 					replyStream = CreateGetReplyResponse(messageBuffer, replyLength);
-					this.BeginReceive(GetReceiveBuffer(settings.ReceiveBufferSize), 0, settings.ReceiveBufferSize, SocketFlags.None, receiveCallBack, null);
 
+					// Signal any waiting thread that the receive has completed
 					PostReply(messageId, replyStream);
+
+					// A new BeginReceive() to call ReceiveCallback when the next reply message comes in.
+					BeginReceive(GetReceiveBuffer(_settings.ReceiveBufferSize), 0, _settings.ReceiveBufferSize, SocketFlags.None,
+								 ReceiveCallback, null);
 				}
 				catch (SocketException sex)
 				{
-					LastError = sex.SocketErrorCode;
+					log.ErrorFormat("Socket Error while receiving on {0}: {1}", _remoteEndPoint, sex);
+					PostError(sex.SocketErrorCode);
 				}
 				catch (ObjectDisposedException)
 				{
+					PostError(SocketError.SocketError);
 				}
 				catch (Exception ex)
 				{
-					if (log.IsErrorEnabled)
-						log.ErrorFormat("Exception {0} while processing receive.", ex);
+					log.ErrorFormat("Exception while receiving on {0}: {1}", _remoteEndPoint, ex);
+					PostError(SocketError.SocketError);
 				}
 			}
 			else
 			{
+				log.ErrorFormat("EndReceive from {0} failed with {1}", _remoteEndPoint, error);
 				PostError(error);
 			}
 		}
-
-		#region Persocket async reply
-		private MemoryStream replyStream;
-		internal EventWaitHandle waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset);
-		short currentMessageId = 1;
-
-		private void PostError(SocketError error)
-		{
-			replyStream = null;
-			LastError = error;
-			waitHandle.Set();
-		}
-
-		private void PostReply(short messageId, MemoryStream replyStream)
-		{
-			if (messageId == currentMessageId)
-			{
-				this.replyStream = replyStream;
-				waitHandle.Set();
-			}
-			else
-			{
-				Debug.WriteLine(String.Format("Wrong message id received. Expected {0} got {1}", currentMessageId, messageId));
-				this.replyStream = null;
-				waitHandle.Set();
-			}
-		}
-
-		internal MemoryStream GetReply()
-		{
-			MemoryStream reply;
-			if (waitHandle.WaitOne(this.ReceiveTimeout, false))
-			{
-				if (LastError != SocketError.Success) throw new SocketException((int)LastError);
-				reply = replyStream;
-				replyStream = null;
-				return reply;
-			}
-			else
-			{
-				replyStream = null;
-				throw new SocketException((int)SocketError.TimedOut);
-			}
-		}
-
-		#endregion
-
-		private static Byte[] emptyReplyBytes = { 241, 216, 255, 255 };
 
 		internal static MemoryStream CreateGetReplyResponse(MemoryStream messageBuffer, Int32 replyLength)
 		{
@@ -215,12 +198,11 @@ namespace MySpace.SocketTransport
 					Debug.WriteLine("Empty reply received.", "SocketClient");
 					return replyStream;
 				}
-
 			}
 
 			//if we got here, it's not empty.
 			messageBuffer.Seek(0, SeekOrigin.Begin);
-			replyStream = new MemoryStream((int)replyLength);
+			replyStream = new MemoryStream(replyLength);
 			replyStream.Write(messageBuffer.GetBuffer(), 0, replyLength);
 			replyStream.Seek(0, SeekOrigin.Begin);
 
@@ -232,98 +214,179 @@ namespace MySpace.SocketTransport
 			myPool.ReleaseSocket(this);
 		}
 
+		private string _localEndPoint = "(unconnected)";
 
-		public void Connect(IPEndPoint remoteEndPoint, int timeout)
+		public void Connect(IPEndPoint remoteEndPoint, int timeoutMilliseconds)
 		{
-			ManagedConnectState state = new ManagedConnectState(this);
-			this.BeginConnect(remoteEndPoint, buildSocketCallBack, state);
-			if (!connectResetEvent.WaitOne(timeout, false))
+			_remoteEndPoint = remoteEndPoint;
+			IAsyncResult asyncResult = BeginConnect(remoteEndPoint, null, null);
+		
+			// there is no other way to set a time out on a connection other than putting a time out on the wait here and manually throwing an exception
+			if (!asyncResult.AsyncWaitHandle.WaitOne(timeoutMilliseconds, false))
 			{
-				connectResetEvent.Reset();
-				throw new SocketException((int)SocketError.HostUnreachable);
+				Close();
+				throw new SocketException((int) SocketError.HostUnreachable);
+			}
+
+			EndConnect(asyncResult);
+
+			_localEndPoint = LocalEndPoint.ToString();
+
+			BeginReceive(GetReceiveBuffer(_settings.ReceiveBufferSize), 0, _settings.ReceiveBufferSize, SocketFlags.None,
+						 ReceiveCallback, null); //start a receive immediately so there's always one running. otherwise we have no way to detect if the connection is closed
+
+			CheckServerCapabilities();
+		}
+
+		private void CheckServerCapabilities()
+		{
+			if (myPool.Settings.RequestServerCapabilities && ServerCapabilityRequestMessage != null && ServerCapabilityRequestMessageNetworkOrdered != null)
+			{
+				byte[] message;
+				if (myPool.Settings.UseNetworkOrder)
+					message = ServerCapabilityRequestMessageNetworkOrdered;
+				else
+					message = ServerCapabilityRequestMessage;
+
+				Send(message, message.Length, SocketFlags.None);
+				
+				MemoryStream capabilityReplyStream = GetReply();
+
+				//if we have more than just "send ack" capabilities to check we can do more than just a non-null check, but for now it's sufficient
+				if (capabilityReplyStream == null) 
+					ServerSupportsAck = false;
+				else
+					ServerSupportsAck = true;
 			}
 			else
 			{
-				if (state.exception != null)
-				{
-					//done this way because the CallBack is on another thread, so any exceptions it throws will not be caught by calling code
-					throw state.exception;
-				}
-				else
-				{
-					connectResetEvent.Reset();
-				}
+				ServerSupportsAck = false;
 			}
-
-			this.BeginReceive(GetReceiveBuffer(settings.ReceiveBufferSize), 0, settings.ReceiveBufferSize, SocketFlags.None, receiveCallBack, null);
-		}
-
-		private void BuildSocketCallBack(IAsyncResult ar)
-		{
-			ManagedConnectState state = ar.AsyncState as ManagedConnectState;
-
-			try
-			{
-				state.socket.EndConnect(ar);
-			}
-			catch (SocketException sex)
-			{
-				state.exception = sex;
-				connectResetEvent.Set();
-				return;
-			}
-			//Interlocked.Increment(ref socketCount);
-			connectResetEvent.Set();
 		}
 
 		internal byte[] GetReceiveBuffer(int bufferSize)
 		{
-			if (receiveBuffer == null || receiveBuffer.Length != bufferSize)
+			if (_receiveBuffer == null || _receiveBuffer.Length != bufferSize)
 			{
-				receiveBuffer = new byte[bufferSize];
+				_receiveBuffer = new byte[bufferSize];
 			}
 
-			return receiveBuffer;
+			return _receiveBuffer;
 		}
 
 		internal MemoryStream GetMessageBuffer(int bufferSize)
 		{
-			if (messageBuffer == null)
+			if (_messageBuffer == null)
 			{
-				messageBuffer = new MemoryStream(bufferSize);
+				_messageBuffer = new MemoryStream(bufferSize);
 			}
 			else
 			{
-				messageBuffer.Seek(0, SeekOrigin.Begin);
+				_messageBuffer.Seek(0, SeekOrigin.Begin);
 			}
-			return messageBuffer;
+			return _messageBuffer;
 		}
 
-		~ManagedSocket()
+		#region Persocket async reply
+
+		private short currentMessageId = 1;
+		private MemoryStream _replyStream;
+		private readonly EventWaitHandle _waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset);
+
+		private void PostError(SocketError error)
 		{
 			try
 			{
-				if (Connected)
-				{
-					Shutdown(SocketShutdown.Both);
-				}
-				Close();
+				_replyStream = null;
+				LastError = error;
+				_waitHandle.Set();
+			} 
+			catch(Exception ex)
+			{
+				log.Error(ex);
 			}
-			catch (SocketException)
-			{ }
-			catch (ObjectDisposedException)
-			{ }
 		}
 
-	}
-	internal class ManagedConnectState
-	{
-		internal ManagedConnectState(Socket socket)
+		private void PostReply(short messageId, MemoryStream replyStream)
 		{
-			this.socket = socket;
+			try
+			{
+				if (messageId == currentMessageId)
+				{
+					_replyStream = replyStream;
+				}
+				else
+				{
+					Debug.WriteLine(String.Format("Wrong message id received. Expected {0} got {1}", currentMessageId,
+												  messageId));
+					_replyStream = null;
+				}
+				_waitHandle.Set();
+			}
+			catch(Exception ex)
+			{
+				log.Error(ex);
+			}
 		}
 
-		internal Socket socket;
-		internal SocketException exception = null;
+		internal MemoryStream GetReply()
+		{
+			if (_waitHandle.WaitOne(ReceiveTimeout, false))
+			{
+				var reply = _replyStream;
+				_replyStream = null;
+				// return a valid reply even if LastError might be set.  This error will be detected on the next request.
+				if (reply != null) return reply;
+
+				if (LastError != SocketError.Success)
+				{
+					log.ErrorFormat("Socket Error {0} from {1} after wait handle has been set.", LastError, _remoteEndPoint);
+					throw new SocketException((int) LastError);
+				}
+				return reply;
+			}
+
+			if (log.IsDebugEnabled)
+			{
+				FrequencyBoundLogDebug(String.Format("Receive timed out {0} <- {1}", _localEndPoint, _remoteEndPoint));
+			}
+
+			if (!Connected) log.ErrorFormat("Socket timeout occurred on a disconnected socket meant for {0}", _remoteEndPoint);
+
+			_replyStream = null;
+			throw new SocketException((int) SocketError.TimedOut);
+		}
+
+		#endregion
+
+		#region Frequncy Bound Logging
+		private static Dictionary<string, ParameterlessDelegate> _errorLogDelegates = new Dictionary<string, ParameterlessDelegate>();
+		private static readonly object ErrorLogSync = new object();
+		private static void FrequencyBoundLogDebug(string message)
+		{
+			ParameterlessDelegate logDelegate;
+			if (!_errorLogDelegates.TryGetValue(message, out logDelegate))
+			{
+				lock (ErrorLogSync)
+				{
+					if (!_errorLogDelegates.TryGetValue(message, out logDelegate))
+					{
+						var errorDelegates = new Dictionary<string, ParameterlessDelegate>(_errorLogDelegates);
+						logDelegate = Algorithm.FrequencyBoundMethod(
+							count => 
+							{ 
+								if (count > 1) log.DebugFormat("{0} occurances: {1}", count + 1, message);
+								else log.Debug(message); 
+							} 
+							, TimeSpan.FromMinutes(1) );
+
+						errorDelegates[message] = logDelegate;
+						Interlocked.Exchange(ref _errorLogDelegates, errorDelegates);
+					}
+				}
+			}
+			logDelegate();
+		}
+		#endregion
 	}
 }

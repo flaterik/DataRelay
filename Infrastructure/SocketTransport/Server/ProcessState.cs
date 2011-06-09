@@ -8,27 +8,33 @@ using MySpace.ResourcePool;
 
 namespace MySpace.SocketTransport
 {
+	internal enum ReplyType
+	{
+		SendReply,
+		SendAck,
+		None
+	}
+	
 	public class ProcessState
 	{
-		internal Socket socket = null;	// Client socket.
-		internal bool Idle = false;
-		internal short commandId;
-		internal short messageId;
-		internal bool sendReply;
-		internal ResourcePoolItem<MemoryStream> message;
-		internal int messageLength;
-		internal IPEndPoint remoteEndpoint; //when there's an error, the socket loses track of it.		
-		internal ResourcePoolItem<MemoryStream> replyBuffer; //for the reply + header
+		internal readonly Socket Socket;	// Client socket.
+		internal readonly short CommandId;
+		internal readonly short MessageId;
+		internal readonly ReplyType ReplyType;
+		internal ResourcePoolItem<MemoryStream> Message;
+		internal readonly int MessageLength;
+		internal readonly IPEndPoint RemoteEndpoint; //when there's an error, the socket loses track of it.		
+		internal ResourcePoolItem<MemoryStream> ReplyBuffer; //for the reply + header
 
-		internal ProcessState(Socket socket, short commandId, short messageId, bool sendReply, ResourcePoolItem<MemoryStream> message, int messageLength)
+		internal ProcessState(Socket socket, short commandId, short messageId, ReplyType replyType, ResourcePoolItem<MemoryStream> message, int messageLength)
 		{
-			this.socket = socket;
-			this.commandId = commandId;
-			this.messageId = messageId;
-			this.sendReply = sendReply;
-			this.message = message;
-			this.messageLength = messageLength;
-			this.remoteEndpoint = (IPEndPoint)socket.RemoteEndPoint;
+			Socket = socket;
+			CommandId = commandId;
+			MessageId = messageId;
+			ReplyType = replyType;
+			Message = message;
+			MessageLength = messageLength;
+			RemoteEndpoint = (IPEndPoint)socket.RemoteEndPoint;
 		}
 
 	}

@@ -36,7 +36,7 @@ namespace MySpace.DataRelay
 		private List<IPAddress> addressHistory;
 		private bool usingLegacySerialization;
 		public bool IsInterClusterMsg = false;
-
+		public bool WasRedirected = false;
 		/// <summary>
 		/// 	<para>Gets a value indicating whether an error occurred.</para>
 		/// </summary>
@@ -60,12 +60,26 @@ namespace MySpace.DataRelay
 		}
 
 		/// <summary>
+		/// Gets whether this message is using legacy serialization.
+		/// </summary>
+		public bool UsingLegacySerialization
+		{
+			get { return usingLegacySerialization; }
+		}
+
+		/// <summary>
 		/// 	<para>Gets or sets the hydration policy for this message.</para>
 		/// </summary>
 		/// <value>
 		/// 	<para>The hydration policy for this message.</para>
 		/// </value>
 		public IRelayHydrationPolicy HydrationPolicy { get; set; }
+
+		/// <summary>
+		/// Gets or sets the hydration result info.
+		/// </summary>
+		/// <value>The hydration result info.</value>
+		public HydrationResultInfo HydrationResultInfo { get; set; }
 
 		/// <summary>
 		/// Gets or sets a value that indicates how to extract the key from this instance.
@@ -86,19 +100,35 @@ namespace MySpace.DataRelay
 		public void SetError(RelayErrorType error)
 		{
 			ErrorType = error;
-
-			switch (error)
-			{
-				case RelayErrorType.None:
-					//ResultOutcome must be reset manually
-					break; // do nothing
-				default:
-					ResultOutcome = RelayOutcome.Error;
-					break;
-			};
+			if (error != RelayErrorType.None)
+				ResultOutcome = RelayOutcome.Error;			
 		}
 
-		/// <summary>
+        /// <summary>
+        /// Determines whether the message is retryable according to the specified policy.
+        /// </summary>
+        /// <param name="policy">The policy.</param>
+        /// <returns>
+        /// 	<c>true</c> if the specified policy is retryable; otherwise, <c>false</c>.
+        /// </returns>
+        public bool IsRetryable(RelayRetryPolicy policy)
+        {
+            switch(policy)
+            {
+                case RelayRetryPolicy.UnreachableNodesOnly:
+                    return ErrorType == RelayErrorType.NodeUnreachable;
+
+                case RelayRetryPolicy.UnreachableNodesOrTimeout:
+                    return ResultOutcome == RelayOutcome.Timeout
+                           || ErrorType == RelayErrorType.TimedOut
+                           || ErrorType == RelayErrorType.NodeUnreachable
+                           || ErrorType == RelayErrorType.NodeInDanagerZone;
+            }
+
+            return false;
+        }
+
+	    /// <summary>
 		/// Sets <see cref="ErrorType"/> to the appropriate value for the specified exception.
 		/// </summary>
 		/// <param name="exception">The exception that occurred.</param>
@@ -155,9 +185,9 @@ namespace MySpace.DataRelay
 		{
 			get
 			{
-				return GetIsTwoWayMessage(MessageType);
+				return GetIsTwoWayMessage(MessageType);				
 			}
-		}
+		}		
 
 		/// <summary>
 		/// Gets a value indicating if the <paramref name="MessageType"/> 
@@ -279,19 +309,58 @@ namespace MySpace.DataRelay
 		[NonSerialized]
 		public long EnteredCurrentSystemAt = 0;
 
+        /// <summary>
+        /// Calculates the life this message, how long it's been around.
+        /// </summary>
+        public TimeSpan CalculateLife()
+        {
+            long messageEnteredAt = EnteredCurrentSystemAt;
+            long now = Stopwatch.GetTimestamp();
+
+            long diff = (now - messageEnteredAt);
+            double seconds = ((double)diff) / Stopwatch.Frequency;
+            long milliseconds = (long)(seconds * 1000);
+
+            return TimeSpan.FromMilliseconds(milliseconds);
+        }
+
 		public int Priority;
 
 		public short RelayTTL = 2;
-		public ushort SourceZone = 0;
+		
+		/// <summary>
+		/// If tracing is active, the TTL at the time when the message was submitted for trace
+		/// </summary>
+		public short TracedTTL
+		{ 
+			get;
+			private set;
+		}
 
 		/// <summary>
-		/// Gets or sets the result details. This should never
-		/// be set by a client. If it does and the messages is sent to
-		/// an older server, the server will be unable to deserialize the
-		/// message. So this field should be set with caution.
+		/// Used by the message tracer to quickly create a "bookmark" of message state so 
+		/// when the message is printed to the trace it will be printed in the right state
 		/// </summary>
-		/// <value>The result details.</value>
-		public string ResultDetails { get; set; }
+		/// <returns></returns>
+		public void SetTracePoint()
+		{
+			TracedTTL = RelayTTL;
+		}
+
+		public ushort SourceZone = 0;
+
+	    /// <summary>
+	    /// Gets or sets the result details. This should never
+	    /// be set by a client. If it does and the messages is sent to
+	    /// an older server, the server will be unable to deserialize the
+	    /// message. So this field should be set with caution.
+	    /// </summary>
+	    /// <value>The result details.</value>
+	    private string _resultDetails;
+		public string ResultDetails { 
+            get { return _resultDetails; }
+            set { _resultDetails = value != null ? String.Intern(value) : null;}
+        }
 
 		/// <summary>
 		/// Gets or sets the result outcome. This should never
@@ -302,6 +371,13 @@ namespace MySpace.DataRelay
 		/// <value>The result outcome.</value>
 		public RelayOutcome? ResultOutcome { get; set; }
 
+		/// <summary>
+		/// Gets or sets an optional <see cref="DateTime"/> that designates how fresh is the
+		/// object being queried or returned.
+		/// </summary>
+		/// <value>A time stamp for the data being requested or returned.</value>
+		/// <remarks>Used for conditional gets. Outbound is set to the updated time of the
+		/// local copy. On return, contains the updated time of the version on the server.</remarks>
 		public DateTime? Freshness { get; set; }
 		#endregion
 
@@ -323,6 +399,7 @@ namespace MySpace.DataRelay
 			this.ResultOutcome = oldMessage.ResultOutcome;
 			this.Freshness = oldMessage.Freshness;
 			this.usingLegacySerialization = oldMessage.usingLegacySerialization;
+			this.Payload = oldMessage.Payload;
 		}
 
 		[Obsolete("don't use this, you risk losing ResultDetails, ResultOutcome, Freshness, UsingLegacySerialization")]
@@ -445,7 +522,22 @@ namespace MySpace.DataRelay
 
 		#endregion
 
-		#region Properties
+		public void AddAddressToHistory(IPAddress address)
+		{
+			AddressHistory.Add(address);
+		}
+
+		private void AddAddressesToHistory(List<IPAddress> list)
+		{
+			if (addressHistory == null)
+			{
+				addressHistory = new List<IPAddress>(list.Count);
+			}
+			for (int i = 0; i < list.Count; i++) //not using addrange because it uses an enumerator
+			{
+				addressHistory.Add(list[i]);
+			}
+		}
 
 		public List<IPAddress> AddressHistory
 		{
@@ -453,11 +545,13 @@ namespace MySpace.DataRelay
 			{
 				if (addressHistory == null)
 				{
-					addressHistory = new List<IPAddress>(3);
+					addressHistory = new List<IPAddress>(1);
 				}
 				return addressHistory;
 			}
 		}
+
+		#region Properties
 
 		public bool QueryDataCompressed
 		{
@@ -615,6 +709,32 @@ namespace MySpace.DataRelay
 
 		}
 
+		/// <summary>
+		/// Creates a conditional get message for an object.
+		/// </summary>
+		/// <typeparam name="T">The type of object.</typeparam>
+		/// <param name="typeId">The type identifier.</param>
+		/// <param name="obj">The <typeparamref name="T"/> object to conditionally fetch.</param>
+		/// <param name="lastUpdatedDate">The last updated <see cref="DateTime"/>
+		/// of the local version of <paramref name="obj"/>.</param>
+		/// <returns>The generated <see cref="RelayMessage"/>.</returns>
+		public static RelayMessage GetConditionalGetMessageForObject<T>(short typeId,
+			T obj, DateTime lastUpdatedDate) where T : ICacheParameter
+		{
+			int primaryId = obj.PrimaryId;
+			byte[] extendedKeyBytes;
+			DateTime? fetchedLastUpdatedDate;
+			GetExtendedInfo(obj, out extendedKeyBytes, out fetchedLastUpdatedDate);
+			if (fetchedLastUpdatedDate.HasValue)
+			{
+				lastUpdatedDate = fetchedLastUpdatedDate.Value;
+			}
+			return new RelayMessage(typeId, primaryId, extendedKeyBytes, MessageType.Get)
+			{
+				Freshness = lastUpdatedDate
+			};
+		}
+
 		public static RelayMessage GetDeleteMessageForObject<T>(short typeId, int id, T obj, bool useCompression) where T : ICacheParameter
 		{
 			byte[] extendedKeyBytes;
@@ -739,11 +859,14 @@ namespace MySpace.DataRelay
 
 		public static void GetExtendedInfo(ICacheParameter cacheObject, out byte[] extendedId, out DateTime? lastUpdatedDate)
 		{
-
 			IExtendedRawCacheParameter iercp = cacheObject as IExtendedRawCacheParameter;
 			if (iercp != null)
 			{
 				extendedId = iercp.ExtendedId;
+				if (extendedId == null)
+				{
+					throw new InvalidOperationException(string.Format("Extended Id from IExtendedRawCacheParameter can not be null for object type {0} ToString()={1}", cacheObject.GetType(), cacheObject));
+				}
 				lastUpdatedDate = iercp.LastUpdatedDate;
 			}
 			else
@@ -751,6 +874,10 @@ namespace MySpace.DataRelay
 				IExtendedCacheParameter iecp = cacheObject as IExtendedCacheParameter;
 				if (iecp != null)
 				{
+					if (string.IsNullOrEmpty(iecp.ExtendedId))
+					{
+						throw new InvalidOperationException(string.Format("Extended Id from IExtendedCacheParameter can not be an empty string for object {0} ToString()={1}", cacheObject.GetType(), cacheObject));
+					}
 					extendedId = GetStringBytes(iecp.ExtendedId);
 					lastUpdatedDate = iecp.LastUpdatedDate;
 				}
@@ -776,7 +903,11 @@ namespace MySpace.DataRelay
 
 		#region Other Public Methods
 
-		internal void ExtractResponse(RelayMessage serverResponse)
+		/// <summary>
+		///  Copies appropriate properties from a response message into the request message.
+		/// </summary>
+		/// <param name="serverResponse">The response message.</param>
+		public void ExtractResponse(RelayMessage serverResponse)
 		{
 			if (AllowsReturnPayload)
 			{
@@ -784,7 +915,8 @@ namespace MySpace.DataRelay
 			}
 			ResultOutcome = serverResponse.ResultOutcome;
 			ResultDetails = serverResponse.ResultDetails;
-			//freshness?
+			Freshness = serverResponse.Freshness;
+			addressHistory = serverResponse.addressHistory;
 			if (ResultOutcome == null)
 			{
 				ResultOutcome = RelayOutcome.NotSupported;
@@ -831,10 +963,12 @@ namespace MySpace.DataRelay
 			// copy all other info without modification
 			InterZoneMsg.Payload = oldMessage.Payload;
 			InterZoneMsg.SourceZone = oldMessage.SourceZone;
-			InterZoneMsg.AddressHistory.AddRange(new List<System.Net.IPAddress>(oldMessage.AddressHistory));
+			InterZoneMsg.AddAddressesToHistory(oldMessage.AddressHistory);
 
 			return InterZoneMsg;
 		}
+
+		
 
 		public void Reset()
 		{
@@ -910,13 +1044,13 @@ namespace MySpace.DataRelay
 
 		#region ToString
 
-		public override string ToString()
+		public string ToString(bool useTracePoint, bool decodeExtendedId)
 		{
 			StringBuilder desc = new StringBuilder();
 			desc.Append("RelayMessage ");
 			desc.Append(MessageType.ToString());
 			desc.Append(" TTL ");
-			desc.Append(RelayTTL);
+			desc.Append(useTracePoint ? TracedTTL : RelayTTL);
 			desc.Append(" Source Zone ");
 			desc.Append(SourceZone);
 
@@ -937,7 +1071,9 @@ namespace MySpace.DataRelay
 					desc.Append(" TypeId ");
 					desc.Append(TypeId);
 
-					AppendByteString(desc, "ExtendedId", ExtendedId);
+					
+					AppendByteString(desc, "ExtendedId", ExtendedId, decodeExtendedId);	
+					
 
 					if (MessageType == MessageType.Query)
 					{
@@ -991,12 +1127,34 @@ namespace MySpace.DataRelay
 			return desc.ToString();
 		}
 
+		public override string ToString()
+		{
+			return ToString(false, false);
+		}
+
 		static private void AppendByteString(StringBuilder desc, string bytesName, byte[] bytes)
+		{
+			AppendByteString(desc, bytesName, bytes, false);
+		}
+
+		static private void AppendByteString(StringBuilder desc, string bytesName, byte[] bytes, bool decodeString)
 		{
 			const int maxLengthToPrint = 32;
 			if (bytes != null)
 			{
 				desc.AppendFormat(" {0} ", bytesName);
+
+				if (decodeString)
+				{
+					try
+					{
+						desc.AppendFormat("\"{0}\"",GetBytesString(bytes));
+						return;
+					}
+					catch
+					{//string could not be decoded, we will never get to return statement, bytes will be printed as usual
+					}
+				}
 
 				if (bytes.Length > maxLengthToPrint)
 				{
@@ -1013,6 +1171,7 @@ namespace MySpace.DataRelay
 				}
 			}
 		}
+		
 
 		#endregion
 
@@ -1044,7 +1203,7 @@ namespace MySpace.DataRelay
 				for (int i = 0; i < addressHistory.Count; i++)
 				{
 					writer.Write(addressHistory[i].GetAddressBytes());
-				}
+				}				
 			}
 			else
 			{
@@ -1140,7 +1299,34 @@ namespace MySpace.DataRelay
 					}
 				}
 
-				//version 8+ goes here
+				if (version >= 8)
+				{
+					if (HydrationResultInfo == null)
+					{
+						writer.Write(false);
+					}
+					else
+					{
+						writer.Write(true);
+						writer.WriteVarInt32((int)HydrationResultInfo.OriginalMessageType);
+						if (HydrationResultInfo.OriginalPayload == null)
+						{
+							writer.Write(false);
+						}
+						else
+						{
+							writer.Write(true);
+							writer.Write(HydrationResultInfo.OriginalPayload, false);
+						}
+					}
+				}
+
+				if (version >= 9)
+				{
+					writer.Write(WasRedirected); //currently no plans to activate this; communicating redirection to clients may be rather tricky
+				}
+
+				//version 10+ goes here
 
 				//keep at end
 				if (version >= 5)
@@ -1159,20 +1345,19 @@ namespace MySpace.DataRelay
 			this.TypeId = reader.ReadInt16();
 			this.Id = reader.ReadInt32();
 			this.MessageType = (MessageType)reader.ReadInt32();
-			Decompress(reader.ReadUInt16(), out this.SourceZone, out this.RelayTTL);
+			Decompress(reader.ReadUInt16(), out SourceZone, out RelayTTL);
 
 			int legacySerializationCheck = reader.ReadInt32();
 			usingLegacySerialization = (legacySerializationCheck == -1);
 
 			if (reader.ReadBoolean())
-			{
+			{				
 				short historyCount = reader.ReadInt16();
-				addressHistory = new List<IPAddress>((int)historyCount);
+				addressHistory = new List<IPAddress>(historyCount);				
 				for (short i = 0; i < historyCount; i++)
-				{
-					byte[] addressBytes = reader.ReadBytes(4);
-					addressHistory.Add(new IPAddress(addressBytes));
-				}
+				{					
+					addressHistory.Add(new IPAddress(reader.ReadBytes(4)));					
+				}				
 			}
 
 			if (reader.ReadBoolean())
@@ -1262,7 +1447,26 @@ namespace MySpace.DataRelay
 				}
 			}
 
-			//version 8+ goes here
+			if (version >= 8)
+			{
+				if (reader.ReadBoolean())
+				{
+					var messageType = (MessageType)reader.ReadVarInt32();
+					
+					var originalPayload = reader.ReadBoolean()
+						? reader.Read<RelayPayload>(false)
+						: null;
+
+					HydrationResultInfo = new HydrationResultInfo(messageType, originalPayload);
+				}
+			}
+
+			if (version >= 9)
+			{
+				WasRedirected = reader.ReadBoolean();
+			}
+			
+			//version 10+ goes here
 
 			//leave at end of method
 			if (version >= 5)
@@ -1294,7 +1498,7 @@ namespace MySpace.DataRelay
 				if (usingLegacySerialization == false)
 				{
 					//we introduce forward safe code in version 5
-					return 7;
+					return 8;
 				}
 
 				switch (this.MessageType)

@@ -2,7 +2,9 @@
 {
     public enum CommandType : byte
     {
-        FilteredIndexDelete = 1
+        FilteredIndexDelete = 1,
+        MetadataProperty
+
         // ALWAYS add new values to the END of the enumeration
     }
 }

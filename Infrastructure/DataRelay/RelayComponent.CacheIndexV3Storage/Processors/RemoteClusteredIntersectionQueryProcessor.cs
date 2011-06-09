@@ -21,19 +21,9 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 PerformanceCounterEnum.IndexLookupAvgPerRemoteClusteredIntersectionQuery,
                 messageContext.TypeId,
                 remoteClusteredIntersectionQuery.IndexIdList.Count);
-            
-            VirtualClusteredIntersectionQuery query = new VirtualClusteredIntersectionQuery(
-                 remoteClusteredIntersectionQuery.IndexIdList,
-                 remoteClusteredIntersectionQuery.TargetIndexName,
-                 storeContext.GetTypeName(messageContext.TypeId))
-                                                          {
-                                                              ExcludeData = remoteClusteredIntersectionQuery.ExcludeData,
-                                                              GetIndexHeader = remoteClusteredIntersectionQuery.GetIndexHeader,
-                                                              Filter = remoteClusteredIntersectionQuery.Filter,
-                                                              intersectionQueryParamsMapping = remoteClusteredIntersectionQuery.IntersectionQueryParamsMapping,
-                                                              PrimaryId = remoteClusteredIntersectionQuery.PrimaryId,
-                                                              PrimaryIdList = remoteClusteredIntersectionQuery.PrimaryIdList
-                                                          };
+
+            VirtualClusteredIntersectionQuery query = new VirtualClusteredIntersectionQuery(remoteClusteredIntersectionQuery,
+                storeContext.GetTypeName(messageContext.TypeId));
 
             return RelayClient.Instance.SubmitQuery<VirtualClusteredIntersectionQuery, IntersectionQueryResult>(query);
         }

@@ -12,7 +12,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
         protected List<Filter> FilterList
         {
-            get; set;
+            get;
+            set;
         }
 
         #endregion
@@ -51,27 +52,24 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             }
         }
 
-        internal override string FilterInfo
+        public override string ToString()
         {
-            get
+            var stb = new StringBuilder();
+            stb.Append("(");
+            for (int i = 0; i < FilterList.Count; i++)
             {
-                var stb = new StringBuilder();
-                stb.Append("(");
-                for(int i = 0; i < FilterList.Count; i++)
+                stb.Append(FilterList[i].ToString());
+                if (i < FilterList.Count - 1)
                 {
-                    stb.Append(FilterList[i].FilterInfo);
-                    if(i < FilterList.Count - 1)
-                    {
-                        stb.Append(" ").Append(FilterType).Append(" ");
-                    }
+                    stb.Append(" ").Append(FilterType).Append(" ");
                 }
-                stb.Append(")");
-                return stb.ToString();
             }
+            stb.Append(")");
+            return stb.ToString();
         }
 
         internal abstract bool ShortCircuitHint
-        { 
+        {
             get;
         }
 
@@ -114,11 +112,11 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         {
             using (writer.CreateRegion())
             {
-                writer.Write((ushort) FilterList.Count);
+                writer.Write((ushort)FilterList.Count);
 
                 foreach (Filter filter in FilterList)
                 {
-                    writer.Write((byte) filter.FilterType);
+                    writer.Write((byte)filter.FilterType);
                     Serializer.Serialize(writer.BaseStream, filter);
                 }
             }
@@ -134,7 +132,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 Filter childFilter;
                 for (ushort i = 0; i < count; i++)
                 {
-                    filterType = (FilterType) reader.ReadByte();
+                    filterType = (FilterType)reader.ReadByte();
                     childFilter = FilterFactory.CreateFilter(reader, filterType);
                     FilterList.Add(childFilter);
                     totalCount += childFilter.FilterCount;

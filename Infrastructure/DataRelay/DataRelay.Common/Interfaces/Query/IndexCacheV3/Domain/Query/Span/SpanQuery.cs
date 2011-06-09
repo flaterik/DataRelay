@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Text;
 using System.Collections.Generic;
 using MySpace.Common.IO;
-using Wintellect.PowerCollections;
 using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
@@ -13,20 +13,12 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// <summary>
         /// One-based start position
         /// </summary>
-        public int Offset
-        {
-            get;
-            set;
-        }
+        public int Offset { get; set; }
 
         /// <summary>
         /// Number of items to get beginning at the offset. Set Span to zero to get all items
         /// </summary>
-        public int Span
-        {
-            get;
-            set;
-        }
+        public int Span { get; set; }
 
         /// <summary>
         /// Set this to true to get total number of items that satisfy Filter(s)
@@ -74,33 +66,22 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
         #endregion
 
-        #region ISplitable<TQueryResult> Members
-        public override List<IPrimaryRelayMessageQuery> SplitQuery(int numClustersInGroup)
+        #region Methods
+
+        public override string ToString()
         {
-            SpanQuery query;
-            List<IPrimaryRelayMessageQuery> queryList = new List<IPrimaryRelayMessageQuery>();
-            Dictionary<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], IndexIdParams>>> clusterParamsMapping;
-
-            IndexCacheUtils.SplitIndexIdsByCluster(IndexIdList, PrimaryIdList, IndexIdParamsMapping, numClustersInGroup, out clusterParamsMapping);
-
-            ClientSideSubsetProcessingRequired = (numClustersInGroup > 1 && IndexIdList.Count > 1 && clusterParamsMapping.Count > 1);
-
-            foreach (KeyValuePair<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], IndexIdParams>>> clusterParam in clusterParamsMapping)
-            {
-                query = new SpanQuery(this)
-                            {
-                                PrimaryId = clusterParam.Key,
-                                IndexIdList = clusterParam.Value.First,
-                                PrimaryIdList = clusterParam.Value.Second,
-                                IndexIdParamsMapping = clusterParam.Value.Third,
-                            };
-                queryList.Add(query);
-            }
-            return queryList;
+            var stb = new StringBuilder();
+            stb.Append("--- Span Query ---");
+            stb.Append("(").Append(" Offset: ").Append(Offset).Append("),");
+            stb.Append("(").Append("Span: ").Append(Span).Append("),");
+            stb.Append(base.ToString());
+            return stb.ToString();
         }
+
         #endregion
 
         #region IMergeableQueryResult<TQueryResult> Members
+
         public override SpanQueryResult MergeResults(IList<SpanQueryResult> partialResults)
         {
             SpanQueryResult finalResult = default(SpanQueryResult);
@@ -112,13 +93,16 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
             // We have partialResults to process
             ByteArrayEqualityComparer byteArrayEqualityComparer = new ByteArrayEqualityComparer();
+            BaseComparer baseComparer = null;
             Dictionary<byte[] /*IndexId*/, IndexHeader /*IndexHeader*/> completeIndexIdIndexHeaderMapping =
                 new Dictionary<byte[], IndexHeader>(byteArrayEqualityComparer);
 
             if (partialResults.Count == 1)
             {
                 #region  Just one cluster was targeted, so no need to merge anything
+
                 finalResult = partialResults[0];
+
                 #endregion
             }
             else
@@ -126,34 +110,75 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 #region  More than one clusters was targeted
 
                 List<ResultItem> completeResultItemList = new List<ResultItem>();
-                BaseComparer baseComparer;
+                GroupByResult completeGroupByResult = new GroupByResult(null);
                 int totalCount = 0;
                 int additionalAvailableItemCount = 0;
+                StringBuilder exceptionStringBuilder = new StringBuilder();
+                bool indexCapSet = false;
+                int indexCap = 0;
 
                 foreach (SpanQueryResult partialResult in partialResults)
                 {
                     if (partialResult != null)
                     {
                         #region Compute TotalCount
+
                         totalCount += partialResult.TotalCount;
+
+                        #endregion
+
+                        #region Assign IndexCap
+
+                        if (!indexCapSet)
+                        {
+                            indexCap = partialResult.IndexCap;
+                            indexCapSet = true;
+                        }
+
                         #endregion
 
                         #region Compute PageableItemCount
+
                         if (GetAdditionalAvailableItemCount)
                         {
                             additionalAvailableItemCount += partialResult.AdditionalAvailableItemCount;
                         }
+
                         #endregion
 
                         #region Merge Results
-                        if (partialResult.ResultItemList != null && partialResult.ResultItemList.Count > 0)
+
+                        if ((partialResult.ResultItemList != null && partialResult.ResultItemList.Count > 0) ||
+                            (partialResult.GroupByResult != null && partialResult.GroupByResult.Count > 0))
                         {
-                            baseComparer = new BaseComparer(partialResult.IsTagPrimarySort, partialResult.SortFieldName, partialResult.SortOrderList);
-                            MergeAlgo.MergeItemLists(ref completeResultItemList, partialResult.ResultItemList, MaxMergeCount, baseComparer);
+                            if (baseComparer == null)
+                            {
+                                baseComparer = new BaseComparer(partialResult.IsTagPrimarySort,
+                                                                partialResult.SortFieldName, 
+                                                                partialResult.SortOrderList);
+                                completeGroupByResult = new GroupByResult(baseComparer);
+                            }
+
+                            if (GroupBy == null)
+                            {
+                                MergeAlgo.MergeItemLists(ref completeResultItemList,
+                                                         partialResult.ResultItemList,
+                                                         MaxMergeCount,
+                                                         baseComparer);
+                            }
+                            else
+                            {
+                                MergeAlgo.MergeGroupResult(ref completeGroupByResult,
+                                                           partialResult.GroupByResult,
+                                                           MaxMergeCount,
+                                                           baseComparer);
+                            }
                         }
+
                         #endregion
 
                         #region Update IndexIdIndexHeaderMapping
+
                         if (GetIndexHeaderType != GetIndexHeaderType.None && 
                             partialResult.IndexIdIndexHeaderMapping != null && 
                             partialResult.IndexIdIndexHeaderMapping.Count > 0)
@@ -166,56 +191,123 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                                 }
                             }
                         }
+
+                        #endregion
+
+                        #region Update exceptionInfo
+
+                        if (!String.IsNullOrEmpty(partialResult.ExceptionInfo))
+                        {
+                            exceptionStringBuilder.Append(partialResult.ExceptionInfo);
+                            exceptionStringBuilder.Append(" ");
+                        }
+
                         #endregion
                     }
                 }
 
                 #region Create FinalResult
+
                 finalResult = new SpanQueryResult
                 {
                     ResultItemList = completeResultItemList,
+                    GroupByResult = completeGroupByResult,
                     TotalCount = totalCount,
                     AdditionalAvailableItemCount = additionalAvailableItemCount,
+                    IndexCap = indexCap
                 };
+
+                //Assign sort fields for use in GroupBy remote queries
+                if (baseComparer != null)
+                {
+                    finalResult.IsTagPrimarySort = baseComparer.IsTagPrimarySort;
+                    finalResult.SortFieldName = baseComparer.SortFieldName;
+                    finalResult.SortOrderList = baseComparer.SortOrderList;
+                }
+
                 if (GetIndexHeaderType != GetIndexHeaderType.None && completeIndexIdIndexHeaderMapping.Count > 0)
                 {
                     finalResult.IndexIdIndexHeaderMapping = completeIndexIdIndexHeaderMapping;
                 }
+
+                if (exceptionStringBuilder.Length > 0)
+                {
+                    finalResult.ExceptionInfo = exceptionStringBuilder.ToString();
+                }
+
                 #endregion
 
                 #endregion
             }
 
             #region Spanning and Update IndexIdIndexHeaderMapping if required
+
             if (ClientSideSubsetProcessingRequired && Span != 0 && finalResult != null)
             {
                 #region Spanning
-                List<ResultItem> filteredResultItemList = new List<ResultItem>();
-                if (finalResult.ResultItemList.Count >= Offset)
+
+                if (GroupBy == null)
                 {
-                    for (int i = Offset - 1; i < finalResult.ResultItemList.Count && filteredResultItemList.Count < Span; i++)
+                    List<ResultItem> filteredResultItemList = new List<ResultItem>();
+                    if (finalResult.ResultItemList.Count >= Offset)
                     {
-                        filteredResultItemList.Add(finalResult.ResultItemList[i]);
+                        for (int i = Offset - 1; i < finalResult.ResultItemList.Count && filteredResultItemList.Count < Span; i++)
+                        {
+                            filteredResultItemList.Add(finalResult.ResultItemList[i]);
+                        }
                     }
+                    finalResult.ResultItemList = filteredResultItemList;
                 }
-                finalResult.ResultItemList = filteredResultItemList;
+                else if (finalResult.GroupByResult != null && finalResult.GroupByResult.Count > 0)
+                {
+                    GroupByResult filteredGroupByResult = new GroupByResult(baseComparer);
+                    if (finalResult.GroupByResult.Count >= Offset)
+                    {
+                        for (int i = Offset - 1; i < finalResult.GroupByResult.Count && filteredGroupByResult.Count < Span; i++)
+                        {
+                            filteredGroupByResult.Add(finalResult.GroupByResult[i].CompositeKey, finalResult.GroupByResult[i]);
+                        }
+                    }
+                    finalResult.GroupByResult = filteredGroupByResult;
+                }
+
                 #endregion
 
                 #region Update IndexIdIndexHeaderMapping to only include metadata relevant after paging
+
                 if (partialResults.Count != 1 && GetIndexHeaderType == GetIndexHeaderType.ResultItemsIndexIds && completeIndexIdIndexHeaderMapping.Count > 0)
                 {
                     Dictionary<byte[] /*IndexId*/, IndexHeader /*IndexHeader*/> filteredIndexIdIndexHeaderMapping = new Dictionary<byte[], IndexHeader>(byteArrayEqualityComparer);
-                    foreach (ResultItem resultItem in finalResult.ResultItemList)
+                    if (GroupBy == null)
                     {
-                        if (!filteredIndexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                        foreach (ResultItem resultItem in finalResult.ResultItemList)
                         {
-                            filteredIndexIdIndexHeaderMapping.Add(resultItem.IndexId, completeIndexIdIndexHeaderMapping[resultItem.IndexId]);
+                            if (!filteredIndexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                            {
+                                filteredIndexIdIndexHeaderMapping.Add(resultItem.IndexId, completeIndexIdIndexHeaderMapping[resultItem.IndexId]);
+                            }
+                        }
+                    }
+                    else if (finalResult.GroupByResult != null && finalResult.GroupByResult.Count > 0)
+                    {
+                        foreach (ResultItemBag resultItemBag in finalResult.GroupByResult)
+                        {
+                            for (int i = 0; i < resultItemBag.Count; i++)
+                            {
+                                ResultItem resultItem = resultItemBag[i];
+                                if (!filteredIndexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                                {
+                                    filteredIndexIdIndexHeaderMapping.Add(resultItem.IndexId, completeIndexIdIndexHeaderMapping[resultItem.IndexId]);
+                                }
+                            }
                         }
                     }
                     finalResult.IndexIdIndexHeaderMapping = filteredIndexIdIndexHeaderMapping.Count > 0 ? filteredIndexIdIndexHeaderMapping : null;
                 }
+
                 #endregion
             }
+
             #endregion
             return finalResult;
         }
@@ -223,6 +315,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         #endregion
 
         #region IRelayMessageQuery Members
+
         public override byte QueryId
         {
             get
@@ -230,9 +323,11 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return (byte)QueryTypes.SpanQuery;
             }
         }
+
         #endregion
 
         #region IVersionSerializable Members
+
         public override void Serialize(IPrimitiveWriter writer)
         {
             //Offset
@@ -387,6 +482,20 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
             //GetIndexHeaderType
             writer.Write((byte)GetIndexHeaderType);
+
+            //DomainSpecificProcessingType
+            writer.Write((byte)DomainSpecificProcessingType);
+
+            //GroupBy
+            if (GroupBy == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, GroupBy);
+            }
         }
 
         public override void Deserialize(IPrimitiveReader reader, int version)
@@ -518,9 +627,25 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 //GetIndexHeaderType
                 GetIndexHeaderType = (GetIndexHeaderType)reader.ReadByte();
             }
+
+            if (version >= 4)
+            {
+                //DomainSpecificProcessingType
+                DomainSpecificProcessingType = (DomainSpecificProcessingType)reader.ReadByte();
+            }
+
+            if (version >= 5)
+            {
+                //GroupBy
+                if (reader.ReadBoolean())
+                {
+                    GroupBy = new GroupBy();
+                    Serializer.Deserialize(reader.BaseStream, GroupBy);
+                }
+            }
         }
 
-        private const int CURRENT_VERSION = 3;
+        private const int CURRENT_VERSION = 5;
         public override int CurrentVersion
         {
             get
@@ -528,6 +653,16 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return CURRENT_VERSION;
             }
         }
+
+        #endregion
+
+        #region ICloneable Members
+
+        public sealed override object Clone()
+        {
+            return new SpanQuery(this);
+        }
+
         #endregion
     }
 }

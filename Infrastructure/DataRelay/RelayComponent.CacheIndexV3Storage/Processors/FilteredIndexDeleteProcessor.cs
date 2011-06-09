@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using MySpace.Common.IO;
 using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context;
@@ -27,8 +28,21 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 IndexTypeMapping indexTypeMapping =
                     storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection[messageContext.TypeId];
                 Index indexInfo = indexTypeMapping.IndexCollection[filteredIndexDeleteCommand.TargetIndexName];
+                byte[] metadata = null;
+                MetadataPropertyCollection metadataPropertyCollection = null;
 
                 #region Get CacheIndexInternal for TargetIndexName
+
+                if (indexTypeMapping.MetadataStoredSeperately)
+                {
+                    IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping,
+                        messageContext.TypeId,
+                        messageContext.PrimaryId,
+                        filteredIndexDeleteCommand.IndexId,
+                        storeContext,
+                        out metadata,
+                        out metadataPropertyCollection);
+                }
 
                 CacheIndexInternal cacheIndexInternal = IndexServerUtils.GetCacheIndexInternal(storeContext,
                     messageContext.TypeId,
@@ -45,7 +59,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     indexInfo.PrimarySortInfo,
                     indexInfo.LocalIdentityTagList,
                     indexInfo.StringHashCodeDictionary,
-                    null);
+                    null,
+                    indexInfo.IsMetadataPropertyCollection,
+                    metadataPropertyCollection,
+                    DomainSpecificProcessingType.None,
+                    null,
+                    null,
+                    null,
+                    false);
 
                 #endregion
 
@@ -81,14 +102,26 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     byte[] extendedId = IndexServerUtils.FormExtendedId(filteredIndexDeleteCommand.IndexId,
                         indexTypeMapping.IndexCollection[cacheIndexInternal.InDeserializationContext.IndexName].ExtendedIdSuffix);
 
-                    RelayMessage indexStorageMessage = RelayMessage.GetSaveMessageForObject(messageContext.TypeId,
+                    // compose a bdb entry header
+                    bool isCompress = storeContext.GetCompressOption(messageContext.TypeId);
+
+                    PayloadStorage bdbEntryHeader = new PayloadStorage
+                    {
+                        Compressed = isCompress,
+                        TTL = -1,
+                        LastUpdatedTicks = DateTime.Now.Ticks,
+                        ExpirationTicks = -1,
+                        Deactivated = false
+                    };
+
+                    BinaryStorageAdapter.Save(
+                        storeContext.MemoryPool,
+                        storeContext.IndexStorageComponent,
+                        messageContext.TypeId,
                         filteredIndexDeleteCommand.PrimaryId,
                         extendedId,
-                        DateTime.Now,
-                        cacheIndexInternal,
-                        storeContext.GetCompressOption(messageContext.TypeId));
-
-                    storeContext.IndexStorageComponent.HandleMessage(indexStorageMessage);
+                        bdbEntryHeader,
+                        Serializer.Serialize<CacheIndexInternal>(cacheIndexInternal, isCompress, RelayMessage.RelayCompressionImplementation));
 
                     #endregion
 

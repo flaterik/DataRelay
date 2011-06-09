@@ -16,11 +16,12 @@
 				<xs:element name="OnewayThreads" type="xs:int" />
 				<xs:element name="SyncThreads" type="xs:int" />
 				<xs:element name="BufferPoolReuses" type="xs:int" />
-				<xs:element type="xs:int" name="ConnectionStateReuses" />
+				<xs:element name="ConnectionStateReuses" type="xs:int"/>
 				<xs:element name="UseNetworkOrder" type="xs:boolean" />
 				<xs:element name="MaximumWorkerThreads" type="xs:int" minOccurs="0" maxOccurs="1" />
-				<xs:element name="MaximumCompletionPortThreads" type="xs:int" />
-				<xs:element name="MaximumOpenSockets" type="xs:int" />
+				<xs:element name="MaximumCompletionPortThreads" type="xs:int" minOccurs="0" maxOccurs="1"/>
+				<xs:element name="MaximumOpenSockets" type="xs:int" minOccurs="0"/>
+				<xs:element name="SendServerCapabilities" type="xs:boolean" minOccurs="0" />
 			</xs:sequence>
 			<xs:attribute name="type" type="xs:string" />
 		</xs:complexType>

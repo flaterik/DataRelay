@@ -5,46 +5,43 @@ namespace MySpace.DataRelay.Interfaces.Query.IndexCacheV3.Domain.Query.Intersect
 {
     internal static class IntersectionAlgo
     {
-        internal static void Intersect<T>(
-            bool isTagPrimarySort,
+        internal static void Intersect<T>(bool isTagPrimarySort,
             string sortFieldName,
             List<string> localIdentityTagNames,
             List<SortOrder> sortOrderList,
             ItemList<T> resultList,
-            ItemList<T> currentList) where T:IItem
+            ItemList<T> currentList,
+            int maxResultItems,
+            bool isLastIntersection) where T : IItem
         {
-            if (localIdentityTagNames == null || localIdentityTagNames.Count < 1)
+            int i;
+            if ((localIdentityTagNames == null || localIdentityTagNames.Count < 1) && !isTagPrimarySort)
             {
                 // Traverse both CacheIndexInternal simultaneously
-                int i, j;
+                int j;
                 BaseComparer comparer = new BaseComparer(isTagPrimarySort, sortFieldName, sortOrderList);
-                for (i = resultList.Count - 1, j = currentList.Count - 1; i > -1 && j > -1; )
+                for (i = 0, j = 0; i < resultList.Count && j < currentList.Count &&
+                    /* Check if resultList has accumalated enough items */ !(maxResultItems > 0 && isLastIntersection && i == maxResultItems); )
                 {
                     int retVal = comparer.Compare(resultList.GetItem(i), currentList.GetItem(j));
-                 
+
                     if (retVal == 0)
                     {
                         //Items equal. Move pointers to both lists
-                        i--;
-                        j--;
+                        i++;
+                        j++;
                     }
                     else
                     {
-                        if (retVal < 0) // resultList item is greater
+                        if (retVal > 0) // resultList item is greater and skip currentList item
                         {
-                            j--;
+                            j++;
                         }
-                        else
+                        else // currentList item is greater and remove resultList item
                         {
                             resultList.RemoveAt(i);
-                            i--;
                         }
                     }
-                }
-                //Get rid of uninspected items in resultList
-                if (i > -1)
-                {
-                    resultList.RemoveRange(0, i + 1);
                 }
             }
             else
@@ -57,15 +54,26 @@ namespace MySpace.DataRelay.Interfaces.Query.IndexCacheV3.Domain.Query.Intersect
                     resultList = currentList;
                     currentList = tempList;
                 }
-                for (int i = resultList.Count - 1; i > -1; i--)
+
+                for (i = 0; i < resultList.Count && !(maxResultItems > 0 && i == maxResultItems); )
                 {
                     if (currentList.BinarySearchItem(resultList.GetItem(i), isTagPrimarySort, sortFieldName, sortOrderList, localIdentityTagNames) < 0)
                     {
                         //Remove item from resultList
                         resultList.RemoveAt(i);
                     }
+                    else
+                    {
+                        i++;
+                    }
                 }
             }
-        }    
+
+            //Get rid of uninspected items in resultList
+            if (i < resultList.Count)
+            {
+                resultList.RemoveRange(i, resultList.Count - i);
+            }
+        }
     }
 }

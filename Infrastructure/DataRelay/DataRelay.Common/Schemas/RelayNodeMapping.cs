@@ -10,8 +10,6 @@ using MySpace.Configuration;
 
 namespace MySpace.DataRelay.Common.Schemas
 {
-	#region NodeMappings
-
 	[XmlRoot("RelayNodeMapping", Namespace = "http://myspace.com/RelayNodeMapping.xsd")]
 	public class RelayNodeMapping
 	{
@@ -27,7 +25,7 @@ namespace MySpace.DataRelay.Common.Schemas
 
 		private bool checkedValidity;
 		private bool isValid;
-		private object validityLock = new object();
+		private readonly object validityLock = new object();
 		public bool Validate()
 		{
 			if (!checkedValidity)
@@ -76,8 +74,8 @@ namespace MySpace.DataRelay.Common.Schemas
 	/// </summary>
 	public class EnvironmentDefinition
 	{
-		private string _environmentNames = null;
-		private bool _environmentNamesClean = false;
+		private string _environmentNames;
+		private bool _environmentNamesClean;
 
 		/// <summary>
 		/// The names of the environments this definition applies to delimited by commas.
@@ -86,7 +84,7 @@ namespace MySpace.DataRelay.Common.Schemas
 		[XmlAttribute("names")]
 		public string EnvironmentNamesRaw
 		{
-			get 
+			get
 			{
 				if (_environmentNamesClean == false)
 				{
@@ -105,7 +103,7 @@ namespace MySpace.DataRelay.Common.Schemas
 		/// </summary>
 		public string[] EnvironmentNames
 		{
-			get 
+			get
 			{
 				if (_environments == null)
 				{
@@ -140,7 +138,7 @@ namespace MySpace.DataRelay.Common.Schemas
 		/// </summary>
 		[XmlArray("RelayNodeClusters")]
 		[XmlArrayItem("RelayNodeCluster")]
-		public RelayNodeClusterDefinition[] RelayNodeClusters {get; set;}
+		public RelayNodeClusterDefinition[] RelayNodeClusters { get; set; }
 
 		/// <summary>
 		/// Gets or sets the socket settings.
@@ -153,12 +151,6 @@ namespace MySpace.DataRelay.Common.Schemas
 		/// </summary>
 		[XmlElement("QueueConfig")]
 		public QueueConfig QueueConfig { get; set; }
-
-		/// <summary>
-		/// The windows size.
-		/// </summary>
-		[XmlElement("NodeSelectionHopWindowSize")]
-		public int NodeSelectionHopWindowSize = 1;
 	}
 
 	/// <summary>
@@ -197,14 +189,17 @@ namespace MySpace.DataRelay.Common.Schemas
 		public override bool Equals(object obj)
 		{
 			ZoneDefinitionCollection comparor = obj as ZoneDefinitionCollection;
-			if (obj == null)
+
+			if (comparor == null)
 			{
 				return false;
 			}
+
 			if (comparor.Count != Count)
 			{
 				return false;
 			}
+
 			for (int i = 0; i < Count; i++)
 			{
 				if (!this[i].Equals(comparor[i]))
@@ -272,7 +267,7 @@ namespace MySpace.DataRelay.Common.Schemas
 			return false;
 		}
 
-		private bool AddressInSubnet(IPAddress address, string subnet)
+		private static bool AddressInSubnet(IPAddress address, string subnet)
 		{
 			if (address.AddressFamily == AddressFamily.InterNetwork)
 			{
@@ -382,19 +377,24 @@ namespace MySpace.DataRelay.Common.Schemas
 		[XmlAttribute("StartupRepopulateDuration")]
 		public int StartupRepopulateDuration;
 
+	    [XmlAttribute("RetryPolicy")] 
+        public RelayRetryPolicy RetryPolicy;
+
+	    private RelayNodeClusterDefinition[] _relayNodeClusters;
 		/// <summary>
 		/// Gets the RelayNodeClusters for the given environment.
 		/// </summary>
-		public RelayNodeClusterDefinition[] RelayNodeClusters 
+		public RelayNodeClusterDefinition[] RelayNodeClusters
 		{
 			get
 			{
-				var defaultClusters = DefaultRelayNodeClusters;
+				if (_relayNodeClusters == null)
+				{
+					EnvironmentDefinition env = GetEnvironment();
+					_relayNodeClusters = env != null ? env.RelayNodeClusters : DefaultRelayNodeClusters;
+				}
 
-				EnvironmentDefinition env = GetEnvironment();
-				if (env != null) return env.RelayNodeClusters;
-
-				return defaultClusters;
+				return _relayNodeClusters;
 			}
 		}
 
@@ -427,7 +427,7 @@ namespace MySpace.DataRelay.Common.Schemas
 		/// </summary>
 		public SocketSettings SocketSettings
 		{
-			get 
+			get
 			{
 				var defaultSettings = DefaultSocketSettings;
 
@@ -449,7 +449,7 @@ namespace MySpace.DataRelay.Common.Schemas
 		/// </summary>
 		public QueueConfig QueueConfig
 		{
-			get 
+			get
 			{
 				var defaultSettings = DefaultQueueConfig;
 
@@ -460,31 +460,12 @@ namespace MySpace.DataRelay.Common.Schemas
 			}
 		}
 
-		[XmlElement("NodeSelectionHopWindowSize")]
-		public int DefaultNodeSelectionHopWindowSize = 1;
-
-		/// <summary>
-		/// Gets the hop window size for the given environment.
-		/// </summary>
-		public int NodeSelectionHopWindowSize
-		{
-			get 
-			{
-				var defaultSettings = DefaultNodeSelectionHopWindowSize;
-
-				EnvironmentDefinition env = GetEnvironment();
-				if (env != null) return env.NodeSelectionHopWindowSize;
-
-				return defaultSettings;
-			}
-		}
-
 		/// <summary>
 		/// Gets or sets the list of Environments.
 		/// </summary>
 		[XmlArray("Environments")]
 		[XmlArrayItem("Environment")]
-		public List<EnvironmentDefinition> Environments {get; set;}
+		public List<EnvironmentDefinition> Environments { get; set; }
 
 		/// <summary>
 		/// Determines if there is defined a node configured to listen on a given address and port 
@@ -533,16 +514,17 @@ namespace MySpace.DataRelay.Common.Schemas
 
 		/// <summary>
 		/// Returns a <see cref="RelayNodeClusterDefinition"/> for the current environment that contains
-		/// the a node configured to listen on the 
+		/// the a node configured to listen on the
 		/// </summary>
-		/// <param name="address"></param>
-		/// <param name="portNumber"></param>
+		/// <param name="address">The address.</param>
+		/// <param name="portNumber">The port number.</param>
+		/// <param name="clusterIndex">Index of the cluster.</param>
 		/// <returns></returns>
-		internal RelayNodeClusterDefinition GetClusterFor(IPAddress address, int portNumber)
+		internal RelayNodeClusterDefinition GetClusterFor(IPAddress address, int portNumber, out int clusterIndex)
 		{
 			RelayNodeClusterDefinition[] clusters = null;
 			EnvironmentDefinition env = GetEnvironment();
-
+			clusterIndex = -1;
 			if (env != null)
 			{
 				clusters = env.RelayNodeClusters;
@@ -555,16 +537,51 @@ namespace MySpace.DataRelay.Common.Schemas
 			RelayNodeClusterDefinition clusterDefinition = null;
 			if (clusters != null)
 			{
-				foreach (RelayNodeClusterDefinition cluster in clusters)
+				for (int i = 0; i < clusters.Length; i++)
 				{
-					if (cluster.ContainsNode(address, portNumber))
+					if (clusters[i].ContainsNode(address, portNumber))
 					{
-						clusterDefinition = cluster;
+						clusterDefinition = clusters[i];
+						clusterIndex = i;
 						break;
 					}
 				}
 			}
+
 			return clusterDefinition;
+		}
+
+		public int GetClusterIndexFor(int objectId)
+		{
+			if (UseIdRanges)
+			{
+				return GetRangedIndex(objectId);
+			}
+			else
+			{
+				return GetModdedIndex(objectId);
+			}
+		}		
+		
+		private int GetRangedIndex(int objectId)
+		{
+			if (_relayNodeClusters == null)
+				return 0;
+			for (int i = 0; i < RelayNodeClusters.Length; i++)
+			{
+				if (RelayNodeClusters[i].ObjectInRange(objectId))
+				{
+					return i;
+				}
+			}
+			return -1;
+		}
+
+		private int GetModdedIndex(int objectId)
+		{
+			RelayNodeClusterDefinition[] clusters = RelayNodeClusters;
+			if(clusters == null || objectId == Int32.MinValue) return 0; //cause Math.Abs(Int32.MinValue) throws
+			return Math.Abs(objectId) % clusters.Length;
 		}
 	}
 
@@ -586,7 +603,9 @@ namespace MySpace.DataRelay.Common.Schemas
 		{
 			foreach (RelayNodeDefinition node in RelayNodes)
 			{
-				if (node.IPAddress.Equals(address) && node.Port == listenPort)
+				if (node.IPAddress != null
+					&& node.IPAddress.Equals(address)
+					&& node.Port == listenPort)
 				{
 					return true;
 				}
@@ -598,7 +617,9 @@ namespace MySpace.DataRelay.Common.Schemas
 		{
 			foreach (RelayNodeDefinition node in RelayNodes)
 			{
-				if (node.IPAddress.Equals(address) && node.Port == listenPort)
+				if (node.IPAddress != null
+					&& node.IPAddress.Equals(address)
+					&& node.Port == listenPort)
 				{
 					nodeDefintion = node;
 					return true;
@@ -613,7 +634,9 @@ namespace MySpace.DataRelay.Common.Schemas
 			RelayNodeDefinition nodeDefinition = null;
 			foreach (RelayNodeDefinition node in RelayNodes)
 			{
-				if (node.IPAddress.Equals(address) && node.Port == listenPort)
+				if (node.IPAddress != null
+					&& node.IPAddress.Equals(address)
+					&& node.Port == listenPort)
 				{
 					nodeDefinition = node;
 					break;
@@ -621,16 +644,17 @@ namespace MySpace.DataRelay.Common.Schemas
 			}
 			return nodeDefinition;
 		}
+
+		public bool ObjectInRange(int objectId)
+		{
+			return (objectId >= MinId && objectId <= MaxId);
+		}
 	}
 
 
 	public class RelayNodeDefinition
 	{
-		AsyncCallback getHostEntryCallBack;
-		public RelayNodeDefinition()
-		{
-			this.getHostEntryCallBack = new AsyncCallback(GetHostEntryCallBack);
-		}
+		readonly AsyncCallback getHostEntryCallBack = GetHostEntryCallBack;
 
 		[XmlAttribute("GatherStatistics")]
 		public bool GatherStatistics;
@@ -651,16 +675,18 @@ namespace MySpace.DataRelay.Common.Schemas
 
 		[XmlAttribute("Port")]
 		public int Port;
+        [XmlAttribute("PipelinePort")]
+        public int PipelinePort;
 		[XmlAttribute("ServiceType")]
 		public string ServiceType;
 		[XmlAttribute("Zone")]
-		public ushort Zone = 1;
+		public ushort Zone;
 
 		[XmlAttribute("StartupRepopulateDuration")]
 		public int StartupRepopulateDuration;
 
 		private IPAddress ipAddress;
-		private object ipLock = new object();
+		private readonly object ipLock = new object();
 		private bool lookedForIp;
 		[XmlIgnore]
 		public IPAddress IPAddress
@@ -700,7 +726,7 @@ namespace MySpace.DataRelay.Common.Schemas
 		}
 
 		private IPEndPoint ipEndPoint;
-		private object ipEndPointLock = new object();
+		private readonly object ipEndPointLock = new object();
 		private bool lookedForEndpoint;
 		[XmlIgnore]
 		public IPEndPoint IPEndPoint
@@ -761,7 +787,7 @@ namespace MySpace.DataRelay.Common.Schemas
 			return hostEntry;
 		}
 
-		private void GetHostEntryCallBack(IAsyncResult ar)
+		private static void GetHostEntryCallBack(IAsyncResult ar)
 		{
 			GetHostEntryState state = ar.AsyncState as GetHostEntryState;
 			if (state != null)
@@ -793,9 +819,9 @@ namespace MySpace.DataRelay.Common.Schemas
 
 		public override string ToString()
 		{
-			return Host + ":" + Port.ToString();
+            if (PipelinePort == 0) return Host + ":" + Port;
+            return Host + ":" + PipelinePort;
 		}
-
 	}
 
 	public class SocketSettings
@@ -827,8 +853,13 @@ namespace MySpace.DataRelay.Common.Schemas
 		public int ItemsPerDequeue = 100;
 		[XmlElement("DequeueIntervalSeconds")]
 		public int DequeueIntervalSeconds = 10;
-
+		[XmlElement("MaxQueuePolicy")]
+		public string MaxQueuePolicy = "Block";
+		[XmlElement("PersistenceFolder")] 
+		public string PersistenceFolder = string.Empty;
+		[XmlElement("PersistenceFileSize")]
+		public int PersistenceFileSize = 2 * 1024 * 1024;
+		[XmlElement("MaxPersistedMB")]
+		public int MaxPersistedMB = 0;
 	}
-
-	#endregion
 }

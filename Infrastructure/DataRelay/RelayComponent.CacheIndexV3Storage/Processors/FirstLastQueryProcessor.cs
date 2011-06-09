@@ -27,6 +27,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             int indexSize = -1;
             int virtualCount = -1;
             byte[] metadata = null;
+            MetadataPropertyCollection metadataPropertyCollection = null;
 
             try
             {
@@ -44,11 +45,23 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                            : int.MaxValue;
 
                 Index targetIndexInfo = indexTypeMapping.IndexCollection[firstLastQuery.TargetIndexName];
+                int indexCap = targetIndexInfo.MaxIndexSize;
 
                 #region Prepare Result
 
                 #region Extract index and apply criteria
-                
+
+                if (indexTypeMapping.MetadataStoredSeperately)
+                {
+                    IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping,
+                        messageContext.TypeId,
+                        messageContext.PrimaryId,
+                        firstLastQuery.IndexId,
+                        storeContext,
+                        out metadata,
+                        out metadataPropertyCollection);
+                }
+
                 CacheIndexInternal targetIndex = IndexServerUtils.GetCacheIndexInternal(storeContext,
                     messageContext.TypeId,
                     messageContext.PrimaryId,
@@ -58,13 +71,20 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     maxItemsPerIndex,
                     firstLastQuery.Filter,
                     true,
-                    null,
+                    firstLastQuery.IndexCondition,
                     false,
                     false,
                     targetIndexInfo.PrimarySortInfo,
                     targetIndexInfo.LocalIdentityTagList,
                     targetIndexInfo.StringHashCodeDictionary,
-                    null);
+                    null,
+                    targetIndexInfo.IsMetadataPropertyCollection,
+                    metadataPropertyCollection,
+                    firstLastQuery.DomainSpecificProcessingType,
+                    storeContext.DomainSpecificConfig,
+                    null,
+                    null,
+                    false);
 
                 #endregion
 
@@ -73,6 +93,15 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     indexSize = targetIndex.OutDeserializationContext.TotalCount;
                     virtualCount = targetIndex.VirtualCount;
                     indexExists = true;
+
+                    #region Dynamic tag sort
+
+                    if (firstLastQuery.TagSort != null)
+                    {
+                        targetIndex.Sort(firstLastQuery.TagSort);
+                    }
+
+                    #endregion
 
                     // update perf counters
                     PerformanceCounters.Instance.SetCounterValue(
@@ -109,7 +138,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         //First Page
                         if (firstPageResultItemList != null)
                         {
-                            DataTierUtil.GetData(firstPageResultItemList, 
+                            DataTierUtil.GetData(firstPageResultItemList,
+                                null,
                                 storeContext, 
                                 messageContext, 
                                 indexTypeMapping.FullDataIdFieldList, 
@@ -120,6 +150,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         if (lastPageResultItemList != null)
                         {
                             DataTierUtil.GetData(lastPageResultItemList, 
+                                null,
                                 storeContext, 
                                 messageContext, 
                                 indexTypeMapping.FullDataIdFieldList, 
@@ -130,15 +161,13 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     #endregion
 
                     #region Get metadata
-                    
-                    if (firstLastQuery.GetMetadata)
+
+                    if (firstLastQuery.GetMetadata && !indexTypeMapping.MetadataStoredSeperately)
                     {
-                        metadata = IndexServerUtils.GetQueryMetadata(new List<CacheIndexInternal>(1) { targetIndex },
-                            indexTypeMapping, 
-                            messageContext.TypeId,
-                            messageContext.PrimaryId,
-                            firstLastQuery.IndexId,
-                            storeContext);
+                        IndexServerUtils.GetMetadataStoredWithIndex(indexTypeMapping,
+                            new List<CacheIndexInternal>(1) { targetIndex },
+                            out metadata,
+                            out metadataPropertyCollection);
                     }
                     
                     #endregion
@@ -146,11 +175,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                 #endregion
 
-                firstLastQueryResult = new FirstLastQueryResult(indexExists, indexSize, metadata, firstPageResultItemList, lastPageResultItemList, virtualCount, null);
+                firstLastQueryResult = new FirstLastQueryResult(indexExists, indexSize, metadata, metadataPropertyCollection, firstPageResultItemList, lastPageResultItemList, virtualCount, indexCap, null);
             }
             catch (Exception ex)
             {
-                firstLastQueryResult = new FirstLastQueryResult(false, -1, null, null, null, -1, ex.Message);
+                firstLastQueryResult = new FirstLastQueryResult(false, -1, null, null, null, null, -1, 0, ex.Message);
                 LoggingUtil.Log.ErrorFormat("TypeID {0} -- Error processing FirstLastQuery : {1}", messageContext.TypeId, ex);
             }
             return firstLastQueryResult;
@@ -163,6 +192,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// <param name="firstLastQuery">The first last query.</param>
         private static void ValidateQuery(IndexTypeMapping indexTypeMapping, FirstLastQuery firstLastQuery)
         {
+            if (string.IsNullOrEmpty(firstLastQuery.TargetIndexName))
+            {
+                firstLastQuery.TargetIndexName = IndexServerUtils.CheckQueryTargetIndexName(indexTypeMapping);
+            }
+
             if (!indexTypeMapping.IndexCollection.Contains(firstLastQuery.TargetIndexName))
             {
                 throw new Exception("Invalid TargetIndexName - " + firstLastQuery.TargetIndexName);

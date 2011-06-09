@@ -17,6 +17,12 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             Init(cacheTypeName);
         }
 
+        public VirtualClusteredIntersectionQuery(IntersectionQuery query, string cacheTypeName)
+            : base(query)
+        {
+            Init(cacheTypeName);
+        }
+
         private void Init(string cacheTypeName)
         {
             this.cacheTypeName = cacheTypeName;

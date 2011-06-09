@@ -19,5 +19,11 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		/// </summary>
 		[XmlElement("InitializationTime")]
 		public DateTime InitializationTime { set; get; }
+
+		/// <summary>
+		/// Gets or sets statistical information specific to the <see cref="Forwarder"/> for type 0. 
+		/// </summary>
+		[XmlElement("ZeroTypeSettingStatus")]
+		public TypeSettingStatus ZeroTypeSettingStatus { set; get; }
 	}
 }

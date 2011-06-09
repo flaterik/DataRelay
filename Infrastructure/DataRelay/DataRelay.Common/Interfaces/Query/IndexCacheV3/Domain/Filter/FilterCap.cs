@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using MySpace.Common;
 using MySpace.Common.IO;
 using MySpace.Logging;
@@ -7,6 +8,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
     public class FilterCap : IVersionSerializable
     {
+		private static readonly LogWrapper _log = new LogWrapper();
+
         #region Data Members
 
         /// <summary>
@@ -47,6 +50,20 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
         #endregion
 
+        #region Methods
+
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            stb.Append("(").Append("FieldValue: ").Append(IndexCacheUtils.GetReadableByteArray(FieldValue)).Append("),");
+            stb.Append("(").Append("UseParentFilter: ").Append(UseParentFilter).Append("),");
+            stb.Append("(").Append("Filter: ").Append(Filter == null ? "Null" : Filter.ToString()).Append("),");
+            stb.Append("(").Append("Cap: ").Append(Cap).Append("),");
+            return stb.ToString();
+        }
+
+        #endregion
+
         #region IVersionSerializable Members
 
         /// <summary>
@@ -60,7 +77,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 //FieldValue
                 if (FieldValue == null || FieldValue.Length == 0)
                 {
-                    new LogWrapper().Error("FieldValue in FilterCaps cannot be null or zero length byte array");
+                    _log.Error("FieldValue in FilterCaps cannot be null or zero length byte array");
                     throw new Exception("FieldValue in FilterCaps cannot be null or zero length byte array");
                 }
                 writer.Write((ushort)FieldValue.Length);
@@ -112,7 +129,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 }
                 else
                 {
-                    new LogWrapper().Error("FieldValue in FilterCaps cannot be null or zero length byte array");
+                    _log.Error("FieldValue in FilterCaps cannot be null or zero length byte array");
                     throw new Exception("FieldValue in FilterCaps cannot be null or zero length byte array");
                 }
 

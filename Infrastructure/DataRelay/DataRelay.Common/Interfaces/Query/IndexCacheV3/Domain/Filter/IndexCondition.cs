@@ -1,5 +1,7 @@
-﻿using MySpace.Common;
+﻿using System.Text;
+using MySpace.Common;
 using MySpace.Common.IO;
+using System;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
@@ -7,40 +9,84 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
     {
         #region Data Members
 
-        public byte[] InclusiveMaxValue
-        { 
-            get; set;
-        }
-        public byte[] InclusiveMinValue
-        { 
-            get; set;
-        }
+        public byte[] InclusiveMaxValue { get; set; }
+
+        public byte[] InclusiveMinValue { get; set; }
+
+        public string InclusiveMaxMetadataProperty { get; set; }
+
+        public DataType InclusiveMaxMetadataPropertyDataType { get; set; }
+
+        public string InclusiveMinMetadataProperty { get; set; }
+
+        public DataType InclusiveMinMetadataPropertyDataType { get; set; }
 
         #endregion
 
         #region Methods
-        internal void CreateConditions(string fieldName, 
+
+        internal void CreateConditions(string fieldName,
             bool isTag,
-            SortOrder indexSortOrder, 
-            out Condition enterCondition, 
+            SortOrder indexSortOrder,
+            out Condition enterCondition,
             out Condition exitCondition)
         {
-            // Enter and Exit Conditions are set for DESC sort order which is the common in most use cases
-            enterCondition = InclusiveMaxValue != null ?
-                new Condition(fieldName, isTag, Operation.LessThanEquals, InclusiveMaxValue, indexSortOrder.DataType) :
-                null;
+            // Note: Enter and Exit Conditions are set for DESC sort order which is the common in most use cases
 
-            exitCondition = InclusiveMinValue != null ?
-                new Condition(fieldName, isTag, Operation.GreaterThanEquals, InclusiveMinValue, indexSortOrder.DataType) :
-                null;
+            //EnterCondition
+            if (InclusiveMaxValue != null)
+            {
+                enterCondition = new Condition(fieldName, isTag, Operation.LessThanEquals, InclusiveMaxValue, indexSortOrder.DataType);
+            }
+            else if (!string.IsNullOrEmpty(InclusiveMaxMetadataProperty))
+            {
+                enterCondition = new Condition(fieldName, isTag, Operation.LessThanEquals, null, InclusiveMaxMetadataPropertyDataType)
+                {
+                    MetadataProperty = InclusiveMaxMetadataProperty
+                };
+            }
+            else
+            {
+                enterCondition = null;
+            }
+
+            //ExitCondition
+            if (InclusiveMinValue != null)
+            {
+                exitCondition = new Condition(fieldName, isTag, Operation.GreaterThanEquals, InclusiveMinValue, indexSortOrder.DataType);
+            }
+            else if (!string.IsNullOrEmpty(InclusiveMinMetadataProperty))
+            {
+                exitCondition = new Condition(fieldName, isTag, Operation.GreaterThanEquals, null, InclusiveMinMetadataPropertyDataType)
+                {
+                    MetadataProperty = InclusiveMinMetadataProperty
+                };
+            }
+            else
+            {
+                exitCondition = null;
+            }
 
             if (indexSortOrder.SortBy == SortBy.ASC)
-            {                
+            {
                 var temp = enterCondition;
                 enterCondition = exitCondition;
                 exitCondition = temp;
             }
         }
+
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            stb.Append("(").Append("InclusiveMaxValue: ").Append(IndexCacheUtils.GetReadableByteArray(InclusiveMaxValue)).Append("),");
+            stb.Append("(").Append("InclusiveMinValue: ").Append(IndexCacheUtils.GetReadableByteArray(InclusiveMinValue)).Append("),");
+            stb.Append("(").Append("InclusiveMaxMetadataProperty: ").Append(InclusiveMaxMetadataProperty).Append("),");
+            stb.Append("(").Append("InclusiveMaxMetadataPropertyDataType: ").Append(InclusiveMaxMetadataPropertyDataType.ToString()).Append("),");
+            stb.Append("(").Append("InclusiveMinMetadataProperty: ").Append(InclusiveMinMetadataProperty).Append("),");
+            stb.Append("(").Append("InclusiveMinMetadataPropertyDataType: ").Append(InclusiveMinMetadataPropertyDataType.ToString()).Append("),");
+            return stb.ToString();
+        }
+
         #endregion
 
         #region IVersionSerializable Members
@@ -70,6 +116,18 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                     writer.Write((ushort)InclusiveMinValue.Length);
                     writer.Write(InclusiveMinValue);
                 }
+
+                //InclusiveMaxMetadataProperty
+                writer.Write(InclusiveMaxMetadataProperty);
+
+                //InclusiveMaxMetadataPropertyDataType
+                writer.Write((byte)InclusiveMaxMetadataPropertyDataType);
+
+                //InclusiveMinMetadataProperty
+                writer.Write(InclusiveMinMetadataProperty);
+
+                //InclusiveMinMetadataPropertyDataType
+                writer.Write((byte)InclusiveMinMetadataPropertyDataType);
             }
         }
 
@@ -90,10 +148,25 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 {
                     InclusiveMinValue = reader.ReadBytes(len);
                 }
+
+                if (version >= 2)
+                {
+                    //InclusiveMaxMetadataProperty
+                    InclusiveMaxMetadataProperty = reader.ReadString();
+
+                    //InclusiveMaxMetadataPropertyDataType
+                    InclusiveMaxMetadataPropertyDataType = (DataType)reader.ReadByte();
+
+                    //InclusiveMinMetadataProperty
+                    InclusiveMinMetadataProperty = reader.ReadString();
+
+                    //InclusiveMinMetadataPropertyDataType
+                    InclusiveMinMetadataPropertyDataType = (DataType)reader.ReadByte();
+                }
             }
         }
 
-        private const int CURRENT_VERSION = 1;
+        private const int CURRENT_VERSION = 2;
         public int CurrentVersion
         {
             get

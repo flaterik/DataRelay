@@ -43,10 +43,20 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             get; internal set;
         }
 
+	    public int IndexCap
+	    {
+	        get; set;
+	    }
+
 		public string ExceptionInfo
 		{
 			get; internal set;
 		}
+
+        public GroupByResult GroupByResult
+	    {
+	        get; internal set;
+	    }
 
 		#endregion
 

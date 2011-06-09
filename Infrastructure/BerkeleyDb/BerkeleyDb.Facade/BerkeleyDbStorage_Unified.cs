@@ -150,7 +150,6 @@ namespace MySpace.BerkeleyDb.Facade
 		{
 			if (!buffer.IsWritable) throw new ArgumentOutOfRangeException("buffer");
 			options.AssertValid("options");
-			if (!CanProcessMessage(typeId)) return -1;
 			DebugLog("GetEntry()", typeId, objectId);
 			Database db = GetDatabase(typeId, objectId);
 			try
@@ -195,8 +194,7 @@ namespace MySpace.BerkeleyDb.Facade
 			DataBuffer key, GetOptions options)
 		{
 			options.AssertValid("options");
-			if (!CanProcessMessage(typeId)) return null;
-			DebugLog("GetEntry()", typeId, objectId);
+			DebugLog("GetEntryStream()", typeId, objectId);
 			Database db = GetDatabase(typeId, objectId);
 			try
 			{
@@ -209,7 +207,50 @@ namespace MySpace.BerkeleyDb.Facade
 			}
 			catch (Exception ex)
 			{
-				ErrorLog("GetEntry()", ex);
+				ErrorLog("GetEntryStream()", ex);
+				throw;
+			}
+		}
+
+		/// <summary>
+		/// Reads data from a BerkeleyDb store entry.
+		/// </summary>
+		/// <param name="typeId">The type of the store accessed.</param>
+		/// <param name="objectId">The object id used for store access.</param>
+		/// <param name="key">The key of the store entry accessed.</param>
+		/// <param name="options">The options for the read.</param>
+		/// <returns>A <see cref="Byte"/> array that contains the entry data.</returns>
+		/// <exception cref="ArgumentOutOfRangeException">
+		/// <para><paramref name="options"/> has a negative offset.</para>
+		/// </exception>
+		/// <remarks>
+		/// <para></para>
+		/// <para>Return value is null if</para>
+		/// <para>Entry is not found in store.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="typeId"/> isn't valid.</para>
+		/// <para>-or-</para>
+		/// <para>A <see cref="BdbException"/> was thrown from the underlying store
+		/// (Exception is logged but not rethrown).</para>
+		/// </remarks>
+		public byte[] GetEntryBuffer(short typeId, int objectId,
+			DataBuffer key, GetOptions options)
+		{
+			options.AssertValid("options");
+			DebugLog("GetEntryBuffer()", typeId, objectId);
+			Database db = GetDatabase(typeId, objectId);
+			try
+			{
+				return db.GetBuffer(key, options.Offset, options.Length, options.Flags);
+			}
+			catch (BdbException ex)
+			{
+				HandleBdbError(ex, db);
+				return null;
+			}
+			catch (Exception ex)
+			{
+				ErrorLog("GetEntryBuffer()", ex);
 				throw;
 			}
 		}
@@ -279,6 +320,32 @@ namespace MySpace.BerkeleyDb.Facade
 		/// Reads data from a BerkeleyDb store entry.
 		/// </summary>
 		/// <param name="typeId">The type of the store accessed.</param>
+		/// <param name="key">The key of the store entry accessed.</param>
+		/// <param name="options">The options for the read.</param>
+		/// <returns>A <see cref="Byte"/> array that contains the entry data.</returns>
+		/// <exception cref="ArgumentOutOfRangeException">
+		/// <para><paramref name="options"/> has a negative offset.</para>
+		/// </exception>
+		/// <remarks>
+		/// <para></para>
+		/// <para>Return value is null if</para>
+		/// <para>Entry is not found in store.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="typeId"/> isn't valid.</para>
+		/// <para>-or-</para>
+		/// <para>A <see cref="BdbException"/> was thrown from the underlying store
+		/// (Exception is logged but not rethrown).</para>
+		/// </remarks>
+		public byte[] GetEntryBuffer(short typeId, DataBuffer key,
+			GetOptions options)
+		{
+			return GetEntryBuffer(typeId, key.GetObjectId(), key, options);
+		}
+
+		/// <summary>
+		/// Reads data from a BerkeleyDb store entry.
+		/// </summary>
+		/// <param name="typeId">The type of the store accessed.</param>
 		/// <param name="objectId">The object id used for store access.</param>
 		/// <param name="key">The key of the store entry accessed.</param>
 		/// <param name="buffer">The buffer to which the read data is written.</param>
@@ -326,6 +393,29 @@ namespace MySpace.BerkeleyDb.Facade
 			DataBuffer key)
 		{
 			return GetEntryStream(typeId, objectId, key, GetOptions.Default);
+		}
+
+		/// <summary>
+		/// Reads data from a BerkeleyDb store entry.
+		/// </summary>
+		/// <param name="typeId">The type of the store accessed.</param>
+		/// <param name="objectId">The object id used for store access.</param>
+		/// <param name="key">The key of the store entry accessed.</param>
+		/// <returns>A <see cref="Byte"/> array that contains the entry data.</returns>
+		/// <remarks>
+		/// <para></para>
+		/// <para>Return value is null if</para>
+		/// <para>Entry is not found in store.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="typeId"/> isn't valid.</para>
+		/// <para>-or-</para>
+		/// <para>A <see cref="BdbException"/> was thrown from the underlying store
+		/// (Exception is logged but not rethrown).</para>
+		/// </remarks>
+		public byte[] GetEntryBuffer(short typeId, int objectId,
+			DataBuffer key)
+		{
+			return GetEntryBuffer(typeId, objectId, key, GetOptions.Default);
 		}
 
 		/// <summary>
@@ -381,6 +471,26 @@ namespace MySpace.BerkeleyDb.Facade
 		}
 
 		/// <summary>
+		/// Reads data from a BerkeleyDb store entry.
+		/// </summary>
+		/// <param name="typeId">The type of the store accessed.</param>
+		/// <param name="key">The key of the store entry accessed.</param>
+		/// <returns>A <see cref="Byte"/> array that contains the entry data.</returns>
+		/// <remarks>
+		/// <para></para>
+		/// <para>Return value is null if</para>
+		/// <para>Entry is not found in store.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="typeId"/> isn't valid.</para>
+		/// <para>-or-</para>
+		/// <para>A <see cref="BdbException"/> was thrown from the underlying store
+		/// (Exception is logged but not rethrown).</para>
+		/// </remarks>
+		public byte[] GetEntryBuffer(short typeId, DataBuffer key)
+		{
+			return GetEntryBuffer(typeId, key, GetOptions.Default);
+		}
+		/// <summary>
 		/// Writes data to a BerkeleyDb store entry.
 		/// </summary>
 		/// <param name="typeId">The type of the store accessed.</param>
@@ -403,7 +513,6 @@ namespace MySpace.BerkeleyDb.Facade
 			PutOptions options)
 		{
 			options.AssertValid("options");
-			if (!CanProcessMessage(typeId)) return false;
 			DebugLog("SaveEntry()", typeId, objectId);
 			Database db = GetDatabase(typeId, objectId);
 			try
@@ -514,7 +623,6 @@ namespace MySpace.BerkeleyDb.Facade
 		/// </remarks>
 		public bool DeleteEntry(short typeId, int objectId, DataBuffer key)
 		{
-			if (!CanProcessMessage(typeId)) return false;
 			DebugLog("DeleteEntry()", typeId, objectId);
 			Database db = GetDatabase(typeId, objectId);
 			try
@@ -575,7 +683,6 @@ namespace MySpace.BerkeleyDb.Facade
 		/// </remarks>
 		public bool EntryExists(short typeId, int objectId, DataBuffer key)
 		{
-			if (!CanProcessMessage(typeId)) return false;
 			DebugLog("EntryExists()", typeId, objectId);
 			Database db = GetDatabase(typeId, objectId);
 			var ret = db.Exists(key, ExistsOpFlags.Default);
@@ -647,7 +754,6 @@ namespace MySpace.BerkeleyDb.Facade
 		/// </remarks>
 		public int GetEntryLength(short typeId, int objectId, DataBuffer key)
 		{
-			if (!CanProcessMessage(typeId)) return -1;
 			DebugLog("GetEntryLength()", typeId, objectId);
 			Database db = GetDatabase(typeId, objectId);
 			try

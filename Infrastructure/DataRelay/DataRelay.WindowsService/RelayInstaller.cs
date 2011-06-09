@@ -26,11 +26,11 @@ namespace MySpace.DataRelay.WindowsService
 
 			try
 			{
-				EventLog.Delete("MySpace.DataRelay");
+				if (EventLog.Exists("MySpace.DataRelay"))
+					EventLog.Delete("MySpace.DataRelay");
 			}
 			catch (Exception e)
 			{
-				
 				Console.WriteLine(e);
 			}
 			try

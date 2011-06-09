@@ -4,6 +4,7 @@ using MySpace.Common;
 using MySpace.Common.Framework;
 using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
 using MySpace.Common.IO;
+using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
 using Filter = MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3.Filter;
@@ -19,6 +20,16 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
         /// </summary>
         /// <value>The metadata.</value>
         internal byte[] Metadata
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the metadata property collection.
+        /// </summary>
+        /// <value>The metadata property collection.</value>
+        public MetadataPropertyCollection MetadataPropertyCollection
         {
             get;
             set;
@@ -47,7 +58,9 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
             }
             set
             {
-                virtualCount = value < outDeserializationContext.TotalCount ? outDeserializationContext.TotalCount : value;
+                virtualCount = ((outDeserializationContext != null) && (value < outDeserializationContext.TotalCount)) ? 
+                    outDeserializationContext.TotalCount : 
+                    value;
             }
         }
 
@@ -84,6 +97,12 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
             {
                 return InternalItemList != null ? InternalItemList.Count : 0;
             }
+        }
+
+        internal GroupByResult GroupByResult
+        {
+            get;
+            set;
         }
 
         #endregion
@@ -229,15 +248,44 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
         /// <param name="writer">The <see cref="IPrimitiveWriter"/> that writes to the stream.</param>
         public void Serialize(IPrimitiveWriter writer)
         {
-            //Metadata
-            if (Metadata == null || Metadata.Length == 0)
+            //Metadata or MetadataPropertyCollection
+            if (InDeserializationContext.IsMetadataPropertyCollection)
             {
-                writer.Write((ushort)0);
+                //MetadataPropertyCollection
+                if (MetadataPropertyCollection == null || MetadataPropertyCollection.Count == 0)
+                {
+                    writer.Write((ushort)0);
+                }
+                else
+                {
+                    writer.Write((ushort)MetadataPropertyCollection.Count);
+                    foreach (KeyValuePair<string /*PropertyName*/, byte[] /*PropertyValue*/> kvp in MetadataPropertyCollection)
+                    {
+                        writer.Write(kvp.Key);
+                        if (kvp.Value == null || kvp.Value.Length == 0)
+                        {
+                            writer.Write((ushort)0);
+                        }
+                        else
+                        {
+                            writer.Write((ushort)kvp.Value.Length);
+                            writer.Write(kvp.Value);
+                        }
+                    }
+                }
             }
             else
             {
-                writer.Write((ushort)Metadata.Length);
-                writer.Write(Metadata);
+                //Metadata
+                if (Metadata == null || Metadata.Length == 0)
+                {
+                    writer.Write((ushort)0);
+                }
+                else
+                {
+                    writer.Write((ushort)Metadata.Length);
+                    writer.Write(Metadata);
+                }
             }
 
             if (!LegacySerializationUtil.Instance.IsSupported(InDeserializationContext.TypeId))
@@ -250,6 +298,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
             // payload except metadata and virtual count. This code path will only be used if just header info like 
             // virtual count needs to be updated keeping rest of the index untouched
             if (InDeserializationContext.DeserializeHeaderOnly &&
+                outDeserializationContext != null &&
                 outDeserializationContext.UnserializedCacheIndexInternal != null &&
                 outDeserializationContext.UnserializedCacheIndexInternal.Length != 0)
             {
@@ -331,11 +380,41 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
         /// the version of the <paramref name="reader"/> data.</param>
         public void Deserialize(IPrimitiveReader reader, int version)
         {
-            //Metadata
-            ushort len = reader.ReadUInt16();
-            if (len > 0)
+            ushort len;
+
+            //Metadata or MetadataPropertyCollection
+            if (InDeserializationContext.IsMetadataPropertyCollection)
             {
-                Metadata = reader.ReadBytes(len);
+                //MetadataPropertyCollection
+                len = reader.ReadUInt16();
+                if (len > 0)
+                {
+                    MetadataPropertyCollection = new MetadataPropertyCollection();
+                    string propertyName;
+                    byte[] propertyValue;
+                    ushort propertyValueLen;
+
+                    for (ushort i = 0; i < len; i++)
+                    {
+                        propertyName = reader.ReadString();
+                        propertyValueLen = reader.ReadUInt16();
+                        propertyValue = null;
+                        if (propertyValueLen > 0)
+                        {
+                            propertyValue = reader.ReadBytes(propertyValueLen);
+                        }
+                        MetadataPropertyCollection.Add(propertyName, propertyValue);
+                    }
+                }
+            }
+            else
+            {
+                //Metadata
+                len = reader.ReadUInt16();
+                if (len > 0)
+                {
+                    Metadata = reader.ReadBytes(len);
+                }
             }
 
             //VirtualCount
@@ -354,7 +433,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                 //header info like virtual count needs to be updated keeping rest of the index untouched.
                 //InDeserializationContext.PartialByteArray shall be used in Serialize code
                 outDeserializationContext.UnserializedCacheIndexInternal =
-                    new byte[(int)reader.BaseStream.Length - (int)reader.BaseStream.Position + 1];
+                    new byte[(int)reader.BaseStream.Length - (int)reader.BaseStream.Position];
                 reader.BaseStream.Read(outDeserializationContext.UnserializedCacheIndexInternal, 0, outDeserializationContext.UnserializedCacheIndexInternal.Length);
             }
             else
@@ -373,19 +452,19 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
 
                 #region Populate InternalItemList
 
-                byte[] itemId;
                 InternalItem internalItem;
                 bool enterConditionPassed = false;
 
                 InternalItemList = new InternalItemList();
+                GroupByResult = new GroupByResult(new BaseComparer(InDeserializationContext.PrimarySortInfo.IsTag, InDeserializationContext.PrimarySortInfo.FieldName, InDeserializationContext.PrimarySortInfo.SortOrderList));
 
                 // Note: ---- Termination condition of the loop
-                // For full index extraction loop shall terminate because of condition : internalItemList.Count < actualItemCount
+                // For full index extraction loop shall terminate because of condition : internalItemList.Count + GroupByResult.Count < actualItemCount
                 // For partial index extraction loop shall terminate because of following conditions 
                 //				a)  i < InDeserializationContext.TotalCount (when no sufficient items are found) OR
                 //				b)  internalItemList.Count < actualItemCount (Item extraction cap is reached)																					
                 int i = 0;
-                while (InternalItemList.Count < actualItemCount && i < outDeserializationContext.TotalCount)
+                while (GroupByResult.Count + InternalItemList.Count < actualItemCount && i < outDeserializationContext.TotalCount)
                 {
                     i++;
 
@@ -394,7 +473,10 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                     len = reader.ReadUInt16();
                     if (len > 0)
                     {
-                        itemId = reader.ReadBytes(len);
+                        internalItem = new InternalItem
+                                           {
+                                               ItemId = reader.ReadBytes(len)
+                                           };
                     }
                     else
                     {
@@ -405,7 +487,6 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                     #endregion
 
                     #region Process IndexCondition
-
                     if (InDeserializationContext.EnterCondition != null || InDeserializationContext.ExitCondition != null)
                     {
                         #region Have Enter/Exit Condition
@@ -418,10 +499,16 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                             {
                                 #region enter condition processing
 
-                                if (InDeserializationContext.EnterCondition.Process(itemId))
+                                if (FilterPassed(internalItem, InDeserializationContext.EnterCondition))
                                 {
+                                    if (InDeserializationContext.ExitCondition != null && !FilterPassed(internalItem, InDeserializationContext.ExitCondition))
+                                    {
+                                        // no need to search beyond this point
+                                        break;
+                                    }
+
                                     enterConditionPassed = true;
-                                    internalItem = DeserializeInternalItem(itemId, InDeserializationContext, reader);
+                                    DeserializeTags(internalItem, InDeserializationContext, OutDeserializationContext, reader);
                                     ApplyFilterAndAddItem(internalItem);
                                 }
                                 else
@@ -436,10 +523,10 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                             {
                                 #region exit condition processing
 
-                                if (InDeserializationContext.ExitCondition.Process(itemId))
+                                if (FilterPassed(internalItem, InDeserializationContext.ExitCondition))
                                 {
                                     // since item passed exit filter, we keep it.
-                                    internalItem = DeserializeInternalItem(itemId, InDeserializationContext, reader);
+                                    DeserializeTags(internalItem, InDeserializationContext, OutDeserializationContext, reader);
                                     ApplyFilterAndAddItem(internalItem);
                                 }
                                 else
@@ -454,7 +541,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                             {
                                 #region enter condition processing when no exit condition exists
 
-                                internalItem = DeserializeInternalItem(itemId, InDeserializationContext, reader);
+                                DeserializeTags(internalItem, InDeserializationContext, OutDeserializationContext, reader);
                                 ApplyFilterAndAddItem(internalItem);
 
                                 #endregion
@@ -464,11 +551,12 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                         }
                         else
                         {
-                            byte[] tagValue;
+                            #region Sort by Tag
 
                             #region Deserialize InternalItem and fetch PrimarySortTag value
 
-                            internalItem = DeserializeInternalItem(itemId, InDeserializationContext, reader);
+                            byte[] tagValue;
+                            DeserializeTags(internalItem, InDeserializationContext, OutDeserializationContext, reader);
                             if (!internalItem.TryGetTagValue(InDeserializationContext.PrimarySortInfo.FieldName, out tagValue))
                             {
                                 throw new Exception("PrimarySortTag Not found:  " + InDeserializationContext.PrimarySortInfo.FieldName);
@@ -476,17 +564,21 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
 
                             #endregion
 
-                            #region Sort by Tag
-
                             if (InDeserializationContext.EnterCondition != null && enterConditionPassed == false)
                             {
                                 #region enter condition processing
 
-                                if (InDeserializationContext.EnterCondition.Process(tagValue))
+                                if (FilterPassed(internalItem, InDeserializationContext.EnterCondition))
                                 {
+                                    if (InDeserializationContext.ExitCondition != null && !FilterPassed(internalItem, InDeserializationContext.ExitCondition))
+                                    {
+                                        // no need to search beyond this point
+                                        break;
+                                    }
+
                                     enterConditionPassed = true;
                                     ApplyFilterAndAddItem(internalItem);
-                                }
+                                }                               
 
                                 #endregion
                             }
@@ -494,8 +586,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                             {
                                 #region exit condition processing
 
-                                if (InDeserializationContext.ExitCondition.Process(tagValue))
-                                {
+                                if (FilterPassed(internalItem, InDeserializationContext.ExitCondition))
+                                {                                
                                     // since item passed exit filter, we keep it.
                                     ApplyFilterAndAddItem(internalItem);
                                 }
@@ -526,7 +618,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                     {
                         #region No Enter/Exit Condition
 
-                        internalItem = DeserializeInternalItem(itemId, InDeserializationContext, reader);
+                        DeserializeTags(internalItem, InDeserializationContext, OutDeserializationContext, reader);
                         ApplyFilterAndAddItem(internalItem);
 
                         #endregion
@@ -557,50 +649,162 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                 byte[] tagValue;
                 if (internalItem.TryGetTagValue(InDeserializationContext.CapCondition.FieldName, out tagValue))
                 {
-                    #region  Filter Cap found for tagValue
-
                     FilterCap filterCap;
                     if (InDeserializationContext.CapCondition.FilterCaps.TryGetValue(tagValue, out filterCap))
                     {
+                        #region  Filter Cap found for tagValue
+
                         if (filterCap.Cap > 0 && FilterPassed(internalItem, GetCappedOrParentFilter(filterCap)))
                         {
                             filterCap.Cap--;
-                            AddItem(internalItem, false);
+                            ProcessAdditionalConstraintsAndAddItem(internalItem);
                         }
+
+                        #endregion
                     }
-
-                    #endregion
-
-                    #region Filter Cap not found for tagValue
-
-                    else if (FilterPassed(internalItem, InDeserializationContext.Filter))
+                    else if (!InDeserializationContext.CapCondition.IgnoreNonCappedItems && FilterPassed(internalItem, InDeserializationContext.Filter))
                     {
-                        AddItem(internalItem, false);
+                        #region Filter Cap not found for tagValue
+
+                        ProcessAdditionalConstraintsAndAddItem(internalItem);
+
+                        #endregion
                     }
+                }
+                else if (!InDeserializationContext.CapCondition.IgnoreNonCappedItems && FilterPassed(internalItem, InDeserializationContext.Filter))
+                {
+                    #region Apply parent filter
+
+                    ProcessAdditionalConstraintsAndAddItem(internalItem);
 
                     #endregion
                 }
-
-                #region Apply parent filter
-
-                else if (FilterPassed(internalItem, InDeserializationContext.Filter))
-                {
-                    AddItem(internalItem, false);
-                }
-
-                #endregion
 
                 #endregion
             }
-
-            #region CapCondition Doesn't  Exist
-
             else if (FilterPassed(internalItem, InDeserializationContext.Filter))
+            {
+                #region CapCondition Doesn't  Exist
+
+                ProcessAdditionalConstraintsAndAddItem(internalItem);
+
+                #endregion
+            }
+        }
+
+        /// <summary>
+        /// Processes the additional constraints and add item.
+        /// </summary>
+        /// <param name="internalItem">The internal item.</param>
+        private void ProcessAdditionalConstraintsAndAddItem(InternalItem internalItem)
+        {
+            // Domain specific processing
+            if (InDeserializationContext.DomainSpecificProcessingType != DomainSpecificProcessingType.None)
+            {
+                DomainSpecificProcssorUtil.Process(internalItem,
+                    InDeserializationContext.TagHashCollection,
+                    InDeserializationContext.TypeId,
+                    InDeserializationContext.DomainSpecificProcessingType,
+                    InDeserializationContext.DomainSpecificConfig);
+            }
+
+            //GroupBy
+            if (InDeserializationContext.GroupBy != null)
+            {
+                ApplyGroupBy(internalItem);
+            }
+            else
             {
                 AddItem(internalItem, false);
             }
+        }
 
-            #endregion
+        /// <summary>
+        /// Applies the grouping.
+        /// </summary>
+        /// <param name="internalItem">The internal item.</param>
+        internal void ApplyGroupBy(InternalItem internalItem)
+        {
+            ResultItem resultItem = new ResultItem(InDeserializationContext.IndexId,
+                internalItem.ItemId,
+                null,
+                InternalItemAdapter.ConvertToTagDictionary(internalItem.TagList, InDeserializationContext));
+
+            byte[] compositeKey;
+            //Check if GroupBy needs to be applied
+            if (String.IsNullOrEmpty(InDeserializationContext.GroupBy.FieldName))
+            {
+                compositeKey = GetCompositeKey(internalItem,
+                                               InDeserializationContext.GroupBy.GroupByFieldNameList);
+            }
+            else
+            {
+                byte[] fieldValue;
+                if (String.Compare(InDeserializationContext.GroupBy.FieldName, "ItemId", true) == 0)
+                {
+                    fieldValue = internalItem.ItemId;
+                }
+                else
+                {
+                    internalItem.TryGetTagValue(InDeserializationContext.GroupBy.FieldName, out fieldValue);
+                }
+
+                compositeKey = fieldValue != null &&
+                                      InDeserializationContext.GroupBy.FieldValueSet.Contains(fieldValue)
+                                          ? GetCompositeKey(internalItem,
+                                                            InDeserializationContext.GroupBy.GroupByFieldNameList)
+                                          : GetCompositeKey(internalItem,
+                                                            InDeserializationContext.GroupBy.NonGroupByFieldNameList);
+            }
+            GroupByResult.Add(compositeKey, resultItem);
+        }
+
+        /// <summary>
+        /// Gets the composite key.
+        /// </summary>
+        /// <param name="internalItem">The internal item.</param>
+        /// <param name="fieldNameList">The field name list.</param>
+        /// <returns></returns>
+        private static byte[] GetCompositeKey(InternalItem internalItem, List<string> fieldNameList)
+        {
+            byte[] compositeKey;
+            List<byte[]> compositeKeyPartList = new List<byte[]>(fieldNameList.Count);
+            int totalByteLength = 0;
+            byte[] compositeKeyPart;
+            string fieldName;
+            for (int i = 0; i < fieldNameList.Count; i++)
+            {
+                fieldName = fieldNameList[i];
+
+                if (!string.IsNullOrEmpty(fieldName))
+                {
+                    if (String.Compare(fieldName, "ItemId", true) == 0)
+                    {
+                        compositeKeyPart = internalItem.ItemId;
+                    }
+                    else
+                    {
+                        internalItem.TryGetTagValue(fieldName, out compositeKeyPart);
+                    }
+
+                    if (compositeKeyPart != null && compositeKeyPart.Length > 0)
+                    {
+                        totalByteLength += compositeKeyPart.Length;
+                        compositeKeyPartList.Add(compositeKeyPart);
+                    }
+                }
+            }
+
+            compositeKey = new byte[totalByteLength];
+            int offset = 0;
+
+            for (int i = 0; i < compositeKeyPartList.Count; i++)
+            {
+                compositeKeyPart = compositeKeyPartList[i];
+                Buffer.BlockCopy(compositeKeyPart, 0, compositeKey, offset, compositeKeyPart.Length);
+                offset += compositeKeyPart.Length;
+            }
+            return compositeKey;
         }
 
         /// <summary>
@@ -616,18 +820,20 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
         /// <summary>
         /// Deserializes the internal item.
         /// </summary>
-        /// <param name="itemId">The item id.</param>
+        /// <param name="internalItem">The internal item</param>
         /// <param name="inDeserializationContext">The in deserialization context.</param>
+        /// <param name="outDeserializationContext">The out deserialization context.</param>
         /// <param name="reader">The reader.</param>
-        /// <returns>InternalItem</returns>
-        private static InternalItem DeserializeInternalItem(byte[] itemId, InDeserializationContext inDeserializationContext, IPrimitiveReader reader)
+        private static void DeserializeTags(InternalItem internalItem,
+            InDeserializationContext inDeserializationContext,
+            OutDeserializationContext outDeserializationContext,
+            IPrimitiveReader reader)
         {
             byte kvpListCount = reader.ReadByte();
 
-            List<KeyValuePair<int, byte[]>> kvpList = null;
             if (kvpListCount > 0)
             {
-                kvpList = new List<KeyValuePair<int, byte[]>>(kvpListCount);
+                internalItem.TagList = new List<KeyValuePair<int, byte[]>>(kvpListCount);
                 for (byte j = 0; j < kvpListCount; j++)
                 {
                     int tagHashCode = reader.ReadInt32();
@@ -640,15 +846,38 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                             inDeserializationContext.StringHashCodeDictionary.Count > 0 &&
                             inDeserializationContext.StringHashCodeDictionary.ContainsKey(tagHashCode))
                         {
-                            tagValue =
-                                inDeserializationContext.StringHashCollection.GetStringByteArray(
-                                    inDeserializationContext.TypeId, tagValue);
+                            tagValue = inDeserializationContext.StringHashCollection.GetStringByteArray(inDeserializationContext.TypeId, tagValue);
                         }
                     }
-                    kvpList.Add(new KeyValuePair<int, byte[]>(tagHashCode, tagValue));
+                    internalItem.TagList.Add(new KeyValuePair<int, byte[]>(tagHashCode, tagValue));
                 }
             }
-            return new InternalItem { ItemId = itemId, TagList = kvpList };
+
+            //Get Distinct Values
+            if (!String.IsNullOrEmpty(inDeserializationContext.GetDistinctValuesFieldName))
+            {
+                byte[] distinctValue;
+                if (String.Equals(inDeserializationContext.GetDistinctValuesFieldName, "ItemId", StringComparison.OrdinalIgnoreCase))
+                {
+                    distinctValue = internalItem.ItemId;
+                }
+                else
+                {
+                    internalItem.TryGetTagValue(inDeserializationContext.GetDistinctValuesFieldName, out distinctValue);
+                }
+
+                if (distinctValue != null)
+                {
+                    if (outDeserializationContext.DistinctValueCountMapping.ContainsKey(distinctValue))
+                    {
+                        outDeserializationContext.DistinctValueCountMapping[distinctValue] += 1;
+                    }
+                    else
+                    {
+                        outDeserializationContext.DistinctValueCountMapping.Add(distinctValue, 1);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -687,7 +916,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Store
                 if (!FilterUtil.ProcessFilter(internalItem,
                     filter,
                     InDeserializationContext.InclusiveFilter,
-                    InDeserializationContext.TagHashCollection))
+                    InDeserializationContext.TagHashCollection,
+                    InDeserializationContext.IsMetadataPropertyCollection ? MetadataPropertyCollection : InDeserializationContext.MetadataPropertyCollection))
                 {
                     retVal = false;
                     if (InDeserializationContext.CollectFilteredItems)

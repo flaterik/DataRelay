@@ -229,7 +229,7 @@ namespace MySpace.SocketTransport
 		/// </summary>
 		public void Dispose()
 		{
-			_socketPool.Pool.Dispose();
+			_socketPool.Pool.Clear();
 		}
 
 		#endregion

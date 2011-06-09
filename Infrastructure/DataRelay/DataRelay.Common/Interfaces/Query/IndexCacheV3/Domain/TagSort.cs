@@ -1,126 +1,108 @@
-﻿using MySpace.Common;
+﻿using System.Text;
+using MySpace.Common;
 using MySpace.Common.IO;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
-	public class TagSort : IVersionSerializable
-	{
-		#region Data Members
-		private string tagName;
-		public string TagName
-		{
-			get
-			{
-				return tagName;
-			}
-			set
-			{
-				tagName = value;
-			}
-		}
+    public class TagSort : IVersionSerializable
+    {
+        #region Data Members
 
-		private bool isTag;
-		public bool IsTag
-		{
-			get 
-			{ 
-				return isTag; 
-			}
-			set 
-			{ 
-				isTag = value; 
-			}
-		}
+        public string TagName { get; set; }
 
-		private SortOrder sortOrder;
-		public SortOrder SortOrder
-		{
-			get 
-			{ 
-				return sortOrder; 
-			}
-			set 
-			{ 
-				sortOrder = value; 
-			}
-		}
+        public bool IsTag { get; set; }
 
-		#endregion
+        public SortOrder SortOrder { get; set; }
 
-		#region Ctors
-		public TagSort()
-		{
-			Init(null, true, null);
-		}
+        #endregion
 
-		public TagSort(string tagName, SortOrder sortOrder)
-		{
-			Init(tagName, true, sortOrder);
-		}
+        #region Ctors
+        public TagSort()
+        {
+            Init(null, true, null);
+        }
 
-		public TagSort(string tagName, bool isTag, SortOrder sortOrder)
-		{
-			Init(tagName, isTag, sortOrder);
-		}
+        public TagSort(string tagName, SortOrder sortOrder)
+        {
+            Init(tagName, true, sortOrder);
+        }
 
-		private void Init(string tagName, bool isTag, SortOrder sortOrder)
-		{
-			this.tagName = tagName;
-			this.isTag = isTag;
-			this.sortOrder = sortOrder;
-		}
-		#endregion
+        public TagSort(string tagName, bool isTag, SortOrder sortOrder)
+        {
+            Init(tagName, isTag, sortOrder);
+        }
 
-		#region IVersionSerializable Members
-		public void Serialize(IPrimitiveWriter writer)
-		{
-			//TagName
-			writer.Write(tagName);
+        private void Init(string tagName, bool isTag, SortOrder sortOrder)
+        {
+            this.TagName = tagName;
+            this.IsTag = isTag;
+            this.SortOrder = sortOrder;
+        }
+        #endregion
 
-			//IsTag
-			writer.Write(isTag);
+        #region Methods
 
-			//SortOrder
-			sortOrder.Serialize(writer);
-		}
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            stb.Append("(").Append("TagName: ").Append(TagName).Append("),");
+            stb.Append("(").Append("IsTag: ").Append(IsTag).Append("),");
+            stb.Append("(").Append("SortOrder: ").Append(SortOrder.ToString()).Append("),");
+            return stb.ToString();
+        }
 
-		public void Deserialize(IPrimitiveReader reader, int version)
-		{
-			Deserialize(reader);
-		}
+        #endregion
 
-		public int CurrentVersion
-		{
-			get
-			{
-				return 1;
-			}
-		}
+        #region IVersionSerializable Members
+        public void Serialize(IPrimitiveWriter writer)
+        {
+            //TagName
+            writer.Write(TagName);
 
-		public bool Volatile
-		{
-			get
-			{
-				return false;
-			}
-		}
-		#endregion
+            //IsTag
+            writer.Write(IsTag);
 
-		#region ICustomSerializable Members
+            //SortOrder
+            SortOrder.Serialize(writer);
+        }
 
-		public void Deserialize(IPrimitiveReader reader)
-		{
-			//TagName
-			tagName = reader.ReadString();
+        public void Deserialize(IPrimitiveReader reader, int version)
+        {
+            Deserialize(reader);
+        }
 
-			//IsTag
-			isTag = reader.ReadBoolean();
+        public int CurrentVersion
+        {
+            get
+            {
+                return 1;
+            }
+        }
 
-			//SortOrder
-			sortOrder = new SortOrder();
-			sortOrder.Deserialize(reader);
-		}
+        public bool Volatile
+        {
+            get
+            {
+                return false;
+            }
+        }
+        #endregion
 
-		#endregion
-	}
+        #region ICustomSerializable Members
+
+        public void Deserialize(IPrimitiveReader reader)
+        {
+            //TagName
+            TagName = reader.ReadString();
+
+            //IsTag
+            IsTag = reader.ReadBoolean();
+
+            //SortOrder
+            SortOrder = new SortOrder();
+            SortOrder.Deserialize(reader);
+        }
+
+        #endregion
+    }
 }

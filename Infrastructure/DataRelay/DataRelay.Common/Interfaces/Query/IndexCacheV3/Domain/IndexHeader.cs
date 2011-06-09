@@ -5,36 +5,19 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
     public class IndexHeader : IVersionSerializable
     {
+
         #region Data Members
 
-        private byte[] metadata;
-        public byte[] Metadata
-        {
-            get
-            {
-                return metadata;
-            }
-            set
-            {
-                metadata = value;
-            }
-        }
+        public byte[] Metadata { get; set; }
 
-        private int virtualCount;
-        public int VirtualCount
-        {
-            get
-            {
-                return virtualCount;
-            }
-            set
-            {
-                virtualCount = value;
-            }
-        }
+        public MetadataPropertyCollection MetadataPropertyCollection { get; set; }
+
+        public int VirtualCount { get; set; }
+
         #endregion
 
         #region Ctors
+
         public IndexHeader()
         {
             Init(null, -1);
@@ -47,27 +30,40 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
         private void Init(byte[] metadata, int virtualCount)
         {
-            this.metadata = metadata;
-            this.virtualCount = virtualCount;
+            Metadata = metadata;
+            VirtualCount = virtualCount;
         }
+
         #endregion
 
         #region IVersionSerializable Members
+
         public void Serialize(IPrimitiveWriter writer)
         {
             //Metadata
-            if (metadata == null || metadata.Length == 0)
+            if (Metadata == null || Metadata.Length == 0)
             {
                 writer.Write((ushort)0);
             }
             else
             {
-                writer.Write((ushort)metadata.Length);
-                writer.Write(metadata);
+                writer.Write((ushort)Metadata.Length);
+                writer.Write(Metadata);
             }
 
             //VirtualCount
-            writer.Write(virtualCount);
+            writer.Write(VirtualCount);
+
+            //MetadataPropertyCollection
+            if (MetadataPropertyCollection == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, MetadataPropertyCollection);
+            }
         }
 
         public void Deserialize(IPrimitiveReader reader, int version)
@@ -76,14 +72,24 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             ushort len = reader.ReadUInt16();
             if (len > 0)
             {
-                metadata = reader.ReadBytes(len);
+                Metadata = reader.ReadBytes(len);
             }
 
             //VirtualCount
-            virtualCount = reader.ReadInt32();
+            VirtualCount = reader.ReadInt32();
+
+            if (version >= 2)
+            {
+                //MetadataPropertyCollection
+                if (reader.ReadBoolean())
+                {
+                    MetadataPropertyCollection = new MetadataPropertyCollection();
+                    Serializer.Deserialize(reader.BaseStream, MetadataPropertyCollection);
+                }
+            }
         }
 
-        private const int CURRENT_VERSION = 1;
+        private const int CURRENT_VERSION = 2;
         public int CurrentVersion
         {
             get
@@ -99,6 +105,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return false;
             }
         }
+
         #endregion
 
         #region ICustomSerializable Members

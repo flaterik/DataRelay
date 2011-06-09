@@ -23,6 +23,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             ContainsIndexQueryResult containsIndexQueryResult;
             MultiItemResult multiItemResult = null;
             byte[] metadata = null;
+            MetadataPropertyCollection metadataPropertyCollection = null;
             bool indexExists = false;
             int indexSize = -1;
             int virtualCount = -1;
@@ -33,7 +34,12 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection[messageContext.TypeId];
 
                 #region Check TargetIndexName
-                
+
+                if (string.IsNullOrEmpty(containsIndexQuery.TargetIndexName))
+                {
+                    containsIndexQuery.TargetIndexName = IndexServerUtils.CheckQueryTargetIndexName(indexTypeMapping);
+                }
+
                 if (!indexTypeMapping.IndexCollection.Contains(containsIndexQuery.TargetIndexName))
                 {
                     throw new Exception("Invalid TargetIndexName - " + containsIndexQuery.TargetIndexName);
@@ -42,6 +48,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 #endregion
 
                 Index targetIndexInfo = indexTypeMapping.IndexCollection[containsIndexQuery.TargetIndexName];
+                int indexCap = targetIndexInfo.MaxIndexSize;
                 List<CacheIndexInternal> internalCacheIndexList = new List<CacheIndexInternal>();
 
                 #region Get TargetIndex
@@ -61,7 +68,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     targetIndexInfo.PrimarySortInfo,
                     targetIndexInfo.LocalIdentityTagList,
                     targetIndexInfo.StringHashCodeDictionary,
-                    null);
+                    null,
+                    targetIndexInfo.IsMetadataPropertyCollection,
+                    null,
+                    containsIndexQuery.DomainSpecificProcessingType,
+                    storeContext.DomainSpecificConfig,
+                    null,
+                    null,
+                    false);
                 
                 #endregion
 
@@ -127,7 +141,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                                                                indexInfo.PrimarySortInfo,
                                                                                indexInfo.LocalIdentityTagList,
                                                                                indexInfo.StringHashCodeDictionary,
-                                                                               null);
+                                                                               null,
+                                                                               indexInfo.IsMetadataPropertyCollection,
+                                                                               null,
+                                                                               containsIndexQuery.DomainSpecificProcessingType,
+                                                                               storeContext.DomainSpecificConfig,
+                                                                               null,
+                                                                               null,
+                                                                               false);
 
                                     if (indexInternal != null)
                                     {
@@ -205,21 +226,39 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     
                     if (containsIndexQuery.GetMetadata)
                     {
-                        metadata = IndexServerUtils.GetQueryMetadata(internalCacheIndexList,
-                            indexTypeMapping,
-                            messageContext.TypeId,
-                            messageContext.PrimaryId,
-                            containsIndexQuery.IndexId,
-                            storeContext);
+                        if (indexTypeMapping.MetadataStoredSeperately)
+                        {
+                            IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping,
+                                messageContext.TypeId,
+                                messageContext.PrimaryId,
+                                containsIndexQuery.IndexId,
+                                storeContext,
+                                out metadata,
+                                out metadataPropertyCollection);
+                        }
+                        else
+                        {
+                            IndexServerUtils.GetMetadataStoredWithIndex(indexTypeMapping,
+                                internalCacheIndexList,
+                                out metadata,
+                                out metadataPropertyCollection);
+                        }
                     }
                     
                     #endregion
                 }
-                containsIndexQueryResult = new ContainsIndexQueryResult(multiItemResult, metadata, indexSize, indexExists, virtualCount, null);
+                containsIndexQueryResult = new ContainsIndexQueryResult(multiItemResult, 
+                    metadata,
+                    metadataPropertyCollection, 
+                    indexSize, 
+                    indexExists, 
+                    virtualCount, 
+                    indexCap,
+                    null);
             }
             catch (Exception ex)
             {
-                containsIndexQueryResult = new ContainsIndexQueryResult(null, null, -1, false, -1, ex.Message);
+                containsIndexQueryResult = new ContainsIndexQueryResult(null, null, null, -1, false, -1, 0, ex.Message);
                 LoggingUtil.Log.ErrorFormat("TypeId {0} -- Error processing ContainsIndexQuery : {1}", messageContext.TypeId, ex);
             }
             return containsIndexQueryResult;

@@ -1,13 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 using MySpace.Common;
 using MySpace.Common.IO;
+using Wintellect.PowerCollections;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
-    public abstract class BaseMultiIndexIdQuery<TQueryResult> : 
+    public abstract class BaseMultiIndexIdQuery<TQueryResult> :
         IIndexIdParam,
         IPrimaryRelayMessageQuery,
-        ISplitable<TQueryResult> where TQueryResult : BaseMultiIndexIdQueryResult, new()
+        ICloneable,
+        ISplitable<TQueryResult>
+        where TQueryResult : BaseMultiIndexIdQueryResult, new()
     {
         #region Data Members
         /// <summary>
@@ -15,7 +20,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public string TargetIndexName
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -23,7 +29,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public List<string> TagsFromIndexes
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -31,7 +38,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public TagSort TagSort
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -39,7 +47,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public List<byte[]> IndexIdList
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -47,7 +56,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public int MaxItems
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -55,7 +65,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public bool ExcludeData
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -78,7 +89,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         internal bool GetAdditionalAvailableItemCount
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -86,7 +98,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public List<int> PrimaryIdList
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -94,7 +107,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public Filter Filter
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -102,7 +116,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public IndexCondition IndexCondition
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -110,7 +125,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public Dictionary<byte[] /*IndexId*/, IndexIdParams /*IndexIdParams*/> IndexIdParamsMapping
         {
-            get; internal set;
+            get;
+            internal set;
         }
 
         /// <summary>
@@ -118,15 +134,17 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public FullDataIdInfo FullDataIdInfo
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
         /// If set individual caps can be set on the query conditions
         /// </summary>
         public CapCondition CapCondition
-        { 
-            get; set;
+        {
+            get;
+            set;
         }
 
         /// <summary>
@@ -134,7 +152,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         public GetIndexHeaderType GetIndexHeaderType
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -142,7 +161,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// </summary>
         internal bool ClientSideSubsetProcessingRequired
         {
-            get; set;
+            get;
+            set;
         }
 
         /// <summary>
@@ -152,19 +172,39 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         {
             get;
         }
-        
+
+        /// <summary>
+        /// Gets or sets the type of the domain specific processing.
+        /// </summary>
+        /// <value>The type of the domain specific processing.</value>
+        public DomainSpecificProcessingType DomainSpecificProcessingType
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the GroupBy clause.
+        /// </summary>
+        /// <value>The GroupBy clause.</value>
+        public GroupBy GroupBy
+        {
+            get;
+            set;
+        }
+
         #endregion
 
         #region Ctors
 
         protected BaseMultiIndexIdQuery()
         {
-            Init(null, null, null, null, null, -1, false, false, null, false, null, null, null, false, null, GetIndexHeaderType.None);
+            Init(null, null, null, null, null, -1, false, false, null, false, null, null, null, false, null, GetIndexHeaderType.None, DomainSpecificProcessingType.None, null);
         }
 
         protected BaseMultiIndexIdQuery(BaseMultiIndexIdQuery<TQueryResult> baseMultiIndexIdQuery)
         {
-            Init(baseMultiIndexIdQuery.IndexIdList, 
+            Init(baseMultiIndexIdQuery.IndexIdList,
                 baseMultiIndexIdQuery.PrimaryIdList,
                 baseMultiIndexIdQuery.TargetIndexName,
                 baseMultiIndexIdQuery.TagsFromIndexes,
@@ -179,11 +219,13 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 baseMultiIndexIdQuery.IndexCondition,
                 baseMultiIndexIdQuery.ClientSideSubsetProcessingRequired,
                 baseMultiIndexIdQuery.CapCondition,
-                baseMultiIndexIdQuery.GetIndexHeaderType);
+                baseMultiIndexIdQuery.GetIndexHeaderType,
+                baseMultiIndexIdQuery.DomainSpecificProcessingType,
+                baseMultiIndexIdQuery.GroupBy);
         }
 
-        private void Init(List<byte[]> indexIdList, 
-            List<int> primaryIdList, 
+        private void Init(List<byte[]> indexIdList,
+            List<int> primaryIdList,
             string targetIndexName,
             List<string> tagsFromIndexes,
             TagSort tagSort,
@@ -197,7 +239,9 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             IndexCondition indexCondition,
             bool clientSideSubsetProcessingRequired,
             CapCondition capCondition,
-            GetIndexHeaderType getIndexHeaderType)
+            GetIndexHeaderType getIndexHeaderType,
+            DomainSpecificProcessingType domainSpecificProcessingType,
+            GroupBy groupBy)
         {
             IndexIdList = indexIdList;
             PrimaryIdList = primaryIdList;
@@ -215,6 +259,8 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             ClientSideSubsetProcessingRequired = clientSideSubsetProcessingRequired;
             CapCondition = capCondition;
             GetIndexHeaderType = getIndexHeaderType;
+            DomainSpecificProcessingType = domainSpecificProcessingType;
+            GroupBy = groupBy;
         }
 
         #endregion
@@ -262,19 +308,97 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 IndexIdParamsMapping.Remove(indexId);
             }
         }
+
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            
+            stb.Append("(").Append("TargetIndexName: ").Append(TargetIndexName).Append("),");
+            
+            stb.Append("(").Append("TagsFromIndexes Count: ").Append(TagsFromIndexes == null ? "Null" : TagsFromIndexes.Count.ToString());
+            if (TagsFromIndexes != null && TagsFromIndexes.Count > 0)
+            {
+                foreach (var indexName in TagsFromIndexes)
+                {
+                    stb.Append("(").Append(" IndexName: ").Append(indexName).Append("),");
+                }
+            }
+            stb.Append("),");
+            
+            stb.Append("(").Append("TagSort: ").Append(TagSort == null ? "Null" : TagSort.ToString()).Append("),");
+            
+            stb.Append("(").Append("IndexIdList Count: ").Append(IndexIdList == null ? "Null" : IndexIdList.Count.ToString());
+            if (IndexIdList != null && IndexIdList.Count > 0)
+            {
+                foreach (var indexId in IndexIdList)
+                {
+                    stb.Append("(").Append(" IndexId: ").Append(IndexCacheUtils.GetReadableByteArray(indexId)).Append("),");
+                }
+            }
+            stb.Append("),");
+            
+            stb.Append("(").Append("MaxItems: ").Append(MaxItems).Append("),");
+            
+            stb.Append("(").Append("ExcludeData: ").Append(ExcludeData).Append("),");
+           
+            stb.Append("(").Append("GetIndexHeader: ").Append(GetIndexHeader).Append("),");
+            
+            stb.Append("(").Append("GetAdditionalAvailableItemCount: ").Append(GetAdditionalAvailableItemCount).Append("),");
+            
+            stb.Append("(").Append("PrimaryIdList").Append(PrimaryIdList == null ? "Null" : PrimaryIdList.Count.ToString());
+            if (PrimaryIdList != null && PrimaryIdList.Count > 0)
+            {
+                foreach (var primaryId in PrimaryIdList)
+                {
+                    stb.Append("(").Append("PrimaryId: ").Append(primaryId).Append("),");
+                }
+            }
+            stb.Append("),");
+
+            if (Filter == null)
+            {
+                stb.Append("(").Append("Total Filter Count: ").Append(0);
+            }
+            else
+            {
+                stb.Append("(").Append("Total Filter Count: ").Append(Filter.FilterCount).Append(" ").Append("Filter Info - ").Append(Filter.ToString());
+            }
+            stb.Append("),");
+            stb.Append("(").Append("IndexCondition: ").Append(IndexCondition == null ? "Null" : IndexCondition.ToString()).Append("),");
+            stb.Append("(").Append("IndexIdParamsMapping Count: ").Append(IndexIdParamsMapping == null ? "Null" : IndexIdParamsMapping.Count.ToString());
+            if (IndexIdParamsMapping != null && IndexIdParamsMapping.Count > 0)
+            {
+                foreach (var indexIdParam in IndexIdParamsMapping)
+                {
+                    stb.Append("(");
+                    stb.Append("(").Append(" IndexId: ").Append(IndexCacheUtils.GetReadableByteArray(indexIdParam.Key)).Append("),");
+                    stb.Append("(").Append("IndexIdParams: ").Append(indexIdParam.Value).Append("),");
+                    stb.Append("),");
+                }
+            }
+            stb.Append("),");
+            stb.Append("(").Append("CapCondition: ").Append(CapCondition == null ? "Null" : CapCondition.ToString()).Append("),");
+            stb.Append("(").Append("GetIndexHeaderType: ").Append(GetIndexHeaderType.ToString()).Append("),");
+            stb.Append("(").Append("ClientSideSubsetProcessingRequired: ").Append(ClientSideSubsetProcessingRequired).Append("),");
+            stb.Append("(").Append("MaxMergeCount: ").Append(MaxMergeCount).Append("),");
+            stb.Append("(").Append("DomainSpecificProcessingType: ").Append(DomainSpecificProcessingType).Append("),");
+            stb.Append("(").Append("GroupBy: ").Append(GroupBy == null ? "Null" : GroupBy.ToString()).Append("),");
+
+            return stb.ToString();
+        }
         #endregion
 
         #region IRelayMessageQuery Members
-        
+
         public abstract byte QueryId
         {
             get;
         }
-        
+
         #endregion
 
         #region IVersionSerializable Members
-        
+
         public abstract int CurrentVersion
         {
             get;
@@ -295,12 +419,12 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         #endregion
 
         #region ICustomSerializable Members
-        
+
         public void Deserialize(IPrimitiveReader reader)
         {
             reader.Response = SerializationResponse.Unhandled;
         }
-        
+
         #endregion
 
         #region IPrimaryQueryId Members
@@ -308,32 +432,129 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         /// <summary>
         /// assign -1 to primaryId field as the initial value
         /// </summary>
-        protected int primaryId = IndexCacheUtils.MUTILEINDEXQUERYDEFAULTPRIMARYID;
+        protected int primaryId = IndexCacheUtils.MULTIINDEXQUERY_DEFAULT_PRIMARYID;
 
         public virtual int PrimaryId
         {
             get
             {
-                return this.primaryId;
-            } 
-            
+                return primaryId;
+            }
+
             set
             {
-                this.primaryId = value;
+                primaryId = value;
             }
         }
-        
+
         #endregion
 
         #region ISplitable<TQueryResult> Members
-        
-        public abstract List<IPrimaryRelayMessageQuery> SplitQuery(int numClustersInGroup);
+
+        public virtual List<IPrimaryRelayMessageQuery> SplitQuery(int numClustersInGroup)
+        {
+            BaseMultiIndexIdQuery<TQueryResult> query;
+
+            List<IPrimaryRelayMessageQuery> queryList = new List<IPrimaryRelayMessageQuery>();
+            Dictionary<int /*cluster number*/, Triple<List<byte[]>, List<int>, Dictionary<byte[], IndexIdParams>>> clusterParamsMapping;
+
+            IndexCacheUtils.SplitIndexIdsByCluster(IndexIdList,
+                PrimaryIdList,
+                IndexIdParamsMapping,
+                numClustersInGroup,
+                out clusterParamsMapping);
+
+            int mappingClusterCount = clusterParamsMapping.Count;
+
+            ClientSideSubsetProcessingRequired =
+                (numClustersInGroup > 1 && IndexIdList.Count > 1 && mappingClusterCount > 1);
+
+            Triple<List<byte[]> /*index id list*/ , List<int> /*Primary id list*/, Dictionary<byte[], IndexIdParams> /*IndexId Params Mapping*/ > value;
+
+            for (int i = 0; i < numClustersInGroup && queryList.Count < mappingClusterCount; i++)
+            {
+                if (clusterParamsMapping.TryGetValue(i, out value) == false)
+                    continue;
+
+                query = (BaseMultiIndexIdQuery<TQueryResult>)Clone();
+
+                query.PrimaryId = i;
+                query.IndexIdList = value.First;
+                query.PrimaryIdList = value.Second;
+                query.IndexIdParamsMapping = value.Third;
+
+                queryList.Add(query);
+            }
+
+            return queryList;
+        }
+
+        public virtual List<IPrimaryRelayMessageQuery> SplitQuery(int numClustersInGroup,
+            int localClusterPosition,
+            out IPrimaryRelayMessageQuery localQuery)
+        {
+            BaseMultiIndexIdQuery<TQueryResult> query;
+
+            List<IPrimaryRelayMessageQuery> queryList = new List<IPrimaryRelayMessageQuery>();
+            Dictionary<int /*cluster number*/, Triple<List<byte[]>, List<int>, Dictionary<byte[], IndexIdParams>>> clusterParamsMapping;
+
+            localQuery = null;
+
+            IndexCacheUtils.SplitIndexIdsByCluster(
+                IndexIdList,
+                PrimaryIdList,
+                IndexIdParamsMapping,
+                numClustersInGroup,
+                out clusterParamsMapping);
+
+            int mappingClusterCount = clusterParamsMapping.Count;
+            int queryCount = 0;
+
+            ClientSideSubsetProcessingRequired =
+                (numClustersInGroup > 1 && IndexIdList.Count > 1 && mappingClusterCount > 1);
+
+            Triple<List<byte[]> /*index id list*/, List<int> /*primary id list*/, Dictionary<byte[], IndexIdParams> /*index id parms*/ > value;
+
+            for (int i = 0; i < numClustersInGroup; i++)
+            {
+                if (clusterParamsMapping.TryGetValue(i, out value) == false)
+                    continue;
+
+                query = (BaseMultiIndexIdQuery<TQueryResult>)Clone();
+
+                query.PrimaryId = i;
+                query.IndexIdList = value.First;
+                query.PrimaryIdList = value.Second;
+                query.IndexIdParamsMapping = value.Third;
+                query.ExcludeData = true;               // dont retrieve data in these split queries for now
+
+                if (query.PrimaryId == localClusterPosition)
+                {
+                    localQuery = query;
+                }
+                else
+                {
+                    queryList.Add(query);
+                }
+
+                if (++queryCount == mappingClusterCount)
+                    break;
+            }
+
+            return queryList;
+        }
 
         #endregion
 
         #region IMergeableQueryResult<TQueryResult> Members
 
         public abstract TQueryResult MergeResults(IList<TQueryResult> QueryResults);
+
+        #endregion
+
+        #region ICloneable Members
+
+        public abstract object Clone();
 
         #endregion
     }

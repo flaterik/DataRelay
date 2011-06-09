@@ -20,25 +20,27 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		/// </summary>
 		public static readonly string ComponentName = "Forwarding";
 
-		private static readonly LogWrapper _log = new LogWrapper();
-		private static readonly object _reloadLock = new object(); //static because there are singletons involved
+		private static readonly LogWrapper log = new LogWrapper();
+		private static readonly object reloadLock = new object(); //static because there are singletons involved
 
 		[ThreadStatic]
-		private static AutoResetEvent _outMessageWaitHandle;
+		private static AutoResetEvent outMessageWaitHandle;
 		private static AutoResetEvent OutMessageWaitHandle
 		{
 			get
 			{
-				if (_outMessageWaitHandle == null)
+				if (outMessageWaitHandle == null)
 				{
-					_outMessageWaitHandle = new AutoResetEvent(false);
+					outMessageWaitHandle = new AutoResetEvent(false);
 				}
-				return _outMessageWaitHandle;
+				return outMessageWaitHandle;
 			}
 		}
 
 		private DateTime _initDate = DateTime.Now;
 		private RelayNodeDefinition _myNodeDefinition;
+		private ushort _myZone;
+
 		private bool _enableAsyncBulkGets;
 
 		#region IRelayComponent Members
@@ -78,17 +80,25 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					ForwardingConfig forwardingConfig = configObject as ForwardingConfig;
 					if(forwardingConfig == null)
 					{
-						if(_log.IsInfoEnabled)
+						if(log.IsInfoEnabled)
 						{
-							_log.Info("No forwarding configuration supplied. Using defaults.");
+							log.Info("No forwarding configuration supplied. Using defaults.");
 						}
 						forwardingConfig = new ForwardingConfig();
-
 					}
 					NodeManager.Initialize(config, forwardingConfig, GetErrorQueues(runState));
+					TypeSettingCollection typeSettingCollection = null;
+					if(NodeManager.Instance.Config != null)
+					{
+						if (NodeManager.Instance.Config.TypeSettings != null)
+						{
+							typeSettingCollection = NodeManager.Instance.Config.TypeSettings.TypeSettingCollection;
+						}
+					}
+					TypeSpecificStatisticsManager.Initialize(typeSettingCollection);
 					_enableAsyncBulkGets = forwardingConfig.EnableAsyncBulkGets;
 					_myNodeDefinition = NodeManager.Instance.GetMyNodeDefinition();
-                    
+					_myZone = Node.DetermineZone(_myNodeDefinition);
 					short maxTypeId = 0;
 					if(config.TypeSettings != null)
 					{
@@ -101,11 +111,13 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				else
 				{
 					NodeManager.Initialize(null, null, null);
+					TypeSpecificStatisticsManager.Initialize(null);
 				}
 			}
 			else
 			{
 				NodeManager.Initialize(null, null, null);
+				TypeSpecificStatisticsManager.Initialize(null);
 			}
 		}
 
@@ -125,7 +137,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		/// <param name="config">The config to reload</param>
 		public void ReloadConfig(RelayNodeConfig config)
 		{
-			lock (_reloadLock)
+			lock (reloadLock)
 			{
 				if (config != null)
 				{
@@ -135,17 +147,24 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 						ForwardingConfig forwardingConfig = configObject as ForwardingConfig;
 						if (forwardingConfig == null)
 						{
-							if(_log.IsInfoEnabled)
+							if(log.IsInfoEnabled)
 							{
-								_log.InfoFormat("No forwarding configuration supplied. Reloading using defaults.");
+								log.InfoFormat("No forwarding configuration supplied. Reloading using defaults.");
 							}
 							forwardingConfig = new ForwardingConfig();
 						}
 						NodeManager.Instance.ReloadConfig(config, forwardingConfig);
-						
+						if (NodeManager.Instance.Config != null)
+						{
+							if (NodeManager.Instance.Config.TypeSettings != null)
+							{
+								TypeSpecificStatisticsManager.Instance.ReloadMapping(
+									NodeManager.Instance.Config.TypeSettings.TypeSettingCollection);
+							}
+						}
 						_enableAsyncBulkGets = forwardingConfig.EnableAsyncBulkGets;
 						_myNodeDefinition = NodeManager.Instance.GetMyNodeDefinition();
-
+						_myZone = Node.DetermineZone(_myNodeDefinition);
 						short maxTypeId = 0;
 						if (config.TypeSettings != null)
 						{
@@ -157,8 +176,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					}
 					catch (Exception ex)
 					{
-						if (_log.IsErrorEnabled)
-							_log.ErrorFormat("Exception reloading config: {0}", ex);
+						if (log.IsErrorEnabled)
+							log.ErrorFormat("Exception reloading config: {0}", ex);
 					}
 				}
 			}
@@ -171,13 +190,13 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		public ComponentRunState GetRunState()
 		{
 			ComponentRunState runState = new ComponentRunState(GetComponentName());
-			Dictionary<string, Dictionary<string, MessageQueue>> errorQueues = NodeManager.Instance.GetErrorQueues();
+			Dictionary<string, Dictionary<string, ErrorQueue>> errorQueues = NodeManager.Instance.GetErrorQueues();
 			ErrorQueueState state = new ErrorQueueState {ErrorQueues = errorQueues};
 			runState.SerializedState = MySpace.Common.IO.Serializer.Serialize(state, false);
 			return runState;
 		}
 
-		private static Dictionary<string, Dictionary<string, MessageQueue>> GetErrorQueues(ComponentRunState runState)
+		private static Dictionary<string, Dictionary<string, ErrorQueue>> GetErrorQueues(ComponentRunState runState)
 		{
 			if (runState == null || runState.SerializedState == null) return null;
 
@@ -192,8 +211,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 			catch (Exception ex)
 			{
-				if (_log.IsErrorEnabled)
-					_log.ErrorFormat("Exception getting Error Queues from Run State: {0}", ex);
+				if (log.IsErrorEnabled)
+					log.ErrorFormat("Exception getting Error Queues from Run State: {0}", ex);
 				return null;
 			}
 		}
@@ -221,16 +240,17 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		/// </summary>
 		public void Shutdown()
 		{
-			if (_log.IsInfoEnabled)
-				_log.Info("Relay Forwarder shutting down.");
+			if (log.IsInfoEnabled)
+				log.Info("Relay Forwarder shutting down.");
 			NodeManager.Instance.Shutdown();
-			if (_log.IsInfoEnabled)
-				_log.Info("Relay Forwarder shutdown complete.");
+			TypeSpecificStatisticsManager.Instance.Shutdown();
+			if (log.IsInfoEnabled)
+				log.Info("Relay Forwarder shutdown complete.");
 		}
 
 		#endregion
 
-		private void SetHydrationPolicy(RelayMessage message)
+		private static void SetHydrationPolicy(RelayMessage message)
 		{
 			if (message.IsTwoWayMessage && !message.IsGroupBroadcastMessage && !message.IsClusterBroadcastMessage)
 			{
@@ -242,10 +262,11 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		private void SetHydrationPolicy(IList<RelayMessage> messages)
+		private static void SetHydrationPolicy(IList<RelayMessage> messages)
 		{
 			TypeSetting currentTypeSetting = null;
-			for (int i = 0, n = messages.Count; i < n; ++i)
+			int n = messages.Count;
+			for (int i = 0; i < n; ++i)
 			{
 				var message = messages[i];
 
@@ -265,26 +286,37 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		private SimpleLinkedList<Node> PrepareMessage(RelayMessage message, bool isRetry)
+		private static LinkedListStack<Node> PrepareMessage(RelayMessage message)
 		{
-			if (isRetry)
-			{
-				message.RelayTTL++;
-			}
-			SimpleLinkedList<Node> nodes = NodeManager.Instance.GetNodesForMessage(message);
+			LinkedListStack<Node> nodes = NodeManager.Instance.GetNodesForMessage(message);
 			message.RelayTTL--;
 			SetHydrationPolicy(message);
 			
-			if (nodes.Count > 0 && !isRetry)
+			if (nodes.Count > 0)
 			{
 				System.Net.IPAddress myAddress = NodeManager.Instance.MyIpAddress;
 				if (myAddress != null)
 				{
-					message.AddressHistory.Add(myAddress);
+					message.AddAddressToHistory(myAddress);
 				}
 			}
+
 			DebugWriter.WriteDebugInfo(message, nodes);
 			return nodes;
+		}
+
+
+		private static Node PrepareRetryMessage(RelayMessage message, IList<Node> attemptedNodes)
+		{
+			if (attemptedNodes.Count == 0) throw new ArgumentException("PrepareRetryMessage must be called after the first attempt.", "attemptedNodes");
+			var node = attemptedNodes[0];
+			if (node == null) throw new ArgumentException("The first element is null.", "attemptedNodes");
+
+			node = node.GetRetryNodeFromCluster(attemptedNodes);
+			message.RelayTTL++;
+			message.SetError(RelayErrorType.None);
+			message.ResultOutcome = RelayOutcome.NotSent;
+			return node;
 		}
 
 		/// <summary>
@@ -298,31 +330,19 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		///	failed "in" executions will throw this exception
 		/// </exception>
 		/// <param name="message">Message to be processed</param>
-		public void HandleMessage(RelayMessage message)
+		public virtual void HandleMessage(RelayMessage message)
 		{
-			
 			Node node;
 			if (message.IsTwoWayMessage)
 			{
-				int allowedRetries = NodeManager.Instance.GetRetryCountForMessage(message);
-				bool triedBefore = false;
-				do
-				{
-					if (PrepareMessage(message, triedBefore).Pop(out node))
-					{
-						triedBefore = true;
-						node.HandleOutMessage(message);
-					}
-					else
-					{
-						message.SetError(RelayErrorType.NoNodesAvailable);
-					}
-				}
-				while (message.ErrorType == RelayErrorType.NodeUnreachable && --allowedRetries >= 0);
+				if (PrepareMessage(message).Pop(out node)) node.HandleOutMessage(message);
+				else message.SetError(RelayErrorType.NoNodesAvailable);
+
+				RetryHandleMessageOnError(message, node);
 			}
 			else
 			{
-				SimpleLinkedList<Node> nodes = PrepareMessage(message, false);
+				LinkedListStack<Node> nodes = PrepareMessage(message);
 				SerializedRelayMessage serializedMessage = new SerializedRelayMessage(message);
 				SerializedRelayMessage serializedMessageInterZone = null;
 
@@ -345,8 +365,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 							typesettingSyncInMessages = typeSetting.SyncInMessages;
 							typesettingThrowOnSyncFailure = typeSetting.ThrowOnSyncFailure;
 						}
-
-						if (_myNodeDefinition != null && _myNodeDefinition.Zone != node.NodeDefinition.Zone)
+						
+						if (_myNodeDefinition != null && _myZone != node.Zone)
 						{
 							// Message needs to cross Zone bounderies
 							if (serializedMessageInterZone == null)
@@ -359,7 +379,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 						}
 						else if (typesettingSyncInMessages)
 						{
-							messageHandled = node.HandleInMessageSync(message, typesettingSyncInMessages, typesettingThrowOnSyncFailure);
+							messageHandled = node.HandleInMessageSync(message, true, typesettingThrowOnSyncFailure);
 						}
 						else
 						{
@@ -397,87 +417,32 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		///	requires a "Throw" when sync fails: throws a SyncRelayOperationException, 
 		///	otherwise, places failed messages into the exception queue
 		/// </remarks>
-		public void HandleMessages(IList<RelayMessage> messages)
+		public virtual void HandleMessages(IList<RelayMessage> messages)
 		{
 			SetHydrationPolicy(messages);
 			NodeManager.Instance.Counters.CountMessageList(messages);
 			NodeWithMessagesCollection distributedMessages = NodeManager.Instance.DistributeMessages(messages);
-			NodeWithMessages nodeMessages;
-			AutoResetEvent resetEvent = null;
-			HandleWithCount finishedLock = null;
 
 			List<NodeWithMessages> unhandledNodes = new List<NodeWithMessages>();
 
-			if (_enableAsyncBulkGets && distributedMessages.Count > 1) //only do the async if there's more than 1 node to send to. No point in hitting a wait handle if we don't need to coordinate a response
+			if (_enableAsyncBulkGets && distributedMessages.Count > 1)  // only do the async if there's more than 1 node to send to. No point in hitting a wait handle if we don't need to coordinate a response
 			{
-				int numberOfGets = 0, getsLefts = 0;
-				for (int i = 0; i < distributedMessages.Count; i++)
+				while (distributedMessages.Count > 0) //keep trying until retries have been exhausted
 				{
-					if (distributedMessages[i].Messages.OutMessageCount > 0)
-					{
-						numberOfGets++;
-					}
+					AsyncBulkHandleMessages(distributedMessages, unhandledNodes);
+					distributedMessages = NodeManager.Instance.RedistributeRetryMessages(distributedMessages);
 				}
-				if (numberOfGets > 0)
-				{
-					resetEvent = OutMessageWaitHandle;
-					finishedLock = new HandleWithCount(resetEvent, numberOfGets);
-					getsLefts = numberOfGets; //use this to determine when we're at the last get so we use this thread to process it
-				}
-
-				for (int i = 0; i < distributedMessages.Count; i++)
-				{
-					nodeMessages = distributedMessages[i];
-					if (nodeMessages.Messages.InMessageCount > 0)
-					{
-						bool inMessagesHandled = nodeMessages.NodeWithInfo.Node.HandleInMessages(nodeMessages.Messages.InMessages,
-							nodeMessages.NodeWithInfo.SyncInMessages, nodeMessages.NodeWithInfo.SkipErrorQueueForSync);
-						if (!inMessagesHandled)
-						{
-							unhandledNodes.Add(nodeMessages);
-						}
-					}
-					if (nodeMessages.Messages.OutMessageCount > 0)
-					{
-						if (--getsLefts > 0)
-						{
-							nodeMessages.NodeWithInfo.Node.PostOutMessages(
-										  new MessagesWithLock(nodeMessages.Messages.OutMessages, finishedLock));
-						}
-						else
-						{
-							nodeMessages.NodeWithInfo.Node.HandleOutMessages(nodeMessages.Messages.OutMessages);
-							finishedLock.Decrement();
-						}
-					}
-				}
-				if (numberOfGets > 0)
-				{
-					resetEvent.WaitOne();
-				}
-				return;
 			}
 			else
 			{
-				for (int i = 0; i < distributedMessages.Count; i++)
+				while (distributedMessages.Count > 0)
 				{
-					nodeMessages = distributedMessages[i];
-					if (nodeMessages.Messages.InMessageCount > 0)
-					{
-						bool inMessagesHandled = nodeMessages.NodeWithInfo.Node.HandleInMessages(nodeMessages.Messages.InMessages, nodeMessages.NodeWithInfo.SyncInMessages, nodeMessages.NodeWithInfo.SkipErrorQueueForSync);
-						if (!inMessagesHandled)
-						{
-							unhandledNodes.Add(nodeMessages);
-						}
-					}
-					if (nodeMessages.Messages.OutMessageCount > 0)
-					{
-						nodeMessages.NodeWithInfo.Node.HandleOutMessages(nodeMessages.Messages.OutMessages);
-					}
-				}
+					SyncBulkHandleMessages(distributedMessages, unhandledNodes);
+					distributedMessages = NodeManager.Instance.RedistributeRetryMessages(distributedMessages);
+				}	
 			}
 
-			if (unhandledNodes.Count > 0)
+			if(unhandledNodes.Count > 0)
 			{
 				bool bThrow = false;
 				StringBuilder detailBuilder = new StringBuilder();
@@ -496,10 +461,93 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					throw new SyncRelayOperationException(detailBuilder.ToString());
 				}
 
+				if (log.IsInfoEnabled)
+					log.Info(detailBuilder.ToString());
+			}
+		}
 
-				if (_log.IsInfoEnabled)
-					_log.Info(detailBuilder.ToString());
+		private static void SyncBulkHandleMessages(NodeWithMessagesCollection distributedMessages, List<NodeWithMessages> unhandledNodes)
+		{
+			var waiters = new List<Action>();
+			for (int i = 0; i < distributedMessages.Count; i++)
+			{
+				NodeWithMessages nodeWithMessages = distributedMessages[i];
+				NodeWithInfo nodeWithInfo = nodeWithMessages.NodeWithInfo;
+				if (nodeWithMessages.Messages.InMessageCount > 0)
+				{
+					bool inMessagesHandled = nodeWithInfo.Node.HandleInMessages(nodeWithMessages.Messages.InMessages, nodeWithInfo.SyncInMessages, nodeWithInfo.SkipErrorQueueForSync);
+					if (!inMessagesHandled)
+					{
+						unhandledNodes.Add(nodeWithMessages);
+					}
+				}
+				if (nodeWithMessages.Messages.OutMessageCount > 0)
+				{
+					var node = nodeWithInfo.Node;
+					var ar = node.BeginHandleOutMessages(nodeWithMessages.Messages.OutMessages, null, null);
+					waiters.Add(() => node.EndHandleOutMessages(ar));
+				}
+			}
 
+			foreach (var waiter in waiters) waiter();
+		}
+
+		private static void AsyncBulkHandleMessages(NodeWithMessagesCollection distributedMessages, List<NodeWithMessages> unhandledNodes)
+		{
+			if(log.IsDebugEnabled)
+				log.Debug("Starting asyncbulk handle messages");
+			
+			AutoResetEvent resetEvent = null;
+			HandleWithCount finishedLock = null;
+
+			int numberOfGets = 0;
+			int getsLefts = 0;
+			for (int i = 0; i < distributedMessages.Count; i++)
+			{
+				if (distributedMessages[i].Messages.OutMessageCount > 0)
+				{
+					numberOfGets++;
+				}
+			}
+
+			if (numberOfGets > 0)
+			{
+				resetEvent = OutMessageWaitHandle;
+				finishedLock = new HandleWithCount(resetEvent, numberOfGets);
+				getsLefts = numberOfGets; //use this to determine when we're at the last get so we use this thread to process it
+			}
+			
+			for (int i = 0; i < distributedMessages.Count; i++)
+			{
+				NodeWithMessages nodeWithMessages = distributedMessages[i];
+				NodeWithInfo nodeWithInfo = nodeWithMessages.NodeWithInfo;
+				if (nodeWithMessages.Messages.InMessageCount > 0)
+				{
+					bool inMessagesHandled = nodeWithInfo.Node.HandleInMessages(nodeWithMessages.Messages.InMessages,
+																							 nodeWithInfo.SyncInMessages, nodeWithInfo.SkipErrorQueueForSync);
+					if (!inMessagesHandled)
+					{
+						unhandledNodes.Add(nodeWithMessages);
+					}
+				}
+				if (nodeWithMessages.Messages.OutMessageCount > 0)
+				{
+					if (--getsLefts > 0) //post all the last group to be handled async
+					{
+						nodeWithInfo.Node.PostOutMessages(
+							new MessagesWithLock(nodeWithMessages.Messages.OutMessages, finishedLock));
+					}
+					else
+					{
+						nodeWithInfo.Node.SendOutMessages(nodeWithMessages.Messages.OutMessages); //do the last set on this thread rather than punting the duty
+						finishedLock.Decrement();
+					}
+				}
+			}
+
+			if (numberOfGets > 0)
+			{
+				resetEvent.WaitOne(); //wait for all operations to complete. the event will be signaled with lock.decrement hits 0
 			}
 		}
 
@@ -595,6 +643,15 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 
 			forwarderStatus.RelayStatistics.CurrentServerTime = DateTime.Now;
 			forwarderStatus.RelayStatistics.InitializationTime = _initDate;
+			
+			TypeSettingStatus tss = TypeSpecificStatisticsManager.Instance.GetStatus(0);
+			if(tss == null)//should not be null
+			{
+				log.Warn("Fowarder:GetForwarderStatus " +
+					"TypeSettingStatus is null for typeId:0");
+				tss = new TypeSettingStatus();//add empty one to hold place and show error
+			}
+			forwarderStatus.RelayStatistics.ZeroTypeSettingStatus = tss;
 
 			if (NodeManager.Instance.NodeGroups != null)
 			{
@@ -640,36 +697,46 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 
 			return false;
-
 		}
 
 		private static RelayMessage DoReplicate(RelayMessage message)
 		{
 			if (message.IsTwoWayMessage == false) return message;
-			else
+
+			RelayMessage newMessage;
+
+			switch (message.MessageType)
 			{
-				switch (message.MessageType)
-				{
-					case MessageType.SaveWithConfirm:
-						return new RelayMessage(message, MessageType.Save);
-					case MessageType.UpdateWithConfirm:
-						return new RelayMessage(message, MessageType.Update);
-					case MessageType.DeleteWithConfirm:
-						return new RelayMessage(message, MessageType.Delete);
-					case MessageType.DeleteAllInTypeWithConfirm:
-						return new RelayMessage(message, MessageType.DeleteAllInType);
-					case MessageType.NotificationWithConfirm:
-						return new RelayMessage(message, MessageType.Notification);
-					case MessageType.IncrementWithConfirm:
-						return new RelayMessage(message, MessageType.Increment);
-					case MessageType.DeleteAllWithConfirm:
-						return new RelayMessage(message, MessageType.DeleteAll);
-					case MessageType.DeleteInAllTypesWithConfirm:
-						return new RelayMessage(message, MessageType.DeleteInAllTypes);
-					default:
-						return null;
-				}
+				case MessageType.SaveWithConfirm:
+					newMessage = new RelayMessage(message, MessageType.Save);
+					break;
+				case MessageType.UpdateWithConfirm:
+					newMessage = new RelayMessage(message, MessageType.Update);
+					break;
+				case MessageType.DeleteWithConfirm:
+					newMessage = new RelayMessage(message, MessageType.Delete);
+					break;
+				case MessageType.DeleteAllInTypeWithConfirm:
+					newMessage = new RelayMessage(message, MessageType.DeleteAllInType);
+					break;
+				case MessageType.NotificationWithConfirm:
+					newMessage = new RelayMessage(message, MessageType.Notification);
+					break;
+				case MessageType.IncrementWithConfirm:
+					newMessage = new RelayMessage(message, MessageType.Increment);
+					break;
+				case MessageType.DeleteAllWithConfirm:
+					newMessage = new RelayMessage(message, MessageType.DeleteAll);
+					break;
+				case MessageType.DeleteInAllTypesWithConfirm:
+					newMessage = new RelayMessage(message, MessageType.DeleteInAllTypes);
+					break;
+				default:
+					return null;
 			}
+
+			--newMessage.RelayTTL;
+			return newMessage;
 		}
 
 		#endregion
@@ -685,7 +752,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		/// <returns>
 		/// Returns an <see cref="T:System.IAsyncResult"/>.
 		/// </returns>
-		public IAsyncResult BeginHandleMessage(RelayMessage message, object state, AsyncCallback callback)
+		public virtual IAsyncResult BeginHandleMessage(RelayMessage message, object state, AsyncCallback callback)
 		{
 			if (!message.IsTwoWayMessage)
 			{
@@ -696,28 +763,24 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				return SynchronousAsyncResult.CreateAndComplete(callback, state);
 			}
 
-			
-			SimpleLinkedList<Node> nodes = PrepareMessage(message, false);
+			LinkedListStack<Node> nodes = PrepareMessage(message);
 
 			Node node;
 			if (nodes.Pop(out node))
 			{
 				var result = new AsynchronousResult<Node>((ar, n, m) =>
-				{
-					n.EndHandleOutMessage(ar);
-					int allowedRetries = NodeManager.Instance.GetRetryCountForMessage(message);
-					while (message.ErrorType == RelayErrorType.NodeUnreachable && --allowedRetries >= 0)
 					{
-						if (PrepareMessage(message, true).Pop(out node))
+						try
 						{
-							node.HandleOutMessage(message);
+							n.EndHandleOutMessage(ar);
+							RetryHandleMessageOnError(message, node);
 						}
-						else
+						catch(Exception ex)
 						{
-							message.SetError(RelayErrorType.NoNodesAvailable);
+							log.Error(ex);
 						}
-					}
-				}, node, message);
+					}, node, message);
+
 				var origCallback = callback;
 				if (callback != null)
 				{
@@ -730,11 +793,26 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				result.InnerResult = node.BeginHandleOutMessage(message, callback, state);
 				return result;
 			}
-			else
-			{
-				message.SetError(RelayErrorType.NoNodesAvailable);
-			}
+			
+			message.SetError(RelayErrorType.NoNodesAvailable);
+			
 			return SynchronousAsyncResult.CreateAndComplete(callback, state);
+		}
+
+		private static void RetryHandleMessageOnError(RelayMessage message, Node node)
+		{
+			int allowedRetries = NodeManager.Instance.GetRetryCountForMessage(message);
+			List<Node> attemptedNodes = null;
+			while (--allowedRetries >= 0 && message.IsRetryable(NodeManager.Instance.GetRelayRetryPolicyForMessage(message)))
+			{
+				if (attemptedNodes == null) attemptedNodes = new List<Node>(allowedRetries + 1);
+
+				attemptedNodes.Add(node);
+
+				node = PrepareRetryMessage(message, attemptedNodes);
+				if (node != null) node.HandleOutMessage(message);
+				else message.SetError(RelayErrorType.NoNodesAvailable);
+			}
 		}
 
 		/// <summary>
@@ -761,7 +839,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		/// Ends asynchronous processing of a single <see cref="T:MySpace.DataRelay.RelayMessage"/>.
 		/// </summary>
 		/// <param name="asyncResult">The <see cref="T:System.IAsyncResult"/> from <see cref="M:MySpace.DataRelay.IAsyncDataHandler.BeginHandleMessage(MySpace.DataRelay.RelayMessage,System.Object,System.AsyncCallback)"/></param>
-		public void EndHandleMessage(IAsyncResult asyncResult)
+		public virtual void EndHandleMessage(IAsyncResult asyncResult)
 		{
 			if (asyncResult is SynchronousAsyncResult) return;
 
@@ -785,8 +863,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 
 		private abstract class AsynchronousResult : IAsyncResult
 		{
-			protected AsynchronousResult() { }
-
 			public IAsyncResult InnerResult { get; set; }
 
 			public abstract void Complete();

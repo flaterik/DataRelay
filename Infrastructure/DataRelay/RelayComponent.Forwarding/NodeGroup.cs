@@ -12,6 +12,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 	internal class NodeGroup
 	{
 		internal RelayNodeGroupDefinition GroupDefinition;
+	    internal RelayRetryPolicy RelayRetryPolicy;
 		
 		internal NodeCluster MyCluster; //the cluster where this is running, if any
 		internal List<NodeCluster> Clusters = new List<NodeCluster>(); //all of the clusters, including "MyCluster"
@@ -24,23 +25,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		private bool _clusterByRange;
 		private readonly System.Threading.Timer _nodeReselectTimer;
 		private readonly System.Threading.TimerCallback _nodeReselectTimerCallback;
-		private int _nodeSelectionHopWindowSize = 1;
-		
-		public int NodeSelectionHopWindowSize
-		{
-			get { return _nodeSelectionHopWindowSize; }
-			internal set { 
-				if( value > 0 )
-				{
-					_nodeSelectionHopWindowSize = value;
-				}
-				else
-				{
-				   throw new ArgumentOutOfRangeException("_nodeSelectionHopWindowSize", "NodeSelectionHopWindowSize must be greater than 0.");
-				}
-			}
-		}
-		
 
 		internal string GroupName
 		{
@@ -56,7 +40,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			Activated = groupDefinition.Activated;
 			_clusterByRange = groupDefinition.UseIdRanges;
 			_forwardingConfig = forwardingConfig;
-			NodeSelectionHopWindowSize = groupDefinition.NodeSelectionHopWindowSize;
+			
 			RelayNodeClusterDefinition myClusterDefinition = NodeManager.Instance.GetMyNodeClusterDefinition();
 
 			foreach (RelayNodeClusterDefinition clusterDefintion in groupDefinition.RelayNodeClusters)
@@ -84,7 +68,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			QueueTimer.Change(DequeueIntervalMilliseconds, DequeueIntervalMilliseconds);
 		}
 
-
 		internal void ReloadMapping(RelayNodeGroupDefinition groupDefinition, RelayNodeConfig newConfig, ForwardingConfig newForwardingConfig)
 		{
 			RelayNodeClusterDefinition myClusterDefinition = newConfig.GetMyCluster();
@@ -92,12 +75,12 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			GroupDefinition = groupDefinition;
 			_clusterByRange = groupDefinition.UseIdRanges;
 			_forwardingConfig = newForwardingConfig;
-			NodeSelectionHopWindowSize = groupDefinition.NodeSelectionHopWindowSize;
+			
 			if (groupDefinition.RelayNodeClusters.Length == Clusters.Count)
 			{
 				//same number of clusters, just let the clusters rebuild themselves. the clusters will entirely rebuild, so shuffinling around servers should be okay
-				if (_log.IsInfoEnabled)
-					_log.InfoFormat("Rebuilding existing clusters in group {0}.", groupDefinition.Name);
+				if (_log.IsDebugEnabled)
+					_log.DebugFormat("Rebuilding existing clusters in group {0}.", groupDefinition.Name);
 				for (int i = 0; i < groupDefinition.RelayNodeClusters.Length; i++)
 				{
 					Clusters[i].ReloadMapping(groupDefinition.RelayNodeClusters[i], newConfig, newForwardingConfig);
@@ -163,7 +146,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			{
 				Clusters[i].ReselectNode();
 			}        
-	
 		}
 
 		internal NodeCluster GetClusterForId(int objectId, bool interClusterMessage)
@@ -172,32 +154,15 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			{
 				return MyCluster;
 			}
-			int clusterIndex;
-			if (_clusterByRange)
-			{
-				clusterIndex = GetRangedIndex(objectId);
-			}
-			else
-			{
-				clusterIndex = GetModdedIndex(objectId);
-			}
+			
+			int clusterIndex = GroupDefinition.GetClusterIndexFor(objectId);
+			
+			
 			if (clusterIndex >= 0)
 			{
 				return Clusters[clusterIndex];
 			}
 			return null;
-		}
-
-		private int GetRangedIndex(int objectId)
-		{
-			for (int i = 0; i < Clusters.Count; i++)
-			{
-				if (Clusters[i].ObjectInRange(objectId))
-				{
-					return i;
-				}
-			}
-			return -1;
 		}
 
 		private int GetModdedIndex(int objectId)
@@ -258,7 +223,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				{
 					SocketException sex = (SocketException)ex;
 					_log.ErrorFormat("Socket error {0} while handling {1} for node {2}.", sex.SocketErrorCode, message, node.ToExtendedString());
-
 				}
 				else
 				{
@@ -275,7 +239,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				{
 					SocketException sex = (SocketException)ex;
 					_log.ErrorFormat("Socket error {0} while handling {1} for node {2}", sex.SocketErrorCode, message, node.ToExtendedString());
-
 				}
 				else
 				{
@@ -298,7 +261,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					_log.ErrorFormat("Error handling {0} for node {1}: {2}", messages, node.ToExtendedString(), ex.ToString());
 				}
 			}
-
 		}
 
 		internal static void LogNodeOutMessageException(List<RelayMessage> messages, Node node, Exception ex)
@@ -331,7 +293,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					_log.ErrorFormat("Error handling {0} IN messages for node {1}: {2}", messages.Count, node.ToExtendedString(), ex);
 				}
 			}
-
 		}
 
 		internal static void LogNodeInMessageException(SerializedRelayMessage[] messages, Node node, Exception ex)
@@ -350,22 +311,22 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		internal SimpleLinkedList<Node> GetNodesForMessage(RelayMessage message)
+		internal LinkedListStack<Node> GetNodesForMessage(RelayMessage message)
 		{
 			if (!Activated)
 			{
-				return new SimpleLinkedList<Node>();
+				return new LinkedListStack<Node>();
 			}
 			
 			NodeCluster cluster;
-			SimpleLinkedList<Node> nodes = null;
+			LinkedListStack<Node> nodes;
 			
 			//messages that, from out of system, go to each cluster
 			if(message.IsClusterBroadcastMessage)
 			{
 				if (MyCluster == null) //out of system, each cluster
 				{
-					nodes = new SimpleLinkedList<Node>();
+					nodes = new LinkedListStack<Node>();
 					for (int clusterIndex = 0; clusterIndex < Clusters.Count; clusterIndex++)
 					{
 						nodes.Push(Clusters[clusterIndex].GetNodesForMessage(message));							
@@ -385,7 +346,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				{
 					if (message.IsInterClusterMsg && cluster.MeInThisCluster)
 					{
-						nodes = new SimpleLinkedList<Node>();
+						nodes = new LinkedListStack<Node>();
 						nodes.Push(cluster.Me);
 					}
 					else
@@ -395,9 +356,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				}
 				else
 				{
-					nodes = new SimpleLinkedList<Node>();
+					nodes = new LinkedListStack<Node>();
 				}
-				
 			}
 			return nodes;
 		}
@@ -418,7 +378,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 
 			 foreach (TypeSetting ts in typeSettingCollection)
 			 {
-				 if (ts.GroupName.ToUpperInvariant() == GroupName.ToUpperInvariant())
+				 if (ts.GroupName != null && ts.GroupName.ToUpperInvariant() == GroupName.ToUpperInvariant())
 				 {
 					 statusBuilder.Append(@"<tr>");
 					 statusBuilder.Append(string.Format("<td align=\"left\"> {0} </td>", ts));
@@ -449,28 +409,17 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			{
 				foreach (TypeSetting ts in typeSettingCollection)
 				{
-					if (ts.GroupName.ToUpperInvariant() == GroupName.ToUpperInvariant())
+					if (ts.GroupName != null && ts.GroupName.ToUpperInvariant() == GroupName.ToUpperInvariant())
 					{
-						TypeSettingStatus typeSettingStatus = new TypeSettingStatus();
-						typeSettingStatus.TypeName = ts.TypeName;
-						typeSettingStatus.GroupName = ts.GroupName;
-						typeSettingStatus.TypeId = ts.TypeId;
-						typeSettingStatus.Disabled = ts.Disabled;
-						typeSettingStatus.Compress = ts.Compress;
-						typeSettingStatus.CheckRaceCondition = ts.CheckRaceCondition;
-						typeSettingStatus.TTLSetting = ts.TTLSetting;
-						typeSettingStatus.RelatedIndexTypeId = ts.RelatedIndexTypeId;
-						if (ts.HydrationPolicy != null)
+						TypeSettingStatus tss = TypeSpecificStatisticsManager.Instance.GetStatus(ts.TypeId);
+						if(tss == null)//should not be null
 						{
-							typeSettingStatus.HydrationPolicyStatus = new HydrationPolicyStatus();
-							typeSettingStatus.HydrationPolicyStatus.KeyType = ts.HydrationPolicy.KeyType.ToString();
-							typeSettingStatus.HydrationPolicyStatus.HydrateMisses = (ts.HydrationPolicy.Options &
-							                                                         RelayHydrationOptions.HydrateOnMiss) ==
-							                                                        RelayHydrationOptions.HydrateOnMiss;
-							typeSettingStatus.HydrationPolicyStatus.HydrateBulkMisses = (ts.HydrationPolicy.Options & 
-								RelayHydrationOptions.HydrateOnBulkMiss) == RelayHydrationOptions.HydrateOnBulkMiss;
+							_log.WarnFormat("NodeGroup:GetNodeGroupStatus " +
+								"TypeSettingStatus is null for typeId:{0}",
+								ts.TypeId);
+							tss = new TypeSettingStatus();//add empty one to hold place and show error
 						}
-						nodeGroupStatus.TypeSettingStatuses.Add(typeSettingStatus);				
+						nodeGroupStatus.TypeSettingStatuses.Add(tss);				
 					}
 				}
 			}
@@ -491,7 +440,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			{
 				statusBuilder.AppendFormat("<tr><td valign=top><b>{0}</b>:</td> <td valign=top>{1}</td></tr>" + Environment.NewLine, propName, propValue.ToString("N" + precision));
 			}
-
 		}
 
 		internal static void AddPropertyLine(StringBuilder statusBuilder, string propName, string propValue)
@@ -519,7 +467,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		internal void PopulateQueues(Dictionary<string, MessageQueue> errorQueues, bool incrementCounter)
+		internal void PopulateQueues(Dictionary<string, ErrorQueue> errorQueues, bool incrementCounter)
 		{
 			for (int i = 0; i < Clusters.Count; i++)
 			{
@@ -560,7 +508,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 			
 			return null;
-			
 		}
 
 		#region Error Queue Processing 
@@ -603,8 +550,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				QueueTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 				QueueTimer.Dispose();
 			}
-		}
-
-	
+		}	
 	}
 }

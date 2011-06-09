@@ -10,7 +10,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 namespace MySpace.DataRelay.Formatters
 {
 	/// <summary>
-	/// Helper class that translates between a <see cref="Stream"/> and a <see cref="RelayMesasge"/>,
+	/// Helper class that translates between a <see cref="Stream"/> and a <see cref="RelayMessage"/>,
 	/// and vice-versa.
 	/// </summary>
 	public static class RelayMessageFormatter
@@ -74,6 +74,27 @@ namespace MySpace.DataRelay.Formatters
 			ms.Seek(0, SeekOrigin.Begin);
 
 			return ms;
+		}
+
+		/// <summary>
+		/// Converts a list of <see cref="RelayMessage"/> into a <see cref="MemoryStream"/>
+		/// </summary>
+		/// <param name="messageList">The list to convert.</param>
+		/// <param name="stream">The stream to write <paramref name="messageList"/> into.</param>
+		public static void WriteRelayMessageList(IList<RelayMessage> messageList, Stream stream)
+		{
+			BinaryWriter writeStream = new BinaryWriter(stream);
+			CompactBinaryWriter writer = new CompactBinaryWriter(writeStream);
+			writer.Write(messageList.Count);
+			for (int i = 0; i < messageList.Count; i++)
+			{
+				writer.Write<RelayMessage>(messageList[i], false);
+			}
+			
+			//this seek can't happen on methods passed to async socket client, because everything breaks and then you're confused and sad
+			//TODO make async socket client not reliant on stream position and/or roll async functionality into regular socket client.
+			//stream.Seek(0, SeekOrigin.Begin); 
+			
 		}
 
 		/// <summary>

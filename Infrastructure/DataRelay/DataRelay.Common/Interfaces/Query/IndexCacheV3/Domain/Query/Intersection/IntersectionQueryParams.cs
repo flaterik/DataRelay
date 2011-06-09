@@ -6,6 +6,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
     public class IntersectionQueryParams : IVersionSerializable
     {
         #region Ctors
+
         public IntersectionQueryParams()
         {
             Init(null, null);
@@ -19,19 +20,21 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         private void Init(Filter filter, IntersectionQuery baseQuery)
         {
             this.filter = filter;
-            this.baseQuery = baseQuery;
+            BaseQuery = baseQuery;
         }
+
         #endregion
 
         #region Data Members
+
         private Filter filter;
         public Filter Filter
         {
             get
             {
-                if (filter == null && baseQuery != null)
+                if (filter == null && BaseQuery != null)
                 {
-                    return baseQuery.Filter;
+                    return BaseQuery.Filter;
                 }
                 return filter;
             }
@@ -41,21 +44,46 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             }
         }
 
-        private IntersectionQuery baseQuery;
-        internal IntersectionQuery BaseQuery
+        internal IntersectionQuery BaseQuery { get; set; }
+
+        private int count = -1;
+        public int Count
         {
             get
             {
-                return baseQuery;
+                if (count == -1 && BaseQuery != null)
+                {
+                    return BaseQuery.Count;
+                }
+                return count;
             }
             set
             {
-                baseQuery = value;
+                count = value;
             }
         }
+
+        private IndexCondition indexCondition;
+        public IndexCondition IndexCondition
+        {            
+            get
+            {
+                if (indexCondition == null && BaseQuery != null)
+                {
+                    return BaseQuery.IndexCondition;
+                }
+                return indexCondition;
+            }
+            set
+            {
+                indexCondition = value;
+            }
+        }
+
         #endregion
 
         #region IVersionSerializable Members
+
         public void Serialize(IPrimitiveWriter writer)
         {
             using (writer.CreateRegion())
@@ -69,6 +97,20 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 {
                     writer.Write((byte)filter.FilterType);
                     Serializer.Serialize(writer.BaseStream, filter);
+                }
+
+                //Count
+                writer.Write(Count);
+
+                //IndexCondition
+                if (IndexCondition == null)
+                {
+                    writer.Write(false);
+                }
+                else
+                {
+                    writer.Write(true);
+                    Serializer.Serialize(writer.BaseStream, IndexCondition);
                 }
             }
         }
@@ -84,10 +126,23 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                     FilterType filterType = (FilterType)b;
                     filter = FilterFactory.CreateFilter(reader, filterType);
                 }
+
+                if (version >= 2)
+                {
+                    //Count
+                    Count = reader.ReadInt32();
+
+                    //IndexCondition
+                    if (reader.ReadBoolean())
+                    {
+                        IndexCondition = new IndexCondition();
+                        Serializer.Deserialize(reader.BaseStream, IndexCondition);
+                    }
+                }
             }
         }
 
-        private const int CURRENT_VERSION = 1;
+        private const int CURRENT_VERSION = 2;
         public int CurrentVersion
         {
             get
@@ -103,6 +158,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return false;
             }
         }
+
         #endregion
 
         #region ICustomSerializable Members

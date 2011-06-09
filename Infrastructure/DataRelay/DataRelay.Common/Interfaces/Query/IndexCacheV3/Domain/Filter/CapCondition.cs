@@ -1,4 +1,5 @@
-﻿using MySpace.Common;
+﻿using System.Text;
+using MySpace.Common;
 using MySpace.Common.IO;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
@@ -25,6 +26,30 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             get; set;
         }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether to ignore non capped items or not.
+        /// </summary>
+        /// <value>
+        /// 	<c>true</c> if non capped items are to be ignored; otherwise, <c>false</c>.
+        /// </value>
+        public bool IgnoreNonCappedItems
+        {
+            get; set;
+        }
+
+        #endregion
+
+        #region Methods
+
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            stb.Append("(").Append("FieldName: ").Append(FieldName).Append("),");
+            stb.Append("(").Append("FilterCaps: ").Append(FilterCaps == null ? "Null" : FilterCaps.ToString()).Append("),");
+            stb.Append("(").Append("IgnoreNonCappedItems: ").Append(IgnoreNonCappedItems).Append("),");
+            return stb.ToString();
+        }
+
         #endregion
 
         #region IVersionSerializable Members
@@ -42,6 +67,9 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
                 //FilterCaps
                 Serializer.Serialize(writer.BaseStream, FilterCaps);
+
+                //IgnoreNonCappedItems
+                writer.Write(IgnoreNonCappedItems);
             }
         }
 
@@ -70,10 +98,16 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 //FilterCaps
                 FilterCaps = new FilterCaps();
                 Serializer.Deserialize(reader.BaseStream, FilterCaps);
+
+                if (version >= 2)
+                {
+                    //IgnoreNonCappedItems
+                    IgnoreNonCappedItems = reader.ReadBoolean();
+                }
             }
         }
 
-        private const int CURRENT_VERSION = 1;
+        private const int CURRENT_VERSION = 2;
         /// <summary>
         /// Gets the current serialization data version of your object.  The <see cref="M:MySpace.Common.IVersionSerializable.Serialize(MySpace.Common.IO.IPrimitiveWriter)"/> method
         /// will write to the stream the correct format for this version.

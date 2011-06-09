@@ -54,9 +54,11 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		private Timer _queuedMessageCounterTimer;
 		private Timer _aggregateCounterTickTimer;
 		private RelayNodeDefinition _myNodeDefinition;
+		private ushort _myZone;
+
 		private static bool _initialized;
 		
-		internal static void Initialize(RelayNodeConfig config, ForwardingConfig forwardingConfig, Dictionary<string, Dictionary<string, MessageQueue>> errorQueues)
+		internal static void Initialize(RelayNodeConfig config, ForwardingConfig forwardingConfig, Dictionary<string, Dictionary<string, ErrorQueue>> errorQueues)
 		{
 			lock (_instanceLock)
 			{
@@ -68,6 +70,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
+		
+
 		internal ushort GetZoneForAddress(IPAddress address)
 		{
 			if (_zoneDefinitions == null)
@@ -77,7 +81,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			return _zoneDefinitions.GetZoneForAddress(address);
 		}
 
-		private void InitializeInstance(RelayNodeConfig config, ForwardingConfig forwardingConfig, Dictionary<string, Dictionary<string, MessageQueue>> errorQueues)
+		private void InitializeInstance(RelayNodeConfig config, ForwardingConfig forwardingConfig, Dictionary<string, Dictionary<string, ErrorQueue>> errorQueues)
 		{
 			Counters = new ForwardingCounters();
 
@@ -90,6 +94,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				ForwardingConfig = forwardingConfig;
 				_zoneDefinitions = config.RelayNodeMapping.ZoneDefinitions;		
 				Counters.Initialize(Config.InstanceName);
+
+				ExtractCommonConfigValues(forwardingConfig);
 
 				if (InMessageDispatcher != null)
 				{
@@ -106,34 +112,40 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					OutMessageDispatcher = new Dispatcher(forwardingConfig.NumberOfOutMessageThreads, ThreadPriority.Normal, true, "Relay Forwader Out Messages");
 				}
 				
-				NodeGroup.MaximumQueuedItems = forwardingConfig.MaximumTaskQueueDepth;
+				
 
 				BuildNodeGroups(config, errorQueues);
-
-				if (config.MyAddresses != null && config.MyAddresses.Count > 0)
-				{	
-					for (int i = 0; i < config.MyAddresses.Count; i++)
-					{
-						AddressFamily family = config.MyAddresses[i].AddressFamily;
-						if (family == AddressFamily.InterNetwork &&
-							!IPAddress.Loopback.Equals(config.MyAddresses[i])
-							)
-						{
-							MyIpAddress = config.MyAddresses[i];
-							break;
-						}
-					}
-				}
+				
+				MyIpAddress = config.GetAddressToUse();
 
 				_queuedMessageCounterTimer = new Timer(CountQueuedMessages, null, 5000, 5000);
 
 				_aggregateCounterTickTimer = new Timer(AggregateCounterTicker, null, 500, 500);
 				_myNodeDefinition = GetMyNodeDefinition();
+				_myZone = Node.DetermineZone(_myNodeDefinition);
+			}
+		}
+
+		private void ExtractCommonConfigValues(ForwardingConfig config)
+		{
+			NodeGroup.MaximumQueuedItems = config.MaximumTaskQueueDepth;
+
+			if (config.QueueConfig != null)
+			{
+				_log.InfoFormat("Error queue config:  Enabled={0} DequeueInterval={1} ItemsPerDequeue={2} MaxCount={3} PersistenceFolder={4} MaxPersistedMB={5} PersistenceFileSize={6}",
+					config.QueueConfig.Enabled,
+					config.QueueConfig.DequeueIntervalSeconds,
+					config.QueueConfig.ItemsPerDequeue,
+					config.QueueConfig.MaxCount,
+					config.QueueConfig.PersistenceFolder,
+					config.QueueConfig.MaxPersistedMB,
+					config.QueueConfig.PersistenceFileSize);
 			}
 		}
 
 		internal void ReloadConfig(RelayNodeConfig config, ForwardingConfig newForwardingConfig)
 		{
+			ExtractCommonConfigValues(newForwardingConfig);
 
 			if (config.RelayNodeMapping == null)
 			{
@@ -145,7 +157,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				if (config.RelayNodeMapping.Validate())
 				{
 					_zoneDefinitions = config.RelayNodeMapping.ZoneDefinitions;	//make sure this is set before reloading the mapping so any changes propogate	
-					Dictionary<string, Dictionary<string, MessageQueue>> errorQueues = GetErrorQueues();
+					Dictionary<string, Dictionary<string, ErrorQueue>> errorQueues = GetErrorQueues();
 					NodeGroups.ReloadMapping(config, newForwardingConfig);
 					//note that if a node changes groups, the error queue won't make it!
 					NodeGroups.PopulateQueues(errorQueues, false);
@@ -160,6 +172,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			Config = config;
 
 			_myNodeDefinition = GetMyNodeDefinition();
+			_myZone = Node.DetermineZone(_myNodeDefinition);
 			bool doNewInDispatcher, doNewOutDispatcher;
 			if (newForwardingConfig.NumberOfThreads != ForwardingConfig.NumberOfThreads)
 			{
@@ -249,14 +262,14 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 		}
 
-		private void BuildNodeGroups(RelayNodeConfig relayNodeConfig, Dictionary<string, Dictionary<string, MessageQueue>> errorQueues)
+		private void BuildNodeGroups(RelayNodeConfig relayNodeConfig, Dictionary<string, Dictionary<string, ErrorQueue>> errorQueues)
 		{
 			RelayNodeMapping relayNodeMapping = relayNodeConfig.RelayNodeMapping;
 			if (relayNodeMapping != null)
 			{
 				if (relayNodeMapping.Validate())
 				{
-                    NodeGroupCollection nodeGroups = new NodeGroupCollection(relayNodeMapping.RelayNodeGroups, relayNodeConfig, ForwardingConfig);
+					NodeGroupCollection nodeGroups = new NodeGroupCollection(relayNodeMapping.RelayNodeGroups, relayNodeConfig, ForwardingConfig);
 
 					NodeGroups = nodeGroups;
 					RelayNodeGroupDefinition myGroupDefinition = Config.GetMyGroup();
@@ -304,26 +317,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		internal IPAddress MyIpAddress;
 		internal NodeGroup GetNodeGroup(short typeId)
 		{
-			string groupName = Config.TypeSettings.TypeSettingCollection.GetGroupNameForId(typeId);
-
-			if (MyNodeGroup != null && string.Compare(groupName, MyNodeGroup.GroupName, true) == 0)
-			{
-				//If MyNodeGroup isn't null, then this node is "in system". In system requests
-				//are assumed to be prerouted and already in the correct cluster, so they must be inside 
-				//the group the cluster is in.
-				return MyNodeGroup;
-			}
-			
-
-			NodeGroup group = null;
-			if (groupName != null)
-			{
-				if (NodeGroups.Contains(groupName))
-				{
-					group = NodeGroups[groupName];
-				}
-			}
-			return group;
+			return NodeGroups[typeId];
 		}
 
 		/// <summary>
@@ -342,13 +336,26 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			return group.GroupDefinition.RetryCount;
 		}
 
-		internal SimpleLinkedList<Node> GetNodesForMessage(RelayMessage message)
+		/// <summary>
+		/// Gets the retry policy for the message.
+		/// </summary>
+		/// <param name="message">The message.</param>
+		/// <returns>A <see cref="RelayRetryPolicy"/> for how this message may be retried.</returns>
+		internal RelayRetryPolicy GetRelayRetryPolicyForMessage(RelayMessage message)
 		{
-			SimpleLinkedList<Node> nodes = null;
+			var group = GetNodeGroup(message.TypeId);
+			if (group == null) return default(RelayRetryPolicy);
+			if (group.GroupDefinition == null) return default(RelayRetryPolicy);
+			return group.RelayRetryPolicy;
+		}
+
+		internal LinkedListStack<Node> GetNodesForMessage(RelayMessage message)
+		{
+			LinkedListStack<Node> nodes;
 			
 			if (message == null || message.RelayTTL < 1 || NodeGroups == null)
 			{
-				return new SimpleLinkedList<Node>();
+				return new LinkedListStack<Node>();
 			}
 
 			const bool useLegacySerialization = true;
@@ -359,8 +366,8 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 				message.PrepareMessageToBeSent(useLegacySerialization);
 				if (MyNodeGroup == null)//out of system: all groups	
 				{
-					nodes = new SimpleLinkedList<Node>();
-					for (int groupIndex = 0; groupIndex < this.NodeGroups.Count; groupIndex++)
+					nodes = new LinkedListStack<Node>();
+					for (int groupIndex = 0; groupIndex < NodeGroups.Count; groupIndex++)
 					{
 						nodes.Push(NodeGroups[groupIndex].GetNodesForMessage(message));							
 					}
@@ -384,13 +391,13 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					message.PrepareMessageToBeSent(useLegacySerialization);
 					if (_log.IsErrorEnabled)
 						_log.ErrorFormat("No group found for {0}", message);
-					nodes = new SimpleLinkedList<Node>();
+					nodes = new LinkedListStack<Node>();
 				}
 			}
 			
 			if (nodes == null)
 			{
-				nodes = new SimpleLinkedList<Node>();
+				nodes = new LinkedListStack<Node>();
 			}
 
 			// If no nodes are returned, we predict that the caller
@@ -404,6 +411,55 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			}
 
 			return nodes;
+		}
+
+		/// <summary>
+		/// Create a list of nodes with messages that can be retried according to Relay Group settings.
+		/// </summary>
+		/// <param name="distributedMessages">A list of distributed messages have been previously attempted.</param>
+		/// <returns>A redistribution of nodes with messages left to retry, or null if no retries are needed or allowed.</returns>
+		internal NodeWithMessagesCollection RedistributeRetryMessages(NodeWithMessagesCollection distributedMessages)
+		{
+			var redistributedMessages = new NodeWithMessagesCollection();
+			foreach(var nodeWithMessages in distributedMessages)
+			{
+				var retriesAllowed = nodeWithMessages.NodeWithInfo.Node.NodeGroup.GroupDefinition.RetryCount;
+				var retriesAttempted = nodeWithMessages.AttemptedNodes.Count;
+
+				if (nodeWithMessages.Messages.OutMessageCount > 0 && retriesAttempted < retriesAllowed)
+				{
+					var firstMessage = nodeWithMessages.Messages.OutMessages[0];
+
+					var retryable = firstMessage.IsRetryable(Instance.GetRelayRetryPolicyForMessage(firstMessage));
+
+					// the first message's outcome should be the same as every message in the list for these specific conditions
+					if (retryable)
+					{
+						nodeWithMessages.AttemptedNodes.Add(nodeWithMessages.NodeWithInfo.Node);
+
+						var retryNode =
+							nodeWithMessages.NodeWithInfo.Node.GetRetryNodeFromCluster(nodeWithMessages.AttemptedNodes);
+						if (retryNode != null)
+						{
+							// only try to redistribute this node if a retryNode is available.  Otherwise, retries are not possible.
+							nodeWithMessages.NodeWithInfo.Node = retryNode;
+
+							// prepare each message in the list for retry.
+							foreach (var message in nodeWithMessages.Messages.OutMessages)
+							{
+								message.RelayTTL++;
+								message.SetError(RelayErrorType.None);
+								message.ResultOutcome = RelayOutcome.NotSent;
+							}
+
+							// wipe out any potential IN messages.
+							nodeWithMessages.Messages.InMessages = null;
+							redistributedMessages.Add(nodeWithMessages);
+						}
+					}
+				}
+			}
+			return redistributedMessages;
 		}
 
 		/// <summary>
@@ -425,12 +481,12 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 					
 					RelayMessage interZoneMessage = null;
 
-					SimpleLinkedList<Node> nodesForMessage = GetNodesForMessage(message);
-					SimpleLinkedList<Node> nodesForInterZoneMessage = null;
+					LinkedListStack<Node> nodesForMessage = GetNodesForMessage(message);
+					LinkedListStack<Node> nodesForInterZoneMessage = null;
 					
 					if (nodesForMessage.Count > 0)
 					{
-						message.AddressHistory.Add(MyIpAddress);
+						message.AddAddressToHistory(MyIpAddress);
 					}
 					message.RelayTTL--;
 
@@ -444,13 +500,13 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 						for (int nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++)
 						{
 							nodesForMessage.Pop(out node);
-							if (_myNodeDefinition != null && _myNodeDefinition.Zone != node.NodeDefinition.Zone)
+							if (_myNodeDefinition != null && _myZone != node.Zone)
 							{
 								// Message needs to cross Zone bounderies
 								if (interZoneMessage == null)
 								{
 									interZoneMessage = RelayMessage.CreateInterZoneMessageFrom(message);
-									nodesForInterZoneMessage = new SimpleLinkedList<Node>();
+									nodesForInterZoneMessage = new LinkedListStack<Node>();
 								}
 								nodesForInterZoneMessage.Push(node);
 							}
@@ -479,13 +535,13 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			return distribution;
 		}
 
-		internal Dictionary<string, Dictionary<string, MessageQueue>> GetErrorQueues()
+		internal Dictionary<string, Dictionary<string, ErrorQueue>> GetErrorQueues()
 		{
 
-			Dictionary<string, Dictionary<string, MessageQueue>> queues = new Dictionary<string, Dictionary<string, MessageQueue>>(NodeGroups.Count);
+			Dictionary<string, Dictionary<string, ErrorQueue>> queues = new Dictionary<string, Dictionary<string, ErrorQueue>>(NodeGroups.Count);
 			foreach (NodeGroup group in NodeGroups)
 			{
-				Dictionary<string, MessageQueue> groupQueues = new Dictionary<string, MessageQueue>();
+				Dictionary<string, ErrorQueue> groupQueues = new Dictionary<string, ErrorQueue>();
 				foreach (NodeCluster cluster in group.Clusters)
 				{
 					foreach (Node node in cluster.Nodes)

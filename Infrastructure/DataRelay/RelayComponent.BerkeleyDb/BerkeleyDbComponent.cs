@@ -95,15 +95,16 @@ namespace MySpace.DataRelay.RelayComponent.BerkeleyDb
 			RelayPayload payload = null;
 			fixed (byte* pBytes = &bytes[0])
 			{
-				if (((PayloadStorage*)pBytes)->Deactivated == false)
+				var pPayload = (PayloadStorage*) pBytes;
+				if (pPayload->Deactivated == false)
 				{
 					payload = new RelayPayload(typeId,
 												objectId,
 												byteArray,
-												((PayloadStorage*)pBytes)->Compressed,
-												((PayloadStorage*)pBytes)->TTL,
-												((PayloadStorage*)pBytes)->LastUpdatedTicks,
-												((PayloadStorage*)pBytes)->ExpirationTicks);
+												pPayload->Compressed,
+												pPayload->TTL,
+												pPayload->LastUpdatedTicks,
+												pPayload->ExpirationTicks);
 				}
 			}
 
@@ -1081,9 +1082,23 @@ namespace MySpace.DataRelay.RelayComponent.BerkeleyDb
 					Log.DebugFormat("PostMessage() Deserialized Payload TypeId={0}, ObjectId={1}, TTL={2}, ExpirationTicks={3}, LastUpadatedTicks={4}, Compressed={5}, ByteArrayLength={6}"
 						, payload.TypeId, payload.Id, payload.TTL, payload.ExpirationTicks, payload.LastUpdatedTicks, payload.Compressed, payload.ByteArray.Length);
 				}
-
-				payload.ExtendedId = message.ExtendedId;
-				message.Payload = payload;
+				if (message.Freshness.HasValue)
+				{
+					var lastUpdatedDate = payload.LastUpdatedDate;
+					if (message.Freshness.Value >= lastUpdatedDate)
+					{
+						payload = null;
+					}
+					message.Freshness = lastUpdatedDate;
+				}
+				if (payload != null)
+				{
+					payload.ExtendedId = message.ExtendedId;
+					message.Payload = payload;
+				}
+			} else
+			{
+				message.Freshness = null;
 			}
 			return len;
 		}

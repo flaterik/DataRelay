@@ -15,10 +15,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             get;
         }
 
-        internal abstract string FilterInfo
-        { 
-            get;
-        }
+        public abstract override string ToString();
 
         #region IVersionSerializable Members
 

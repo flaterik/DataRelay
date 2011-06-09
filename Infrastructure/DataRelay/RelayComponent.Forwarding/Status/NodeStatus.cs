@@ -40,13 +40,6 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		/// </summary>
 		[XmlElement("Hops")]
 		public int Hops { set; get; }
-
-		/// <summary>
-		/// Zone Id for the <see cref="IPAddress"/> of the node endpoint;
-		/// zero if <see cref="IPAddress"/> is unavailable. 
-		/// </summary>
-		[XmlElement("DetectedZone")]
-		public ushort DetectedZone { set; get; }
 		
 		/// <summary>
 		/// The number of open socket connections to that server. 
@@ -88,11 +81,18 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		public int InMessageQueueCount { set; get; }
 
 		/// <summary>
-		/// List of message count information.
+		/// The <see cref="MessageCountInfo"/> items for the node; Never <see langword="null"/>
 		/// </summary>
+		public List<MessageCountInfo> MessageCounts
+		{
+			get
+			{
+				return _messageCounts;
+			}
+		}
 		[XmlElement("MessageCounts")]
-		public List<MessageCountInfo> MessageCounts { set; get; }
-		
+		readonly private List<MessageCountInfo> _messageCounts = new List<MessageCountInfo>();
+
 		/// <summary>
 		/// Bulk In refers to saves, deletes, and other updates messages sent as lists 
 		/// against the relay server (the message is putting data “in” the server. 

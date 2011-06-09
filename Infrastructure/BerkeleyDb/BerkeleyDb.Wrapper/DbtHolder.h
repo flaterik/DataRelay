@@ -1,12 +1,7 @@
 #pragma once
 #include "Stdafx.h"
-#include "BdbException.h"
 #include "Alloc.h"
 
-using namespace std;
-using namespace System;
-using namespace System::Runtime::InteropServices;
-using namespace MySpace::Common::Storage;
 
 #ifndef INT32_MAX
 #define INT32_MAX (~(1 << ((8 * sizeof(__int32)) - 1)))
@@ -14,6 +9,12 @@ using namespace MySpace::Common::Storage;
 
 namespace BerkeleyDbWrapper
 {
+	using namespace std;
+	using namespace System;
+	using namespace System::Runtime::InteropServices;
+	using namespace MySpace::Common::Storage;
+
+
 	ref class MemoryUtil {
 	public:
 		static PostAccessUnmanagedMemoryCleanup^ AllocClean;
@@ -33,6 +34,19 @@ namespace BerkeleyDbWrapper
 		SafeUnmanagedMemoryStream ^CreateStream() {
 			return gcnew SafeUnmanagedMemoryStream((Byte *)get_data(), get_size(),
 				MemoryUtil::AllocClean);
+		}
+		array<Byte> ^CreateBuffer() {
+			__int32 size = get_size();
+			if (size < 0) return nullptr;
+			if (size == 0) return gcnew array<Byte>(0);
+			void *ptr = safe_cast<DBT *>(this)->app_data;
+			if (ptr == NULL) return nullptr;
+			GCHandle handle = GCHandle::FromIntPtr(IntPtr(ptr));
+			try {
+				return safe_cast<array<Byte>^>(handle.Target);
+			} finally {
+				handle.Free();
+			}
 		}
 	};
 
@@ -89,8 +103,8 @@ namespace BerkeleyDbWrapper
 			set_flags(get_flags() | DB_DBT_USERMEM);		
 		}
 		void initialize_for_write(DataBuffer &bf) {
-			if (!bf.IsWritable) {
-				throw gcnew ApplicationException("Buffer isn't writtable");
+			if (!(bf.IsWritable || bf.IsEmpty)) {
+				throw gcnew ApplicationException("Buffer isn't writable");
 			}
 			initialize_for_read_write(bf);
 		}

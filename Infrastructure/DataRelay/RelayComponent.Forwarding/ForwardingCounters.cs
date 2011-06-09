@@ -11,6 +11,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 
 		public static readonly string PerformanceCategoryName = "MySpace Relay Forwarding";
 		private bool nov09CountersExist = false;
+		private bool nov10CountersExist = false;
 
 		protected PerformanceCounter[] PerformanceCounters;
 		protected enum PerformanceCounterIndexes
@@ -38,7 +39,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			AvgMsgLifeBase = 20,
 			Notification = 21,
 
-			SaveWithConfirm = 22,// SaveWithConfirm start added 11/9/09
+			SaveWithConfirm = 22,					// Begin counters added 11/9/09
 			UpdateWithConfirm = 23,
 			DeleteWithConfirm = 24,
 			DeleteInAllTypesWithConfirm = 25,
@@ -46,7 +47,10 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			DeleteAllWithConfirm = 27,
 			NotificationWithConfirm = 28,
 			IncrementWithConfirm = 29,
-			Increment = 30 //end add 11/9/09
+			Increment = 30,
+
+			PersistentErrorQueueBytes = 31,			// Begin counters added 11/5/10
+			ErrorQueueMessagesDiscarded = 32
 		}
 
 
@@ -82,7 +86,9 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			@"Msg/Sec - Confirmed Delete All",
 			@"Msg/Sec - Confirmed Notification",
 			@"Msg/Sec - Confirmed Increment",
-			@"Msg/Sec - Increment"
+			@"Msg/Sec - Increment",
+			@"Persistent Error Queue Bytes",
+			@"Error Queue Messages Discarded"
 		};
 
 		public static readonly string[] PerformanceCounterHelp = { 
@@ -116,7 +122,9 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			"Confirmed Delete All Messages Per Seconds", 
 			"Confirmed Notification Messages Per Second",
 			"Confirmed Increment Messages Per Second",
-			"Increment Messages Per Second"
+			"Increment Messages Per Second",
+			"Persistent Error Queue On-Disk Size",
+			"Count of Error Queue messages discarded due to queue-length or disk-size limits"
 		};
 
 		public static readonly PerformanceCounterType[] PerformanceCounterTypes = { 			
@@ -150,7 +158,9 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			PerformanceCounterType.RateOfCountsPerSecond32, 
 			PerformanceCounterType.RateOfCountsPerSecond32, 
 			PerformanceCounterType.RateOfCountsPerSecond32, 
-			PerformanceCounterType.RateOfCountsPerSecond32 
+			PerformanceCounterType.RateOfCountsPerSecond32,
+			PerformanceCounterType.NumberOfItems64,
+			PerformanceCounterType.NumberOfItems32
 		};
 		#endregion
 
@@ -224,10 +234,17 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 						PerformanceCategoryName))
 					{
 						nov09CountersExist = true;
+
+						if (PerformanceCounterCategory.CounterExists(PerformanceCounterNames[(int)PerformanceCounterIndexes.PersistentErrorQueueBytes],
+							PerformanceCategoryName))
+						{
+							nov10CountersExist = true;
+						}
 					}
-					else
+
+					if (!nov09CountersExist || !nov10CountersExist)
 					{
-						_log.Warn("Confirmed Update Counters are not installed, please reinstall DataRelay counters.");
+						_log.Warn("Current performance counters are not installed, please reinstall DataRelay counters.");
 					}
 
 					_hitCounter = new MinuteAggregateCounter();
@@ -397,7 +414,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 						break;
 					case MessageType.Increment:
 						if (nov09CountersExist == false) break;
-						PerformanceCounters[(int)PerformanceCounterIndexes.Notification].Increment();
+						PerformanceCounters[(int)PerformanceCounterIndexes.Increment].Increment();
 						break;
 				}
 			}
@@ -572,6 +589,30 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 			if (_countersInitialized)
 			{
 				PerformanceCounters[(int)PerformanceCounterIndexes.ErrorQueuedMessages].IncrementBy(-1 * count);
+			}
+		}
+
+		internal void SetPersistentErrorQueueBytes(long size)
+		{
+			if (nov10CountersExist)
+			{
+				PerformanceCounters[(int) PerformanceCounterIndexes.PersistentErrorQueueBytes].RawValue = size;
+			}
+		}
+
+		internal void IncrementErrorQueueDiscards()
+		{
+			if (nov10CountersExist)
+			{
+				PerformanceCounters[(int)PerformanceCounterIndexes.ErrorQueueMessagesDiscarded].Increment();
+			}
+		}
+
+		internal void IncrementErrorQueueDiscardsBy(int count)
+		{
+			if (nov10CountersExist)
+			{
+				PerformanceCounters[(int) PerformanceCounterIndexes.ErrorQueueMessagesDiscarded].IncrementBy(count);
 			}
 		}
 

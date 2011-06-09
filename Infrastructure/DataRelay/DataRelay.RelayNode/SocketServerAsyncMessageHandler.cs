@@ -16,9 +16,9 @@ namespace MySpace.DataRelay
 	/// </summary>
 	internal class SocketServerAsyncMessageHandler : IAsyncMessageHandler
 	{
+		private static readonly LogWrapper log = new LogWrapper();
 		private readonly IAsyncDataHandler _dataHandler;
 		private readonly IRelayNode _relayNode;
-		private readonly LogWrapper log = new LogWrapper();
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="SocketServerAsyncMessageHandler"/> class.

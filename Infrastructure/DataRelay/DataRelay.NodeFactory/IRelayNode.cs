@@ -43,5 +43,15 @@ namespace MySpace.DataRelay
         /// Stops the node server, components and transport.
         /// </summary>
         void Stop();
+
+		/// <summary>
+		/// Fires before handling a message or batch of messages.
+		/// </summary>
+    	event EventHandler BeforeMessagesHandled;
+
+		/// <summary>
+		/// Fires after handling a message or batch of messages.
+		/// </summary>
+		event EventHandler AfterMessagesHandled;
 	}
 }

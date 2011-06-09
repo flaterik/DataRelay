@@ -28,5 +28,15 @@ namespace MySpace.DataRelay.Server.Common
 		/// <param name="message">The message to log. <see langword="null"/> if no message is available.</param>
 		/// <param name="exception">The exception to log. <see langword="null"/> if no exception is available.</param>
 		void FailFatally(string message, Exception exception);
+
+		/// <summary>
+		/// Gets the size of the In message Queue.
+		/// </summary>
+    	int InMessageQueueSize { get; }
+
+		/// <summary>
+		/// Gets the size of the Out message Queue.
+		/// </summary>
+    	int OutMessageQueueSize { get; }
     }
 }

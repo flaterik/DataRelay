@@ -63,6 +63,7 @@ namespace MySpace.DataRelay
 		/// <summary>
 		/// The operation couldn't be completed due to a business rule or other non-error constraint.
 		/// </summary>
-		Denied
+		Denied = 10
+
 	}
 }

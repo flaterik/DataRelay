@@ -3,7 +3,6 @@ using MySpace.Common;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query
 {
-
     public enum QueryTypes : byte
     {
         PagedIndexQuery = 1,
@@ -21,10 +20,16 @@ namespace MySpace.DataRelay.Common.Interfaces.Query
         GetRangeQuery,
         RandomQuery,
         IntersectionQuery,
-        RemoteClusteredIntersectionQuery,
+        RemoteClusteredIntersectionQuery, 
         SpanQuery,
         RemoteClusteredPagedIndexQuery,
-        RemoteClusteredSpanQuery
+        RemoteClusteredSpanQuery,
+        TagQuery,
+        StringHashQuery,
+        MultiIndexContainsQuery,
+        MetadataPropertyQuery,
+        DistinctQuery
+
         // ALWAYS add new values to the END of the enumeration
     }
 
@@ -44,6 +49,11 @@ namespace MySpace.DataRelay.Common.Interfaces.Query
     public interface ISplitable<TQueryResult> : IMergeableQueryResult<TQueryResult>
     {
         List<IPrimaryRelayMessageQuery> SplitQuery(int numClustersInGroup);
+
+        List<IPrimaryRelayMessageQuery> SplitQuery(
+            int numClustersInGroup,
+            int localClusterPosition,
+            out IPrimaryRelayMessageQuery localQuery);
     }
 
     /// <summary>

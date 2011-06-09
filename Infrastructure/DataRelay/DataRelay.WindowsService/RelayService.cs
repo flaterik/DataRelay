@@ -92,7 +92,7 @@ namespace MySpace.DataRelay.WindowsService
 			{
                 if (log.IsErrorEnabled)
                     log.ErrorFormat("Exception starting DataRelay Service: {0}. Stopping.", ex);
-				OnStop();
+				Stop();
 			}
 		}
 		

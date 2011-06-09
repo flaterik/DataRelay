@@ -25,8 +25,10 @@ namespace MySpace.DataRelay
 
 		private bool[] _messageTypesFilter = new bool[(int)MessageType.NumTypes];
 		private bool[] _messageTypeIdsFilter;
+		private bool[] _extendedIdDecodeFilter;
 		private int _sampleSeconds;
 		private readonly Timer _sampleTimer;
+
 
 		internal MessageTracer(short maxTypeId, TraceSettings traceSettings)
 		{
@@ -92,6 +94,10 @@ namespace MySpace.DataRelay
 			}
 			else
 			{
+				for (int i = 0; i < newMessageTypesFilter.Length; i++)
+				{
+					newMessageTypesFilter[i] = false;
+				}
 				foreach (MessageType typeToTrace in messageTypesToTrace)
 				{
 					newMessageTypesFilter[(int) typeToTrace] = true;
@@ -117,12 +123,45 @@ namespace MySpace.DataRelay
 			}
 			else
 			{
+				for (int i = 0; i < newMessageTypeIdsFilter.Length; i++)
+				{
+					newMessageTypeIdsFilter[i] = false;
+				}
 				foreach (short typeIdToTrace in messageTypeIdsToTrace)
 				{
 					newMessageTypeIdsFilter[typeIdToTrace] = true;
 				}
 			}
 			_messageTypeIdsFilter = newMessageTypeIdsFilter;
+		}
+
+		/// <summary>
+		/// Sets which message type Ids should have their extended ids decoded. If this is set to null, no messages type ids will have their extended Ids decoded.
+		/// </summary>
+		/// <param name="messageTypeIdsToDecode"></param>
+		internal void SetExtendedIdDecodeFilter(short[] messageTypeIdsToDecode)
+		{
+			bool[] newExtendedIdDecodeFilter = new bool[MaxTypeId + 1];
+
+			if (messageTypeIdsToDecode == null || messageTypeIdsToDecode.Length == 0) //trace all message types
+			{
+				for (int i = 0; i < newExtendedIdDecodeFilter.Length; i++)
+				{
+					newExtendedIdDecodeFilter[i] = false;
+				}
+			}
+			else
+			{
+				for (int i = 0; i < newExtendedIdDecodeFilter.Length; i++)
+				{
+					newExtendedIdDecodeFilter[i] = false;
+				}
+				foreach (short typeIdToDecode in messageTypeIdsToDecode)
+				{
+					newExtendedIdDecodeFilter[typeIdToDecode] = true;
+				}
+			}
+			_extendedIdDecodeFilter = newExtendedIdDecodeFilter;
 		}
 		
 		/// <summary>
@@ -132,7 +171,7 @@ namespace MySpace.DataRelay
 		{
 			if (MessageShouldBeTraced(message))
 			{
-				string logMessage = "Relay Node Got " + message;
+				string logMessage = "Relay Node Got " + message.ToString(true, _extendedIdDecodeFilter[message.TypeId]);
 				Trace.WriteLine(logMessage);
 				WriteMessageTraceToFile(logMessage);
 			}
@@ -159,10 +198,13 @@ namespace MySpace.DataRelay
 		{
 			for (int i = 0; i < messages.Count; i++)
 			{
-				string logMessage = "Relay Node Got " + messages[i];
-				if(_writingToDiagnostic)
-					Trace.WriteLine(logMessage);
-				WriteMessageTraceToFile(logMessage);
+				if (MessageShouldBeTraced(messages[i]))
+				{
+					string logMessage = "Relay Node Got " + messages[i].ToString(true, _extendedIdDecodeFilter[messages[i].TypeId]);
+					if (_writingToDiagnostic)
+						Trace.WriteLine(logMessage);
+					WriteMessageTraceToFile(logMessage);
+				}
 			}
 		}
 
@@ -190,6 +232,7 @@ namespace MySpace.DataRelay
 		{
 			if (Activated && message != null)
 			{
+				message.SetTracePoint();
 				_tracePort.Post(message);
 			}
 		}
@@ -198,10 +241,19 @@ namespace MySpace.DataRelay
 		{
 			if (Activated && messages != null)
 			{
+				SetTracePoints(messages);
 				_traceListPort.Post(messages);
 			}
 		}
 		
+		private static void SetTracePoints(IList<RelayMessage> messages)
+		{
+			for (int i = 0; i < messages.Count; i++)
+			{
+				messages[i].SetTracePoint();
+			}
+		}
+
 		internal void WriteLogMessage(MessageType originatingMessageType, short originatingMessageTypeId, string logMessage)
 		{
 			if(Activated && MessageShouldBeTraced(originatingMessageType, originatingMessageTypeId))
@@ -315,6 +367,7 @@ namespace MySpace.DataRelay
 				_writingToDiagnostic = traceSettings.WriteToDiagnostic;
 				SetMessageTypeFilter(traceSettings.GetTracedMessageTypeEnums());
 				SetMessageTypeIdFilter(traceSettings.TracedMessageTypeIds);
+				SetExtendedIdDecodeFilter(traceSettings.DecodeExtendedIdTypeIds);
 			}
 			else
 			{
@@ -323,6 +376,7 @@ namespace MySpace.DataRelay
 				_outputTraceFileName = null;
 				SetMessageTypeFilter(null);
 				SetMessageTypeIdFilter(null);
+				SetExtendedIdDecodeFilter(null);
 			}
 		}
 	}

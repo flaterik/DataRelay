@@ -1,102 +1,30 @@
 ﻿using MySpace.Common.IO;
 using MySpace.Common;
-using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
     public class RandomQuery : IRelayMessageQuery, IPrimaryQueryId
     {
         #region Data Members
-        private byte[] indexId;
-        public byte[] IndexId
-        {
-            get
-            {
-                return indexId;
-            }
-            set
-            {
-                indexId = value;
-            }
-        }
 
-        private int count;
-        public int Count
-        {
-            get
-            {
-                return count;
-            }
-            set
-            {
-                count = value;
-            }
-        }
+        public byte[] IndexId { get; set; }
 
-        private string targetIndexName;
-        public string TargetIndexName
-        {
-            get
-            {
-                return targetIndexName;
-            }
-            set
-            {
-                targetIndexName = value;
-            }
-        }
+        public int Count { get; set; }
 
-        private bool excludeData;
-        public bool ExcludeData
-        {
-            get
-            {
-                return excludeData;
-            }
-            set
-            {
-                excludeData = value;
-            }
-        }
+        public string TargetIndexName { get; set; }
 
-        private bool getMetadata;
-        public bool GetMetadata
-        {
-            get
-            {
-                return getMetadata;
-            }
-            set
-            {
-                getMetadata = value;
-            }
-        }
+        public bool ExcludeData { get; set; }
 
-        private Filter filter;
-        public Filter Filter
-        {
-            get
-            {
-                return filter;
-            }
-            set
-            {
-                filter = value;
-            }
-        }
+        public bool GetMetadata { get; set; }
 
-        private FullDataIdInfo fullDataIdInfo;
-        public FullDataIdInfo FullDataIdInfo
-        {
-            get
-            {
-                return fullDataIdInfo;
-            }
-            set
-            {
-                fullDataIdInfo = value;
-            }
-        }
+        public Filter Filter { get; set; }
+
+        public FullDataIdInfo FullDataIdInfo { get; set; }
+
+        public IndexCondition IndexCondition { get; set; }
+
+        public DomainSpecificProcessingType DomainSpecificProcessingType { get; set; }
+
         #endregion
 
         #region Ctors
@@ -117,13 +45,13 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
         private void Init(byte[] indexId, int count, string targetIndexName, bool excludeData, bool getMetadata, Filter filter, FullDataIdInfo fullDataIdInfo)
         {
-            this.indexId = indexId;
-            this.count = count;
-            this.targetIndexName = targetIndexName;
-            this.excludeData = excludeData;
-            this.getMetadata = getMetadata;
-            this.filter = filter;
-            this.fullDataIdInfo = fullDataIdInfo;
+            IndexId = indexId;
+            Count = count;
+            TargetIndexName = targetIndexName;
+            ExcludeData = excludeData;
+            GetMetadata = getMetadata;
+            Filter = filter;
+            FullDataIdInfo = fullDataIdInfo;
         }
         #endregion
 
@@ -143,7 +71,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         {
             get
             {
-                return primaryId > 0 ? primaryId : IndexCacheUtils.GeneratePrimaryId(indexId);
+                return primaryId > 0 ? primaryId : IndexCacheUtils.GeneratePrimaryId(IndexId);
             }
             set
             {
@@ -158,41 +86,63 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             using (writer.CreateRegion())
             {
                 //IndexId
-                if (indexId == null || indexId.Length == 0)
+                if (IndexId == null || IndexId.Length == 0)
                 {
-                    writer.Write((ushort) 0);
+                    writer.Write((ushort)0);
                 }
                 else
                 {
-                    writer.Write((ushort) indexId.Length);
-                    writer.Write(indexId);
+                    writer.Write((ushort)IndexId.Length);
+                    writer.Write(IndexId);
                 }
 
                 //Count
-                writer.Write(count);
+                writer.Write(Count);
 
                 //TargetIndexName
-                writer.Write(targetIndexName);
+                writer.Write(TargetIndexName);
 
                 //ExcludeData
-                writer.Write(excludeData);
+                writer.Write(ExcludeData);
 
                 //GetMetadata
-                writer.Write(getMetadata);
+                writer.Write(GetMetadata);
 
                 //Filter
-                if (filter == null)
+                if (Filter == null)
                 {
-                    writer.Write((byte) 0);
+                    writer.Write((byte)0);
                 }
                 else
                 {
-                    writer.Write((byte) filter.FilterType);
-                    Serializer.Serialize(writer.BaseStream, filter);
+                    writer.Write((byte)Filter.FilterType);
+                    Serializer.Serialize(writer.BaseStream, Filter);
                 }
 
                 //FullDataIdInfo
-                Serializer.Serialize(writer.BaseStream, fullDataIdInfo);
+                if (FullDataIdInfo == null)
+                {
+                    writer.Write(false);
+                }
+                else
+                {
+                    writer.Write(true);
+                    Serializer.Serialize(writer.BaseStream, FullDataIdInfo);
+                }
+
+                //IndexCondition
+                if (IndexCondition == null)
+                {
+                    writer.Write(false);
+                }
+                else
+                {
+                    writer.Write(true);
+                    Serializer.Serialize(writer.BaseStream, IndexCondition);
+                }
+
+                //DomainSpecificProcessingType
+                writer.Write((byte)DomainSpecificProcessingType);
             }
         }
 
@@ -204,34 +154,47 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 ushort len = reader.ReadUInt16();
                 if (len > 0)
                 {
-                    indexId = reader.ReadBytes(len);
+                    IndexId = reader.ReadBytes(len);
                 }
 
                 //Count
-                count = reader.ReadInt32();
+                Count = reader.ReadInt32();
 
                 //TargetIndexName
-                targetIndexName = reader.ReadString();
+                TargetIndexName = reader.ReadString();
 
                 //ExcludeData
-                excludeData = reader.ReadBoolean();
+                ExcludeData = reader.ReadBoolean();
 
                 //GetMetadata
-                getMetadata = reader.ReadBoolean();
+                GetMetadata = reader.ReadBoolean();
 
                 //Filter
                 byte b = reader.ReadByte();
                 if (b != 0)
                 {
-                    FilterType filterType = (FilterType) b;
-                    filter = FilterFactory.CreateFilter(reader, filterType);
+                    FilterType filterType = (FilterType)b;
+                    Filter = FilterFactory.CreateFilter(reader, filterType);
+                }
+
+                //FullDataIdInfo
+                if (reader.ReadBoolean())
+                {
+                    FullDataIdInfo = new FullDataIdInfo();
+                    Serializer.Deserialize(reader.BaseStream, FullDataIdInfo);
+                }
+
+                //IndexCondition
+                if (reader.ReadBoolean())
+                {
+                    IndexCondition = new IndexCondition();
+                    Serializer.Deserialize(reader.BaseStream, IndexCondition);
                 }
 
                 if (version >= 2)
                 {
-                    //FullDataIdInfo
-                    fullDataIdInfo = new FullDataIdInfo();
-                    Serializer.Deserialize(reader.BaseStream, fullDataIdInfo);
+                    //DomainSpecificProcessingType
+                    DomainSpecificProcessingType = (DomainSpecificProcessingType)reader.ReadByte();
                 }
             }
         }

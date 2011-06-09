@@ -3,7 +3,7 @@
 // but are changed infrequently
 
 #pragma once
-
+#pragma warning(disable:4273)
 #ifdef _WIN64
 #ifdef _DEBUG
 #pragma comment(lib, "libdb47.Debug.x64.lib")
@@ -29,3 +29,4 @@
 
 
 int ret = _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF | _CRTDBG_LEAK_CHECK_DF);
+

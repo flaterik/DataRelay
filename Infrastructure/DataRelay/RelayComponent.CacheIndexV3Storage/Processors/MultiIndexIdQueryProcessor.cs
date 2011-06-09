@@ -32,7 +32,9 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             List<SortOrder> sortOrderList = null;
             int totalCount = 0;
             int additionalAvailableItemCount = 0;
+            GroupByResult groupByResult = null;
             StringBuilder exceptionInfo = new StringBuilder();
+            int indexCap = 0;
             IndexTypeMapping indexTypeMapping =
                 storeContext.StorageConfiguration.CacheIndexV3StorageConfig.IndexTypeMappingCollection[messageContext.TypeId];
 
@@ -49,6 +51,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     #region Set sort vars
 
                     Index targetIndexInfo = indexTypeMapping.IndexCollection[query.TargetIndexName];
+                    indexCap = targetIndexInfo.MaxIndexSize;
+
                     if (query.TagSort != null)
                     {
                         isTagPrimarySort = query.TagSort.IsTag;
@@ -62,7 +66,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         sortOrderList = targetIndexInfo.PrimarySortInfo.SortOrderList;
                     }
                     BaseComparer baseComparer = new BaseComparer(isTagPrimarySort, sortFieldName, sortOrderList);
-
+                    groupByResult = new GroupByResult(baseComparer);
                     #endregion
 
                     #region Prepare ResultList
@@ -70,8 +74,13 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                     CacheIndexInternal targetIndex;
                     IndexIdParams indexIdParam;
                     int maxExtractCount;
-                    Dictionary<KeyValuePair<byte[], string>, CacheIndexInternal> internalIndexDictionary =
-                        new Dictionary<KeyValuePair<byte[], string>, CacheIndexInternal>();
+                    byte[] metadata;
+                    MetadataPropertyCollection metadataPropertyCollection;
+                    Dictionary<KeyValuePair<byte[], string>, CacheIndexInternal> internalIndexDictionary = new Dictionary<KeyValuePair<byte[], string>, CacheIndexInternal>();
+
+                    int maxMergeCount = query.MaxMergeCount;
+
+                    IndexCondition queryIndexCondition = query.IndexCondition;
 
                     for (int i = 0; i < query.IndexIdList.Count; i++)
                     {
@@ -82,6 +91,21 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                             query.GetAdditionalAvailableItemCount,
                             indexIdParam.Filter,
                             query.MaxMergeCount);
+
+                        // Note: This should be changed later and just extracted once if it is also requested in GetIndexHeader
+                        metadata = null;
+                        metadataPropertyCollection = null;
+                        if (indexTypeMapping.MetadataStoredSeperately)
+                        {
+                            IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping,
+                                messageContext.TypeId,
+                                messageContext.PrimaryId,
+                                query.IndexIdList[i],
+                                storeContext,
+                                out metadata,
+                                out metadataPropertyCollection);
+                        }
+
                         targetIndex = IndexServerUtils.GetCacheIndexInternal(storeContext,
                             messageContext.TypeId,
                             (query.PrimaryIdList != null && i < query.PrimaryIdList.Count) ?
@@ -93,13 +117,20 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                             maxExtractCount,
                             indexIdParam.Filter,
                             true,
-                            query.IndexCondition,
+                            queryIndexCondition,
                             false,
                             false,
                             targetIndexInfo.PrimarySortInfo,
                             targetIndexInfo.LocalIdentityTagList,
                             targetIndexInfo.StringHashCodeDictionary,
-                            query.CapCondition);
+                            query.CapCondition,
+                            targetIndexInfo.IsMetadataPropertyCollection,
+                            metadataPropertyCollection,
+                            query.DomainSpecificProcessingType,
+                            storeContext.DomainSpecificConfig,
+                            null,
+                            query.GroupBy,
+                            false);
 
                         #endregion
 
@@ -123,10 +154,27 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                             #region Get items from index and merge
 
-                            MergeAlgo.MergeItemLists(ref resultItemList,
-                                CacheIndexInternalAdapter.GetResultItemList(targetIndex, 1, int.MaxValue),
-                                query.MaxMergeCount,
-                                baseComparer);
+                            if (query.GroupBy == null)
+                            {
+                                MergeAlgo.MergeItemLists(ref resultItemList,
+                                    CacheIndexInternalAdapter.GetResultItemList(targetIndex, 1, int.MaxValue),
+                                    query.MaxMergeCount,
+                                    baseComparer);
+                            }
+                            else
+                            {
+                                MergeAlgo.MergeGroupResult(ref groupByResult,
+                                    targetIndex.GroupByResult,
+                                    query.MaxMergeCount,
+                                    baseComparer);
+                            }
+
+                            if ((i != query.IndexIdList.Count - 1) && (resultItemList.Count == maxMergeCount))
+                            {
+                                AdjustIndexCondition(GetConditionBoundaryBytes(resultItemList, groupByResult, query.GroupBy, isTagPrimarySort, sortFieldName), 
+                                    ref queryIndexCondition, 
+                                    baseComparer);
+                            }
 
                             #endregion
                         }
@@ -136,11 +184,13 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                     #region Subset Processing
 
-                    ProcessSubsets(query, ref resultItemList);
+                    ProcessSubsets(query, ref resultItemList, ref groupByResult, baseComparer);
 
                     #endregion
 
                     #region Get Extra Tags for IndexIds in the list
+
+                    //Note: Getting extra tags from GroupByResult not supported for now
 
                     if (query.TagsFromIndexes != null && query.TagsFromIndexes.Count != 0)
                     {
@@ -188,7 +238,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                         indexInfo.PrimarySortInfo,
                                         indexInfo.LocalIdentityTagList,
                                         indexInfo.StringHashCodeDictionary,
-                                        null);
+                                        null,
+                                        indexInfo.IsMetadataPropertyCollection,
+                                        null,
+                                        query.DomainSpecificProcessingType,
+                                        storeContext.DomainSpecificConfig,
+                                        null,
+                                        null,
+                                        false);
 
                                     if (additionalCacheIndexInternal != null)
                                     {
@@ -225,15 +282,16 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                             CacheIndexInternal targetIndexCacheIndexInternal;
 
                             if (!indexIdIndexHeaderMapping.ContainsKey(indexId) &&
-                                internalIndexDictionary.TryGetValue(new KeyValuePair<byte[], string>(indexId, query.TargetIndexName),out targetIndexCacheIndexInternal))
+                                internalIndexDictionary.TryGetValue(new KeyValuePair<byte[], string>(indexId, query.TargetIndexName), out targetIndexCacheIndexInternal))
                             {
-                                indexIdIndexHeaderMapping.Add(indexId, GetIndexHeader(internalIndexDictionary, 
-                                    targetIndexCacheIndexInternal, 
-                                    indexId, 
-                                    query, 
-                                    indexTypeMapping, 
-                                    messageContext.TypeId, 
-                                    storeContext));
+                                indexIdIndexHeaderMapping.Add(indexId, GetIndexHeader(internalIndexDictionary,
+                                    targetIndexCacheIndexInternal,
+                                    indexId,
+                                    query,
+                                    indexTypeMapping,
+                                    messageContext.TypeId,
+                                    storeContext,
+                                    i));
                             }
                         }
                     }
@@ -242,21 +300,51 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         //Get IndexHeader just for IndexIds present in the result
                         indexIdIndexHeaderMapping = new Dictionary<byte[], IndexHeader>(new ByteArrayEqualityComparer());
 
-                        for (int i = 0; i < resultItemList.Count; i++)
+                        if (query.GroupBy == null)
                         {
-                            ResultItem resultItem = resultItemList[i];
-                            if (!indexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                            for (int i = 0; i < resultItemList.Count; i++)
                             {
-                                CacheIndexInternal targetIndexCacheIndexInternal;
-                                internalIndexDictionary.TryGetValue(new KeyValuePair<byte[], string>(resultItem.IndexId, query.TargetIndexName), 
-                                    out targetIndexCacheIndexInternal);
-                                indexIdIndexHeaderMapping.Add(resultItem.IndexId, GetIndexHeader(internalIndexDictionary, 
-                                    targetIndexCacheIndexInternal, 
-                                    resultItem.IndexId, 
-                                    query, 
-                                    indexTypeMapping, 
-                                    messageContext.TypeId, 
-                                    storeContext));
+                                ResultItem resultItem = resultItemList[i];
+                                if (!indexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                                {
+                                    CacheIndexInternal targetIndexCacheIndexInternal;
+                                    internalIndexDictionary.TryGetValue(new KeyValuePair<byte[], string>(resultItem.IndexId, query.TargetIndexName),
+                                        out targetIndexCacheIndexInternal);
+                                    indexIdIndexHeaderMapping.Add(resultItem.IndexId,
+                                        GetIndexHeader(internalIndexDictionary,
+                                        targetIndexCacheIndexInternal,
+                                        resultItem.IndexId,
+                                        query,
+                                        indexTypeMapping,
+                                        messageContext.TypeId,
+                                        storeContext,
+                                        i));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            foreach (ResultItemBag resultItemBag in groupByResult)
+                            {
+                                for (int i = 0; i < resultItemBag.Count; i++)
+                                {
+                                    ResultItem resultItem = resultItemBag[i];
+                                    if (!indexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                                    {
+                                        CacheIndexInternal targetIndexCacheIndexInternal;
+                                        internalIndexDictionary.TryGetValue(new KeyValuePair<byte[], string>(resultItem.IndexId, query.TargetIndexName),
+                                            out targetIndexCacheIndexInternal);
+                                        indexIdIndexHeaderMapping.Add(resultItem.IndexId,
+                                            GetIndexHeader(internalIndexDictionary,
+                                            targetIndexCacheIndexInternal,
+                                            resultItem.IndexId,
+                                            query,
+                                            indexTypeMapping,
+                                            messageContext.TypeId,
+                                            storeContext,
+                                            i));
+                                    }
+                                }
                             }
                         }
                     }
@@ -267,7 +355,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                     if (!query.ExcludeData)
                     {
-                        DataTierUtil.GetData(resultItemList, storeContext, messageContext, indexTypeMapping.FullDataIdFieldList, query.FullDataIdInfo);
+                        DataTierUtil.GetData(resultItemList, 
+                            groupByResult,
+                            storeContext, messageContext, 
+                            indexTypeMapping.FullDataIdFieldList,
+                            query.FullDataIdInfo);
                     }
 
                     #endregion
@@ -282,6 +374,8 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                                  IsTagPrimarySort = isTagPrimarySort,
                                  SortFieldName = sortFieldName,
                                  SortOrderList = sortOrderList,
+                                 IndexCap = indexCap,
+                                 GroupByResult = groupByResult,
                                  ExceptionInfo = exceptionInfo.ToString()
                              };
 
@@ -294,11 +388,11 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 {
                     LoggingUtil.Log.ErrorFormat("Encountered potentially Bad Paged Query with Large Result Set of {0}.  AddressHistory: {1}.  Query Info: {2}",
                                                 resultItemList.Count,
-                                                FormatAddressHistory(messageContext.AddressHistory),
+                                                IndexServerUtils.FormatAddressHistory(messageContext.AddressHistory),
                                                 FormatQueryInfo(query));
                 }
 
-                LoggingUtil.Log.DebugFormat("QueryInfo: {0}, AddressHistory: {1}", FormatQueryInfo(query), FormatAddressHistory(messageContext.AddressHistory));
+                LoggingUtil.Log.DebugFormat("QueryInfo: {0}, AddressHistory: {1}", FormatQueryInfo(query), IndexServerUtils.FormatAddressHistory(messageContext.AddressHistory));
 
                 #endregion
 
@@ -316,32 +410,84 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             return result;
         }
 
-        /// <summary>
-        /// Formats the address history.
-        /// </summary>
-        /// <param name="addressHistory">The address history.</param>
-        /// <returns>String containing formatted address history</returns>
-        protected static string FormatAddressHistory(List<IPAddress> addressHistory)
+        private static byte[] GetConditionBoundaryBytes(List<ResultItem> resultItemList, 
+            GroupByResult groupByResult, 
+            GroupBy groupBy,
+            bool isTagPrimarySort,
+            string sortFieldName)
         {
-            string retVal = "";
-            if (addressHistory != null && addressHistory.Count > 0)
+            ResultItem resultItem = groupBy == null
+                                        ? resultItemList[resultItemList.Count - 1]
+                                        : groupByResult.First.First;
+
+            byte[] conditionBoundry;
+            if (!isTagPrimarySort) // based on item id
             {
-                if (addressHistory.Count == 1)
+                conditionBoundry = resultItem.ItemId;
+            }
+            else // based on tag
+            {
+                resultItem.TryGetTagValue(sortFieldName, out conditionBoundry);
+            }
+            return conditionBoundry;
+        }
+
+        /// <summary>
+        /// Adjust current index condition based on the result item list 
+        /// </summary>
+        /// <param name="conditionBoundry">condition boundry bytes</param>
+        /// <param name="queryIndexCondition">query index condition</param>
+        /// <param name="comparer">comparer the sort is based on</param>
+        private static void AdjustIndexCondition(byte[] conditionBoundry, ref IndexCondition queryIndexCondition, BaseComparer comparer)
+        {
+            if (conditionBoundry != null)
+            {
+                // check the condiftion boundry and put it into the queryIndexCondition
+                if (comparer.SortOrderList[0].SortBy == SortBy.DESC) // if desc
                 {
-                    retVal = addressHistory[0].ToString();
-                }
-                else
-                {
-                    var stb = new StringBuilder();
-                    for (int i = 0; i < addressHistory.Count; i++)
+                    if (queryIndexCondition != null)
                     {
-                        stb.Append(addressHistory[i]).Append(", ");
+                        if (queryIndexCondition.InclusiveMinValue == null)
+                        {
+                            queryIndexCondition.InclusiveMinValue = conditionBoundry;
+                        }
+                        else if (comparer.Compare(conditionBoundry, queryIndexCondition.InclusiveMinValue) == -1)
+                        {
+                            queryIndexCondition.InclusiveMinValue = conditionBoundry;
+                        }
                     }
-                    retVal = stb.ToString();
+                    else
+                    {
+                        queryIndexCondition = new IndexCondition
+                                                  {
+                                                      InclusiveMinValue = conditionBoundry
+                                                  };
+                    }
+                }
+                else // if asc
+                {
+                    if (queryIndexCondition != null)
+                    {
+                        if (queryIndexCondition.InclusiveMaxValue == null)
+                        {
+                            queryIndexCondition.InclusiveMaxValue = conditionBoundry;
+                        }
+                        else if (comparer.Compare(conditionBoundry, queryIndexCondition.InclusiveMaxValue) == 1)
+                        {
+                            queryIndexCondition.InclusiveMaxValue = conditionBoundry;
+                        }
+                    }
+                    else
+                    {
+                        queryIndexCondition = new IndexCondition
+                                                  {
+                                                      InclusiveMaxValue = conditionBoundry
+                                                  };
+                    }
                 }
             }
-            return retVal;
         }
+       
 
         /// <summary>
         /// Computes the max extract count.
@@ -395,41 +541,42 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
         /// Gets the index header.
         /// </summary>
         /// <param name="internalIndexDictionary">The internal index dictionary.</param>
+        /// <param name="targetIndexCacheIndexInternal">The targetindex CacheIndexInternal.</param>
         /// <param name="indexId">The index id.</param>
         /// <param name="query">The query.</param>
         /// <param name="indexTypeMapping">The index type mapping.</param>
         /// <param name="typeId">The type id.</param>
-        /// <param name="primaryId">The primary id.</param>
-        /// <param name="extendedId">The extended id.</param>
         /// <param name="storeContext">The store context.</param>
+        /// <param name="indexInIndexIdList">The indexInIndexIdList.</param>
         /// <returns>IndexHeader</returns>
-        private static IndexHeader GetIndexHeader(Dictionary<KeyValuePair<byte[], string>, CacheIndexInternal> internalIndexDictionary,
+        private static IndexHeader GetIndexHeader(Dictionary<KeyValuePair<byte[], string>, 
+            CacheIndexInternal> internalIndexDictionary,
             CacheIndexInternal targetIndexCacheIndexInternal,
             byte[] indexId,
             BaseMultiIndexIdQuery<TQueryResult> query,
             IndexTypeMapping indexTypeMapping,
             short typeId,
-            IndexStoreContext storeContext)
+            IndexStoreContext storeContext,
+            int indexInIndexIdList)
         {
-            IndexHeader indexHeader = new IndexHeader();
-            KeyValuePair<byte[] /*IndexId */, string /*IndexName*/> kvp;
+            byte[] metadata = null;
+            MetadataPropertyCollection metadataPropertyCollection = null;
 
-            #region Metadata
-
-            if (CheckMetaData(internalIndexDictionary, indexTypeMapping))
+            if(CheckMetaData(internalIndexDictionary, indexTypeMapping))
             {
                 if (indexTypeMapping.MetadataStoredSeperately)
                 {
-                    #region Check if metadata is stored seperately
+                    #region Check if MetadataPropertyCollection is stored seperately
 
-                    //Send a get message to local index storage and fetch seperately stored metadata
-                    RelayMessage getMsg = new RelayMessage(typeId, IndexCacheUtils.GeneratePrimaryId(indexId), indexId, MessageType.Get);
-                    storeContext.IndexStorageComponent.HandleMessage(getMsg);
-
-                    if (getMsg.Payload != null)
-                    {
-                        indexHeader.Metadata = getMsg.Payload.ByteArray;
-                    }
+                    IndexServerUtils.GetMetadataStoredSeperately(indexTypeMapping, 
+                        typeId,
+                        (query.PrimaryIdList != null &&indexInIndexIdList < query.PrimaryIdList.Count) ? 
+                            query.PrimaryIdList[indexInIndexIdList]:
+                            IndexCacheUtils.GeneratePrimaryId(indexId),
+                        indexId,
+                        storeContext,
+                        out metadata,
+                        out metadataPropertyCollection);
 
                     #endregion
                 }
@@ -439,7 +586,14 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                     if (indexTypeMapping.IndexCollection[query.TargetIndexName].MetadataPresent)
                     {
-                        indexHeader.Metadata = targetIndexCacheIndexInternal.Metadata;
+                        if (indexTypeMapping.IndexCollection[query.TargetIndexName].IsMetadataPropertyCollection)
+                        {
+                            metadataPropertyCollection = targetIndexCacheIndexInternal.MetadataPropertyCollection;
+                        }
+                        else
+                        {
+                            metadata = targetIndexCacheIndexInternal.Metadata;
+                        }
                     }
 
                     #endregion
@@ -452,7 +606,18 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                         {
                             if (indexTypeMapping.IndexCollection[indexName].MetadataPresent)
                             {
-                                indexHeader.Metadata = internalIndexDictionary[new KeyValuePair<byte[], string>(indexId, indexName)].Metadata;
+                                if (indexTypeMapping.IndexCollection[indexName].IsMetadataPropertyCollection)
+                                {
+                                    metadataPropertyCollection =
+                                        internalIndexDictionary[new KeyValuePair<byte[], string>(indexId, indexName)].
+                                            MetadataPropertyCollection;
+                                }
+                                else
+                                {
+                                    metadata =
+                                        internalIndexDictionary[new KeyValuePair<byte[], string>(indexId, indexName)].
+                                            Metadata;
+                                }
                             }
                         }
                     }
@@ -461,38 +626,12 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
                 }
             }
 
-            #endregion
-
-            #region VirtualCount
-
-            indexHeader.VirtualCount = targetIndexCacheIndexInternal.VirtualCount;
-
-            #endregion
-
-            return indexHeader;
-        }
-
-        /// <summary>
-        /// Formats the query info.
-        /// </summary>
-        /// <param name="query">The query.</param>
-        /// <returns>String containing formatted QueryInfo</returns>
-        protected virtual string FormatQueryInfo(BaseMultiIndexIdQuery<TQueryResult> query)
-        {
-            StringBuilder stb = new StringBuilder();
-            stb.Append("NumOfIndex: ").Append(query.IndexIdList == null ? 0 : query.IndexIdList.Count).Append(", ");
-            stb.Append("MaxItemsPerIndex: ").Append(query.MaxItems).Append(", ");
-            if (query.Filter == null)
+            return new IndexHeader
             {
-                stb.Append("Total Filter Count: ").Append(0).Append(", ");
-            }
-            else
-            {
-                stb.Append("Total Filter Count: ").Append(query.Filter.FilterCount).Append(", ");
-                stb.Append("Filter Info - ").Append(Environment.NewLine).Append(query.Filter.FilterInfo).Append(Environment.NewLine);
-            }
-            stb.Append("ExcludeData: ").Append(query.ExcludeData).Append(", ");
-            return stb.ToString();
+                Metadata = metadata,
+                MetadataPropertyCollection = metadataPropertyCollection,
+                VirtualCount = targetIndexCacheIndexInternal.VirtualCount
+            };
         }
 
         /// <summary>
@@ -506,11 +645,23 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
             MessageContext messageContext);
 
         /// <summary>
+        /// Formats the query info.
+        /// </summary>
+        /// <param name="query">The query.</param>
+        /// <returns>String containing formatted QueryInfo</returns>
+        protected abstract string FormatQueryInfo(BaseMultiIndexIdQuery<TQueryResult> query);
+
+        /// <summary>
         /// Processes the subsets.
         /// </summary>
         /// <param name="query">The query.</param>
         /// <param name="resultItemList">The result item list.</param>
-        protected abstract void ProcessSubsets(BaseMultiIndexIdQuery<TQueryResult> query, ref List<ResultItem> resultItemList);
+        ///  <param name="groupByResult">The GroupByResult</param>
+        ///  <param name="baseComparer">The BaseComparer</param>       
+        protected abstract void ProcessSubsets(BaseMultiIndexIdQuery<TQueryResult> query, 
+            ref List<ResultItem> resultItemList, 
+            ref GroupByResult groupByResult,
+            BaseComparer baseComparer);
 
         /// <summary>
         /// Sets the item counter.

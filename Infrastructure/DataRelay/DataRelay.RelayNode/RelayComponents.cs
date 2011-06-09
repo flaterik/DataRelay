@@ -601,7 +601,7 @@ namespace MySpace.DataRelay
 
 		public void HandleOutMessages(IList<RelayMessage> messages)
 		{
-			TypeIdMessageListPair[] typedMessages = TypeIdMessageListPair.SplitMessagesByType(this.maxTypeId, messages, this.doHandleMessageByType, this);
+			TypeIdMessageListPair[] typedMessages = TypeIdMessageListPair.SplitMessagesByType(maxTypeId, messages, doHandleMessageByType, this);
 			IList<RelayMessage> typeMessages;
 			List<IRelayComponent> componentList = null;
 			List<IReplicationComponent> replicationComponentList = null;
@@ -756,8 +756,16 @@ namespace MySpace.DataRelay
 			{
 				foreach (int typeId in typeList)
 				{
-					if (typeComponentLists[typeId] == null) typeComponentLists[typeId] = new List<T>();
-					typeComponentLists[typeId].Add(component);
+					if (typeId >= typeComponentLists.Length)
+					{
+						log.ErrorFormat("Can't add type Id {0} to list because it is >= to the length of the list!", typeId);
+					}
+					else
+					{
+						if (typeComponentLists[typeId] == null) typeComponentLists[typeId] = new List<T>();
+						typeComponentLists[typeId].Add(component);
+					}
+					
 				}
 			}
 		}
@@ -850,7 +858,8 @@ namespace MySpace.DataRelay
 
 			/// <summary>
 			/// Enumerates through the <paramref name="messages"/> list and aggregates messsage that have the same
-			/// <see cref="RelayMessage.TypeId"/> and returns a list of the aggregates.
+			/// <see cref="RelayMessage.TypeId"/> and returns a list of the aggregates. Any messages that have been marked as 
+			/// redirected will not be put in the returned array
 			/// </summary>
 			/// <param name="maxTypeId">The largest <see cref="RelayMessage.TypeId"/> to be encounterd (for optimization).</param>
 			/// <param name="messages">A list of message to enumerate.</param>
@@ -862,15 +871,16 @@ namespace MySpace.DataRelay
 				TypeIdMessageListPair[] typedMessages = new TypeIdMessageListPair[maxTypeId + 1];
 				for (int i = 0; i < messages.Count; i++)
 				{
-					if (handleMessageByType[(int)messages[i].MessageType])
+					RelayMessage message = messages[i];
+					if (handleMessageByType[(int)message.MessageType] && !message.WasRedirected)
 					{
-						parent.CheckForConfigurationProblems(messages[i]);
-						short typeId = messages[i].TypeId;
+						parent.CheckForConfigurationProblems(message);
+						short typeId = message.TypeId;
 						if (typedMessages[typeId] == null)
 						{
 							typedMessages[typeId] = new TypeIdMessageListPair(typeId);
 						}
-						typedMessages[typeId].Add(messages[i]);
+						typedMessages[typeId].Add(message);
 					}
 				}
 				return typedMessages;
@@ -1475,8 +1485,6 @@ namespace MySpace.DataRelay
 				
 				BuildInOutLists(maxTypeId, ignoredTypes);
 
-				WarmUpComponents();
-
                 if (log.IsInfoEnabled)
                     log.Info("Config Reload: Completed component reload.");
 
@@ -1511,17 +1519,35 @@ namespace MySpace.DataRelay
 			return runstates;
 		}
 
+		/// <summary>
+		/// Gets a relay component, given its name, from the set of loaded components.  The component may
+		/// not be active.
+		/// </summary>
+		/// <param name="componentName">The name of the component.</param>
+		/// <returns>
+		/// The relay component as an <see cref="IDataHandler"/> or null if there is no component
+		/// with the specified name.
+		/// </returns>
+		public IDataHandler GetComponent(string componentName)
+		{
+			IRelayComponent component;
+
+			return loadedComponents.TryGetValue(componentName, out component) ? component : null;
+		}
+
+		/// <summary>
+		/// Gets the <see cref="ComponentRuntimeInfo"/> for a relay component.
+		/// </summary>
+		/// <param name="componentName">The name of the component.</param>
+		/// <returns>
+		/// The <see cref="ComponentRuntimeInfo"/> or null if the component does not exist or has
+		/// no runtime info.
+		/// </returns>
 		public ComponentRuntimeInfo GetComponentRuntimeInfo(string componentName)
 		{
 			IRelayComponent component;
-			if(loadedComponents != null && loadedComponents.TryGetValue(componentName,out component))
-			{
-				if (component != null)
-				{
-					return component.GetRuntimeInfo();
-				}
-			}
-			return null;
+
+			return loadedComponents.TryGetValue(componentName, out component) ? component.GetRuntimeInfo() : null;
 		}
 
 		/// <summary>

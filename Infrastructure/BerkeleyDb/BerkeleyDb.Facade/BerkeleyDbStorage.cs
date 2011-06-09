@@ -43,6 +43,7 @@ namespace MySpace.BerkeleyDb.Facade
 		Online = 2,
 	}
 
+    [Serializable]
 	public class RecoveryFailedException : ApplicationException
 	{
 		public RecoveryFailedException(Exception exc) : base("Recovery failed", exc) { }
@@ -51,8 +52,7 @@ namespace MySpace.BerkeleyDb.Facade
 	/// <summary>
 	/// The main class for BerkeleyDb.
 	/// </summary>
-	[SuppressUnmanagedCodeSecurity]
-	public partial class BerkeleyDbStorage : MarshalByRefObject, IEnumerable
+	public partial class BerkeleyDbStorage : MarshalByRefObject, IEnumerable, IDisposable
 	{
 		public override object InitializeLifetimeService()
 		{
@@ -79,12 +79,9 @@ namespace MySpace.BerkeleyDb.Facade
 		private int[] databaseFederationSizes;
 		private object[,] databaseCreationLocks;
 
-		private readonly IList<short> badStates;
-		
 		private BerkeleyDbWrapper.Environment env ;
 		private BackupSet backupSet;
 		
-		private readonly MsReaderWriterLock stateLock;
 		private readonly MemoryStreamPool memoryPoolStream;
 		private short minTypeId;
 		private short maxTypeId = 50;
@@ -97,6 +94,7 @@ namespace MySpace.BerkeleyDb.Facade
 		private const int maxDbEntryReuse = 5;
 		private readonly ResourcePool<DatabaseEntry> dbEntryPool;
 		private const int initialBufferSize = 1048;
+	    private const double  expandBufferSizeMultiplier = 1.5;
 		private int bufferSize = initialBufferSize;
 		private bool isShuttingDown;
 		private DateTime lastCompactTime = DateTime.MinValue;
@@ -105,9 +103,6 @@ namespace MySpace.BerkeleyDb.Facade
 
 		public BerkeleyDbStorage()
 		{
-			
-			badStates = new List<short>();
-			stateLock = new MsReaderWriterLock(System.Threading.LockRecursionPolicy.NoRecursion);
 			memoryPoolStream = new MemoryStreamPool(bufferSize);
 			dbEntryPool = new ResourcePool<DatabaseEntry>(CreatedDatabaseEntry, ResetDatabaseEntry, maxDbEntryReuse);
 		}
@@ -117,7 +112,7 @@ namespace MySpace.BerkeleyDb.Facade
 		{
 			try
 			{
-				DatabaseType dbType = db.GetType();
+				DatabaseType dbType = db.GetDatabaseType();
 				switch (dbType)
 				{
 					case DatabaseType.Queue:
@@ -148,7 +143,7 @@ namespace MySpace.BerkeleyDb.Facade
 			ResourcePoolItem<DatabaseEntry> pooledDbEntry = null;
 			try
 			{
-				switch (db.GetType())
+				switch (db.GetDatabaseType())
 				{
 					case DatabaseType.Queue:
 						pooledDbEntry = dbEntryPool.GetItem();
@@ -170,8 +165,8 @@ namespace MySpace.BerkeleyDb.Facade
 						newData.Length = totalLen;
 						if (newData.Buffer.Length < recLen)
 						{
-							newData.Resize(recLen);
-							bufferSize = recLen;
+						    bufferSize = GetExpandedBufferSize(recLen);
+                            newData.Resize(bufferSize);							
 						}
 						Serialize(dataLen, newData.Buffer);
 						db.Put(key, newData);
@@ -214,7 +209,7 @@ namespace MySpace.BerkeleyDb.Facade
 				dbEntry.StartPosition = startPosition;
 				dbEntry.Length = length;
 
-				DatabaseType dbType = db.GetType();
+				DatabaseType dbType = db.GetDatabaseType();
 				switch (dbType)
 				{
 					case DatabaseType.Queue:
@@ -245,24 +240,6 @@ namespace MySpace.BerkeleyDb.Facade
 				}
 			}
 			return false;
-		}
-
-		private bool CanProcessMessage(short typeId)
-		{
-			bool canProcess = true;
-			stateLock.Read(() =>
-			               	{
-								if (badStates.Contains(allTypes) || badStates.Contains(typeId))
-								{
-									
-									canProcess = false;
-								}           		
-			               	});
-			if (Log.IsDebugEnabled && !canProcess)
-			{
-				Log.DebugFormat("GetObject() Ignores message due to database bad state (TypeId={0})", typeId);
-			}
-			return canProcess;
 		}
 
 		private static void CloseAllDatabases(Database[,] databasesToClose,
@@ -384,36 +361,37 @@ namespace MySpace.BerkeleyDb.Facade
 				else
 				{
 					dbConfig.HomeDirectory = dir;
-					db = new Database(dbConfig);
+					db = Database.Create(dbConfig);
 				}
 
 				if (db != null)
 				{
-				if (Log.IsDebugEnabled)
-				{
-						if (Log.IsDebugEnabled)
-				{
-							if (fileName != null)
+					GC.SuppressFinalize(db);
+					if (Log.IsDebugEnabled)
 					{
-								Log.InfoFormat("CreateDatabase() DB for the file {0} is opened", fileName);
-					}
-							else
+							if (Log.IsDebugEnabled)
 					{
-								Log.InfoFormat("CreateDatabase() DB for in memory database is opened.");
-							}
+								if (fileName != null)
+						{
+									Log.InfoFormat("CreateDatabase() DB for the file {0} is opened", fileName);
 						}
-						Log.DebugFormat("CreateDatabase() ##BEGIN CREATED DB INFO############################################");
-						Log.DebugFormat("CreateDatabase() Db: Type = {0}", db.GetType());
-						Log.DebugFormat("CreateDatabase() Db: DbFlags = {0}", db.GetFlags());
-						Log.DebugFormat("CreateDatabase() Db: OpenFlags = {0}", db.GetOpenFlags());
-						Log.DebugFormat("CreateDatabase() Db: ErrorPrefix = {0}", db.GetErrorPrefix());
-						Log.DebugFormat("CreateDatabase() Db: PageSize = {0}", db.GetPageSize());
-						Log.DebugFormat("CreateDatabase() Db: RecordLength = {0} (For Queue only)", db.GetRecordLength());
-						Log.DebugFormat("CreateDatabase() Db: HashFillFactor = {0}", db.GetHashFillFactor());
-						db.PrintStats(DbStatFlags.StatAll);
-						Log.DebugFormat("CreateDatabase() ##END DB STAT##############################################");
+								else
+						{
+									Log.InfoFormat("CreateDatabase() DB for in memory database is opened.");
+								}
+							}
+							Log.DebugFormat("CreateDatabase() ##BEGIN CREATED DB INFO############################################");
+							Log.DebugFormat("CreateDatabase() Db: Type = {0}", db.GetDatabaseType());
+							Log.DebugFormat("CreateDatabase() Db: DbFlags = {0}", db.GetFlags());
+							Log.DebugFormat("CreateDatabase() Db: OpenFlags = {0}", db.GetOpenFlags());
+							Log.DebugFormat("CreateDatabase() Db: ErrorPrefix = {0}", db.GetErrorPrefix());
+							Log.DebugFormat("CreateDatabase() Db: PageSize = {0}", db.GetPageSize());
+							Log.DebugFormat("CreateDatabase() Db: RecordLength = {0} (For Queue only)", db.GetRecordLength());
+							Log.DebugFormat("CreateDatabase() Db: HashFillFactor = {0}", db.GetHashFillFactor());
+							db.PrintStats(DbStatFlags.StatAll);
+							Log.DebugFormat("CreateDatabase() ##END DB STAT##############################################");
+						}
 					}
-				}
 				return db;
 			}
 			catch (BdbException ex)
@@ -471,7 +449,8 @@ namespace MySpace.BerkeleyDb.Facade
 					//don't need to create this folder if private is specified because it won't create files if it's not.
 					CreateDirectory(envConfigToCreate.HomeDirectory);
 				}
-				BerkeleyDbWrapper.Environment environment = new BerkeleyDbWrapper.Environment(envConfigToCreate);
+				var environment = BerkeleyDbWrapper.Environment.Create(envConfigToCreate);
+				GC.SuppressFinalize(environment);
 
 				if (Log.IsDebugEnabled)
 				{
@@ -577,7 +556,7 @@ namespace MySpace.BerkeleyDb.Facade
 		{
 			try
 			{
-				DatabaseType dbType = db.GetType();
+				DatabaseType dbType = db.GetDatabaseType();
 				if (dbType != DatabaseType.BTree && dbType != DatabaseType.Hash)
 				{
 					throw new ApplicationException("Database type " + dbType + " cannot have binary key");
@@ -762,7 +741,7 @@ namespace MySpace.BerkeleyDb.Facade
 				bytes = db.Get(key, buffer);
 				if (bytes != null)
 				{
-					switch (db.GetType())
+					switch (db.GetDatabaseType())
 					{
 						case DatabaseType.Queue:
 							const int intLen = 4;
@@ -790,8 +769,8 @@ namespace MySpace.BerkeleyDb.Facade
 
 				if (buffer.Length < recLen)
 				{
-					bufferSize = (int)recLen;
-					dataStream.SetLength(recLen);
+                    bufferSize = GetExpandedBufferSize((int)recLen);
+                    dataStream.SetLength(bufferSize);
 					buffer = dataStream.GetBuffer();
 					memoryPoolStream.InitialBufferSize = bufferSize;
 					SetPooledBufferSize(bufferSize);
@@ -851,7 +830,7 @@ namespace MySpace.BerkeleyDb.Facade
 
 				if (bufferLen < recLen)
 				{
-					bufferSize = (int)recLen;
+                    bufferSize = GetExpandedBufferSize((int)recLen);					
 					value.Resize(bufferSize);
 					SetPooledBufferSize(bufferSize);
 				}
@@ -877,7 +856,7 @@ namespace MySpace.BerkeleyDb.Facade
 
 				if (bufferLen < recLen)
 				{
-					bufferSize = (int)recLen;
+				    bufferSize = GetExpandedBufferSize((int)recLen);
 					value.Resize(bufferSize);
 					SetPooledBufferSize(bufferSize);
 				}
@@ -896,7 +875,7 @@ namespace MySpace.BerkeleyDb.Facade
 				DatabaseEntry data = GetValue(db, key, pooledDbEntry.Item);
 				if (data != null && data.Length > 0)
 				{
-					switch (db.GetType())
+					switch (db.GetDatabaseType())
 					{
 						case DatabaseType.Queue:
 							int len = DeserializeToInt(data.Buffer, 0);
@@ -937,7 +916,7 @@ namespace MySpace.BerkeleyDb.Facade
 				DatabaseEntry data = GetValue(db, key, pooledDbEntry.Item);
 				if (data != null && data.Length > 0)
 				{
-					DatabaseType dbType = db.GetType();
+					DatabaseType dbType = db.GetDatabaseType();
 					switch (dbType)
 					{
 						case DatabaseType.Queue:
@@ -1302,45 +1281,16 @@ namespace MySpace.BerkeleyDb.Facade
 					// if no recovery recreate environment from scratch
 					if (!success)
 					{
-						bdbConfig.EnvironmentConfig.OpenFlags &= ~EnvOpenFlags.RecoverFatal;
-						bdbConfig.EnvironmentConfig.OpenFlags &= ~EnvOpenFlags.Recover;
-						switch (bdbConfig.RecoveryFailureAction)
-						{
-							case RecoveryFailureAction.ThrowException:
-								var thr = new Thread(Shutdown);
-								thr.Start();
-								throw new RecoveryFailedException(lastException);								
-							case RecoveryFailureAction.RemoveAllFiles:
-								if (recoveryLevel == RecoveryLevel.ClearAll)
-								{
-									if (Log.IsInfoEnabled)
-									{
-										Log.InfoFormat("Recover() Starting environment recreation from scratch");
-									}
-									RemoveAllFiles(envConfig);
-									RecreateEnv(bdbConfig.EnvironmentConfig);
-									success = true;
-									if (Log.IsInfoEnabled)
-									{
-										Log.InfoFormat("Recover() Environment recreation completed");
-									}
-								}
-								break;
-							default:
-								throw new Exception("Unrecognized recovery failure action " + bdbConfig.RecoveryFailureAction);
-						}
+                        throw new RecoveryFailedException(lastException);
 					}
 
 					// post recovery
-					if (success)
+					// do normal preloading as needed
+					if (bdbConfig.DbLoadMode == DbLoadMode.OnStartup)
 					{
-						// do normal preloading as needed
-						if (bdbConfig.DbLoadMode == DbLoadMode.OnStartup)
-						{
-							PreLoadDatabasesOnDemand(bdbConfig, databases, databaseFederationSizes, minTypeId, maxTypeId);
-						}
-						Status = oldStatus;
+						PreLoadDatabasesOnDemand(bdbConfig, databases, databaseFederationSizes, minTypeId, maxTypeId);
 					}
+					Status = oldStatus;
 				}
 				catch (Exception ex)
 				{
@@ -1955,6 +1905,10 @@ namespace MySpace.BerkeleyDb.Facade
 		private void RecreateEnv(EnvironmentConfig newEnvConfig)
 		{
 			CloseEnvironment();
+			if (env != null)
+			{
+				env.Dispose();
+			}
 			env = CreateEnvironment(newEnvConfig);
 				SetLockCounters(env);
 			}
@@ -2192,6 +2146,10 @@ namespace MySpace.BerkeleyDb.Facade
 			environment.SetVerboseDeadlock(envConfig.VerboseDeadlock);
 			environment.SetVerboseRecovery(envConfig.VerboseRecovery);
 			environment.SetVerboseWaitsFor(envConfig.VerboseWaitsFor);
+            if (envConfig.SpinWaits > 0)
+            {
+                environment.SpinWaits = envConfig.SpinWaits;
+            }
 			EnvOpenFlags envOpenFlags = envConfig.OpenFlags;
 			if (Log.IsDebugEnabled)
 			{
@@ -2428,6 +2386,10 @@ namespace MySpace.BerkeleyDb.Facade
 			}
 		}
 
+        private static int GetExpandedBufferSize(int recLen)
+        {
+            return (int)(recLen * expandBufferSizeMultiplier);
+        }
 		#endregion
 
 		#region Public Perf Counters
@@ -2653,31 +2615,16 @@ namespace MySpace.BerkeleyDb.Facade
 
 		public bool DeleteObject(short typeId, int objectId)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return false;
-			}
-
-			//using (GetEntryLock(keyValue).WaitToWrite())
-			//{
 			if (Log.IsDebugEnabled)
 			{
 				Log.DebugFormat("DeleteObject() deletes object (TypeId={0}, ObjectId={1})", typeId, objectId);
 			}
 			Database db = GetDatabase(typeId, objectId);
 			return DeleteRecord(db, objectId);
-			//return AddRecord(db, objectId, null);
-			//}
-			//UpdateMemoryCounters();
 		}
 
 		public bool DeleteObject(short typeId, int objectId, byte[] key)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return false;
-			}
-
 			if (Log.IsDebugEnabled)
 			{
 				Log.DebugFormat("DeleteObject() deletes object (TypeId={0}, ObjectId={1})", typeId, objectId);
@@ -2751,41 +2698,22 @@ namespace MySpace.BerkeleyDb.Facade
 		/// <returns>The stored CacheMessage object</returns>
 		public byte[] GetObject(short typeId, int objectId)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return null;
-			}
-
-			//using (GetEntryLock(keyValue).WaitToRead())
-			//{
 			if (Log.IsDebugEnabled)
 			{
 				Log.DebugFormat("GetObject() gets record (TypeId={0}, ObjectId={1})", typeId, objectId);
 			}
-			//Txn txn = env.TxnBegin(null, Txn.BeginFlags.None);
 			Database db = GetDatabase(typeId, objectId);
 			return GetRecord(db, objectId);
-			//txn.Commit(Txn.CommitMode.None);
-
-			//}
 		}
 
 		public string GetString(short typeId, int objectId, string key)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return null;
-			}
 			Database db = GetDatabase(typeId, objectId);
 			return db.Get(key);
 		}
 
 		public bool SaveString(short typeId, int objectId, string key, string data)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return false;
-			}
 			Database db = GetDatabase(typeId, objectId);
 			db.Put(key, data);
 			return true;
@@ -2793,11 +2721,6 @@ namespace MySpace.BerkeleyDb.Facade
 
 		public void GetDbObject(short typeId, int objectId, DatabaseEntryMapper databaseEntryMapper)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return;
-			}
-
 			if (Log.IsDebugEnabled)
 			{
 				Log.DebugFormat("GetObject() gets record (TypeId={0}, ObjectId={1})", typeId, objectId);
@@ -2808,7 +2731,7 @@ namespace MySpace.BerkeleyDb.Facade
 
 		public void GetDbObject(short typeId, int objectId, byte[] key, DatabaseEntryMapper databaseEntryMapper)
 		{
-			if (!CanProcessMessage(typeId) || databaseEntryMapper == null)
+			if (databaseEntryMapper == null)
 			{
 				return;
 			}
@@ -3075,19 +2998,11 @@ namespace MySpace.BerkeleyDb.Facade
 				
 
 				Recover(envConfig.VerifyOnStartup);
-				//NEVER do this automatically. 
-				//RemoveAllFiles(envConfig);
-				//RecreateEnv(envConfig);
-				//PreLoadDatabasesOnDemand(bdbConfigToInit, databases, databaseFederationSizes, minTypeId, maxTypeId);
 				
 
 				ShutdownTimers();
 				StartTimers();
 
-				//if (bufferPoolCountersHandle != null)
-				//{
-				//    bufferPoolCountersHandle(dbEntryPool.AllocatedItemsCounter, dbEntryPool.ItemsInUseCounter);
-				//}
 				if (AllocatedBuffersCounter != null)
 				{
 					dbEntryPool.AllocatedItemsCounter = AllocatedBuffersCounter;
@@ -3100,27 +3015,13 @@ namespace MySpace.BerkeleyDb.Facade
 			catch (Exception ex)
 			{
 				CloseAllHandles();
-				switch (bdbConfigToInit.RecoveryFailureAction)
-				{
-					case RecoveryFailureAction.ThrowException:
-						Log.ErrorFormat("Initialize() Got {0}. Aborting.", ex.GetType().Name);
-						if (ex is RecoveryFailedException)
-							throw;
-							throw new RecoveryFailedException(ex);						
-					case RecoveryFailureAction.RemoveAllFiles:
-						Log.Error(string.Format("Initialize() Got {0}. Trying to Recreate Environment.", ex.GetType().Name), ex);
-						RemoveAllFiles(envConfig);
-						RecreateEnv(envConfig);
-						ShutdownTimers();
-						StartTimers();
-						break;
-					default:
-						throw new ApplicationException("Unrecognized recovery failure action " + bdbConfigToInit.RecoveryFailureAction,
-							ex);						
-				}
+				Log.ErrorFormat("Initialize() Got {0}. Aborting.", ex.GetType().Name);
+                if (ex is RecoveryFailedException)
+                {
+                    throw;
+                }
+		        throw new RecoveryFailedException(ex);						
 			}
-
-			stateLock.Write(() => badStates.Clear());
 
 			if (Log.IsDebugEnabled)
 			{
@@ -3196,11 +3097,6 @@ namespace MySpace.BerkeleyDb.Facade
 		/// </summary>
 		public bool SaveObject(short typeId, int objectId, byte[] data)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return false;
-			}
-
 			if (Log.IsDebugEnabled)
 			{
 				Log.DebugFormat("SaveObject() saves object (TypeId={0}, ObjectId={1})", typeId, objectId);
@@ -3213,11 +3109,6 @@ namespace MySpace.BerkeleyDb.Facade
 
 		public bool SaveObject(short typeId, int objectId, byte[] key, byte[] data)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return false;
-			}
-
 			if (Log.IsDebugEnabled)
 			{
 				Log.DebugFormat("SaveObject() saves object (TypeId={0}, ObjectId={1})", typeId, objectId);
@@ -3232,11 +3123,6 @@ namespace MySpace.BerkeleyDb.Facade
 
 		public bool SaveObject(short typeId, int objectId, byte[] key, int startPosition, int length, RMWDelegate rmwDelegate)
 		{
-			if (!CanProcessMessage(typeId))
-			{
-				return false;
-			}
-
 			if (Log.IsDebugEnabled)
 			{
 				Log.DebugFormat("SaveObject() saves object (TypeId={0}, ObjectId={1})", typeId, objectId);
@@ -3310,13 +3196,12 @@ namespace MySpace.BerkeleyDb.Facade
 		public void Shutdown()
 		{
 			Status = BerkeleyDbStatus.Offline;
+			GC.SuppressFinalize(this);
 			isShuttingDown = true;
 			if (Log.IsInfoEnabled)
 			{
 				Log.InfoFormat("Shutting down ...");
 			}
-
-			stateLock.Write(() => badStates.Add(allTypes));
 
 			ShutdownTimers();
 			if (IsLogging)
@@ -3332,6 +3217,24 @@ namespace MySpace.BerkeleyDb.Facade
 				Log.InfoFormat("Shutdown Complete.");
 			}
 			Status = BerkeleyDbStatus.NotRunning;
+		}
+
+		protected void Dispose(bool disposing)
+		{
+			if (Status != BerkeleyDbStatus.NotRunning)
+			{
+				Shutdown();
+			}			
+		}
+
+		~BerkeleyDbStorage()
+		{
+			Dispose(false);
+		}
+
+		void IDisposable.Dispose()
+		{
+			Dispose(true);
 		}
 
 		bool IsLogging

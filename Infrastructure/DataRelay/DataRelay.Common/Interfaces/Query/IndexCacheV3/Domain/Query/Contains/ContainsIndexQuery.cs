@@ -1,103 +1,29 @@
 ﻿using System.Collections.Generic;
 using MySpace.Common.IO;
 using MySpace.Common;
-using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 {
 	public class ContainsIndexQuery : IRelayMessageQuery, IPrimaryQueryId
 	{
 		#region Data Members
-		private byte[] indexId;
-		public byte[] IndexId
-		{
-			get
-			{
-				return indexId;
-			}
-			set
-			{
-				indexId = value;
-			}
-		}
 
-		private List<IndexItem> indexItemList;
-        public List<IndexItem> IndexItemList
-		{
-			get
-			{
-                return indexItemList;
-			}
-			set
-			{
-                indexItemList = value;
-			}
-		}
+	    public byte[] IndexId { get; set; }
 
-		private string targetIndexName;
-		public string TargetIndexName
-		{
-			get
-			{
-				return targetIndexName;
-			}
-			set
-			{
-				targetIndexName = value;
-			}
-		}
+	    public List<IndexItem> IndexItemList { get; set; }
 
-		private List<string> tagsFromIndexes;
-		public List<string> TagsFromIndexes
-		{
-			get
-			{
-				return tagsFromIndexes;
-			}
-			set
-			{
-				tagsFromIndexes = value;
-			}
-		}
+	    public string TargetIndexName { get; set; }
 
-		private bool excludeData;
-		public bool ExcludeData
-		{
-			get
-			{
-				return excludeData;
-			}
-			set
-			{
-				excludeData = value;
-			}
-		}
+	    public List<string> TagsFromIndexes { get; set; }
 
-		private bool getMetadata;
-		public bool GetMetadata
-		{
-			get
-			{
-				return getMetadata;
-			}
-			set
-			{
-				getMetadata = value;
-			}
-		}
+	    public bool ExcludeData { get; set; }
 
-        private FullDataIdInfo fullDataIdInfo;
-        public FullDataIdInfo FullDataIdInfo
-	    {
-	        get
-	        {
-                return fullDataIdInfo;
-	        }
-            set
-            {
-                fullDataIdInfo = value;
-            }
-	    }
+	    public bool GetMetadata { get; set; }
+
+	    public FullDataIdInfo FullDataIdInfo { get; set; }
+
+	    public DomainSpecificProcessingType DomainSpecificProcessingType { get; set; }
+
 		#endregion
 
 		#region Ctors
@@ -139,13 +65,13 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             bool getMetadata,
             FullDataIdInfo fullDataIdInfo)
 		{
-			this.indexId = indexId;
-            this.indexItemList = indexItemList;
-			this.targetIndexName = targetIndexName;
-			this.tagsFromIndexes = tagsFromIndexes;
-			this.excludeData = excludeData;
-			this.getMetadata = getMetadata;
-            this.fullDataIdInfo = fullDataIdInfo;
+			IndexId = indexId;
+            IndexItemList = indexItemList;
+			TargetIndexName = targetIndexName;
+			TagsFromIndexes = tagsFromIndexes;
+			ExcludeData = excludeData;
+			GetMetadata = getMetadata;
+            FullDataIdInfo = fullDataIdInfo;
 		}
 		#endregion
 
@@ -165,7 +91,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 		{
             get
             {
-                return primaryId > 0 ? primaryId : IndexCacheUtils.GeneratePrimaryId(indexId);
+                return primaryId > 0 ? primaryId : IndexCacheUtils.GeneratePrimaryId(IndexId);
             }
             set
             {
@@ -178,55 +104,66 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 		public void Serialize(IPrimitiveWriter writer)
 		{
 			//IndexId
-			if (indexId == null || indexId.Length == 0)
+			if (IndexId == null || IndexId.Length == 0)
 			{
 				writer.Write((ushort)0);
 			}
 			else
 			{
-				writer.Write((ushort)indexId.Length);
-				writer.Write(indexId);
+				writer.Write((ushort)IndexId.Length);
+				writer.Write(IndexId);
 			}
 
 			//IndexItemList
-            if(indexItemList == null || indexItemList.Count == 0)
+            if(IndexItemList == null || IndexItemList.Count == 0)
             {
 				writer.Write((ushort)0);
 			}
 			else
 			{
-				writer.Write((ushort)indexItemList.Count);
-                foreach(IndexItem indexItem in indexItemList)
+				writer.Write((ushort)IndexItemList.Count);
+                foreach(IndexItem indexItem in IndexItemList)
                 {
                     indexItem.Serialize(writer);
                 }
 			}
 
 			//TargetIndexName
-			writer.Write(targetIndexName);
+			writer.Write(TargetIndexName);
 
 			//TagsFromIndexes
-			if (tagsFromIndexes == null || tagsFromIndexes.Count == 0)
+			if (TagsFromIndexes == null || TagsFromIndexes.Count == 0)
 			{
 				writer.Write((ushort)0);
 			}
 			else
 			{
-				writer.Write((ushort)tagsFromIndexes.Count);
-				foreach (string str in tagsFromIndexes)
+				writer.Write((ushort)TagsFromIndexes.Count);
+				foreach (string str in TagsFromIndexes)
 				{
 					writer.Write(str);
 				}
 			}
 
 			//ExcludeData
-			writer.Write(excludeData);
+			writer.Write(ExcludeData);
 
 			//GetMetadata
-			writer.Write(getMetadata);
+			writer.Write(GetMetadata);
 
             //FullDataIdInfo
-		    Serializer.Serialize(writer.BaseStream, fullDataIdInfo);
+            if (FullDataIdInfo == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, FullDataIdInfo);
+            }
+
+            //DomainSpecificProcessingType
+            writer.Write((byte)DomainSpecificProcessingType);
 		}
 
 		public void Deserialize(IPrimitiveReader reader, int version)
@@ -235,7 +172,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             ushort len = reader.ReadUInt16();
             if (len > 0)
             {
-                indexId = reader.ReadBytes(len);
+                IndexId = reader.ReadBytes(len);
             }
 
             //IndexItemList
@@ -243,44 +180,58 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             if (count > 0)
             {
                 IndexItem indexItem;
-                indexItemList = new List<IndexItem>(count);
+                IndexItemList = new List<IndexItem>(count);
                 for (ushort i = 0; i < count; i++)
                 {
                     indexItem = new IndexItem();
                     indexItem.Deserialize(reader);
-                    indexItemList.Add(indexItem);
+                    IndexItemList.Add(indexItem);
                 }
             }
 
             //TargetIndexName
-            targetIndexName = reader.ReadString();
+            TargetIndexName = reader.ReadString();
 
             //TagsFromIndexes
             count = reader.ReadUInt16();
-            tagsFromIndexes = new List<string>(count);
+            TagsFromIndexes = new List<string>(count);
             if (count > 0)
             {
                 for (ushort i = 0; i < count; i++)
                 {
-                    tagsFromIndexes.Add(reader.ReadString());
+                    TagsFromIndexes.Add(reader.ReadString());
                 }
             }
 
             //ExcludeData
-            excludeData = reader.ReadBoolean();
+            ExcludeData = reader.ReadBoolean();
 
             //GetMetadata
-            getMetadata = reader.ReadBoolean();
+            GetMetadata = reader.ReadBoolean();
 
-            if(version >= 2)
+            if(version == 2)
             {
                 //FullDataIdInfo
-                fullDataIdInfo = new FullDataIdInfo();
-                Serializer.Deserialize(reader.BaseStream, fullDataIdInfo);
+                FullDataIdInfo = new FullDataIdInfo();
+                Serializer.Deserialize(reader.BaseStream, FullDataIdInfo);
             }
+
+            if (version >= 3)
+            {
+                //FullDataIdInfo
+                if (reader.ReadBoolean())
+                {
+                    FullDataIdInfo = new FullDataIdInfo();
+                    Serializer.Deserialize(reader.BaseStream, FullDataIdInfo);
+                }
+
+                //DomainSpecificProcessingType
+                DomainSpecificProcessingType = (DomainSpecificProcessingType)reader.ReadByte();
+            }
+
 		}
 
-        private const int CURRENT_VERSION = 2;
+        private const int CURRENT_VERSION = 3;
         public int CurrentVersion
         {
             get

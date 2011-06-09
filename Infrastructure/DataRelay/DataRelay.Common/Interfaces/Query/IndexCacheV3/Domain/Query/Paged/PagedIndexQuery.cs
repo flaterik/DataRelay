@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Text;
 using System.Collections.Generic;
 using MySpace.Common.IO;
-using Wintellect.PowerCollections;
 using MySpace.DataRelay.Interfaces.Query.IndexCacheV3;
 
 namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
@@ -10,20 +10,12 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
     {
         #region Data Members
 
-        public int PageSize
-        {
-            get;
-            set;
-        }
+        public int PageSize { get; set; }
 
         /// <summary>
         /// Set to zero if all items are required
         /// </summary>
-        public int PageNum
-        {
-            get;
-            set;
-        }
+        public int PageNum { get; set;}
 
         internal override int MaxMergeCount
         {
@@ -73,9 +65,25 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         }
 
         private int numClustersInGroup;
+
+        #endregion
+
+        #region Methods
+
+        public override string ToString()
+        {
+            var stb = new StringBuilder();
+            stb.Append("--- Paged Query ---");
+            stb.Append("(").Append(" PageNum: ").Append(PageNum).Append("),");
+            stb.Append("(").Append("PageSize: ").Append(PageSize).Append("),");
+            stb.Append(base.ToString());
+            return stb.ToString();
+        }
+
         #endregion
 
         #region Ctors
+
         public PagedIndexQuery()
         {
             Init(null, null, -1, -1, null, null, null, -1, false, false, null, false, null, null, null, false);
@@ -162,33 +170,27 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             IndexCondition = indexCondition;
             ClientSidePaging = clientSidePaging;
         }
+
         #endregion
 
         #region ISplitable<TQueryResult> Members
+
         public override List<IPrimaryRelayMessageQuery> SplitQuery(int numClustersInGroup)
         {
-            PagedIndexQuery query;
-            List<IPrimaryRelayMessageQuery> queryList = new List<IPrimaryRelayMessageQuery>();
-            Dictionary<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], IndexIdParams>>> clusterParamsMapping;
-
-            IndexCacheUtils.SplitIndexIdsByCluster(IndexIdList, PrimaryIdList, IndexIdParamsMapping, numClustersInGroup, out clusterParamsMapping);
-
-            ClientSidePaging = (numClustersInGroup > 1 && IndexIdList.Count > 1 && clusterParamsMapping.Count > 1);
             this.numClustersInGroup = numClustersInGroup;
 
-            foreach (KeyValuePair<int, Triple<List<byte[]>, List<int>, Dictionary<byte[], IndexIdParams>>> clusterParam in clusterParamsMapping)
-            {
-                query = new PagedIndexQuery(this)
-                {
-                    PrimaryId = clusterParam.Key,
-                    IndexIdList = clusterParam.Value.First,
-                    PrimaryIdList = clusterParam.Value.Second,
-                    IndexIdParamsMapping = clusterParam.Value.Third,
-                };
-                queryList.Add(query);
-            }
-            return queryList;
+            return base.SplitQuery(numClustersInGroup);
         }
+
+        public override List<IPrimaryRelayMessageQuery> SplitQuery(int numClustersInGroup,
+            int localClusterPosition,
+            out IPrimaryRelayMessageQuery localQuery)
+        {
+            this.numClustersInGroup = numClustersInGroup;
+
+            return base.SplitQuery(numClustersInGroup, localClusterPosition, out localQuery);
+        }
+
         #endregion
 
         #region IMergeableQueryResult<TQueryResult> Members
@@ -202,6 +204,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             }
 
             // We have partialResults to process
+            BaseComparer baseComparer = null;
             ByteArrayEqualityComparer byteArrayEqualityComparer = new ByteArrayEqualityComparer();
             Dictionary<byte[] /*IndexId*/, IndexHeader /*IndexHeader*/> completeIndexIdIndexHeaderMapping =
                 new Dictionary<byte[], IndexHeader>(byteArrayEqualityComparer);
@@ -212,11 +215,13 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
             if (partialResults.Count == 1)
             {
                 #region  Just one cluster was targeted, so no need to merge anything
+
                 finalResult = partialResults[0];
                 if (finalResult != null)
                 {
                     resultVer = finalResult.CurrentVersion;
                 }
+
                 #endregion
             }
             else
@@ -224,43 +229,85 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 #region  More than one clusters was targeted
 
                 List<ResultItem> completeResultItemList = new List<ResultItem>();
-                BaseComparer baseComparer;
+                GroupByResult completeGroupByResult = new GroupByResult(null);
                 int totalCount = 0;
                 int pageableItemCount = 0;
+                StringBuilder exceptionStringBuilder = new StringBuilder();
+                bool indexCapSet = false;
+                int indexCap = 0;
 
                 foreach (PagedIndexQueryResult partialResult in partialResults)
                 {
                     if (partialResult != null)
                     {
                         #region Update resultVer
+
                         if (resultVer == 0)
                         {
                             resultVer = partialResult.CurrentVersion;
                         }
+
+                        #endregion
+
+                        #region Assign IndexCap
+
+                        if (!indexCapSet)
+                        {
+                            indexCap = partialResult.IndexCap;
+                            indexCapSet = true;
+                        }
+
                         #endregion
 
                         #region Compute TotalCount
+
                         totalCount += partialResult.TotalCount;
+
                         #endregion
 
                         #region Compute PageableItemCount
+
                         if (GetPageableItemCount)
                         {
                             pageableItemCount += partialResult.AdditionalAvailableItemCount;
                         }
+
                         #endregion
 
                         #region Merge Results
-                        if (partialResult.ResultItemList != null && partialResult.ResultItemList.Count > 0)
+
+                        if ((partialResult.ResultItemList != null && partialResult.ResultItemList.Count > 0) || 
+                            (partialResult.GroupByResult != null && partialResult.GroupByResult.Count > 0))
                         {
-                            baseComparer = new BaseComparer(partialResult.IsTagPrimarySort, partialResult.SortFieldName, partialResult.SortOrderList);
-                            MergeAlgo.MergeItemLists(ref completeResultItemList, partialResult.ResultItemList, MaxMergeCount, baseComparer);
+                            if (baseComparer == null)
+                            {
+                                baseComparer = new BaseComparer(partialResult.IsTagPrimarySort,
+                                                                partialResult.SortFieldName, 
+                                                                partialResult.SortOrderList);
+                                completeGroupByResult = new GroupByResult(baseComparer);
+                            }
+
+                            if (GroupBy == null)
+                            {
+                                MergeAlgo.MergeItemLists(ref completeResultItemList,
+                                                         partialResult.ResultItemList,
+                                                         MaxMergeCount,
+                                                         baseComparer);
+                            }
+                            else
+                            {
+                                MergeAlgo.MergeGroupResult(ref completeGroupByResult,
+                                                           partialResult.GroupByResult,
+                                                           MaxMergeCount,
+                                                           baseComparer);
+                            }
                         }
                         #endregion
 
                         #region Update IndexIdIndexHeaderMapping
-                        if (GetIndexHeaderType != GetIndexHeaderType.None && 
-                            partialResult.IndexIdIndexHeaderMapping != null && 
+
+                        if (GetIndexHeaderType != GetIndexHeaderType.None &&
+                            partialResult.IndexIdIndexHeaderMapping != null &&
                             partialResult.IndexIdIndexHeaderMapping.Count > 0)
                         {
                             foreach (KeyValuePair<byte[], IndexHeader> kvp in partialResult.IndexIdIndexHeaderMapping)
@@ -271,27 +318,57 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                                 }
                             }
                         }
+
+                        #endregion
+
+                        #region Update exceptionInfo
+
+                        if (!String.IsNullOrEmpty(partialResult.ExceptionInfo))
+                        {
+                            exceptionStringBuilder.Append(partialResult.ExceptionInfo);
+                            exceptionStringBuilder.Append(" ");
+                        }
+
                         #endregion
                     }
                 }
 
                 #region Create FinalResult
+
                 finalResult = new PagedIndexQueryResult
                 {
                     ResultItemList = completeResultItemList,
+                    GroupByResult = completeGroupByResult,
                     TotalCount = totalCount,
                     AdditionalAvailableItemCount = pageableItemCount,
+                    IndexCap = indexCap,
                 };
+
+                //Assign sort fields for use in GroupBy remote queries
+                if(baseComparer != null)
+                {
+                    finalResult.IsTagPrimarySort = baseComparer.IsTagPrimarySort;
+                    finalResult.SortFieldName = baseComparer.SortFieldName;
+                    finalResult.SortOrderList = baseComparer.SortOrderList;
+                }
+
                 if (GetIndexHeaderType != GetIndexHeaderType.None && completeIndexIdIndexHeaderMapping.Count > 0)
                 {
                     finalResult.IndexIdIndexHeaderMapping = completeIndexIdIndexHeaderMapping;
                 }
+
+                if (exceptionStringBuilder.Length > 0)
+                {
+                    finalResult.ExceptionInfo = exceptionStringBuilder.ToString();
+                }
+
                 #endregion
 
                 #endregion
             }
 
             #region Determine whether client side paging is required
+
             bool performClientSidePaging;
             if (resultVer < PagedIndexQueryResult.CORRECT_SERVERSIDE_PAGING_LOGIC_VERSION)
             {
@@ -303,38 +380,75 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 // this.ClientSidePaging can be trusted
                 performClientSidePaging = ClientSidePaging && PageNum != 0;
             }
+
             #endregion
 
             #region Perform Paging and Update IndexIdIndexHeaderMapping if required
+
             if (performClientSidePaging && finalResult != null)
             {
                 #region Paging Logic
+
                 int start = (PageNum - 1) * PageSize;
-                int end = (PageNum * PageSize) < finalResult.ResultItemList.Count ? (PageNum * PageSize) : finalResult.ResultItemList.Count;
-                List<ResultItem> filteredResultItemList = new List<ResultItem>();
-                for (int i = start; i < end; i++)
+                if (GroupBy == null)
                 {
-                    filteredResultItemList.Add(finalResult.ResultItemList[i]);
+                    int end = (PageNum*PageSize) < finalResult.ResultItemList.Count ? (PageNum*PageSize) : finalResult.ResultItemList.Count;
+                    List<ResultItem> filteredResultItemList = new List<ResultItem>();
+                    for (int i = start; i < end; i++)
+                    {
+                        filteredResultItemList.Add(finalResult.ResultItemList[i]);
+                    }
+                    finalResult.ResultItemList = filteredResultItemList;
                 }
-                finalResult.ResultItemList = filteredResultItemList;
+                else if (finalResult.GroupByResult != null && finalResult.GroupByResult.Count > 0)
+                {
+                    int end = (PageNum * PageSize) < finalResult.GroupByResult.Count ? (PageNum * PageSize) : finalResult.GroupByResult.Count;
+                    GroupByResult filteredGroupByResult = new GroupByResult(baseComparer);
+                    for (int i = start; i < end; i++)
+                    {
+                        filteredGroupByResult.Add(finalResult.GroupByResult[i].CompositeKey, finalResult.GroupByResult[i]);
+                    }
+                    finalResult.GroupByResult = filteredGroupByResult;
+                }
+
                 #endregion
 
                 #region Update IndexIdIndexHeaderMapping to only include metadata relevant after paging
+
                 if (partialResults.Count != 1 && GetIndexHeaderType == GetIndexHeaderType.ResultItemsIndexIds && completeIndexIdIndexHeaderMapping.Count > 0)
                 {
-                    Dictionary<byte[] /*IndexId*/, IndexHeader /*IndexHeader*/> filteredIndexIdIndexHeaderMapping = 
+                    Dictionary<byte[] /*IndexId*/, IndexHeader /*IndexHeader*/> filteredIndexIdIndexHeaderMapping =
                         new Dictionary<byte[], IndexHeader>(byteArrayEqualityComparer);
-                    foreach (ResultItem resultItem in finalResult.ResultItemList)
+                    if (GroupBy == null)
                     {
-                        if (!filteredIndexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                        foreach (ResultItem resultItem in finalResult.ResultItemList)
                         {
-                            filteredIndexIdIndexHeaderMapping.Add(resultItem.IndexId, completeIndexIdIndexHeaderMapping[resultItem.IndexId]);
+                            if (!filteredIndexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                            {
+                                filteredIndexIdIndexHeaderMapping.Add(resultItem.IndexId, completeIndexIdIndexHeaderMapping[resultItem.IndexId]);
+                            }
+                        }
+                    }
+                    else if (finalResult.GroupByResult != null && finalResult.GroupByResult.Count > 0)
+                    {
+                        foreach (ResultItemBag resultItemBag in finalResult.GroupByResult)
+                        {
+                            for (int i = 0; i < resultItemBag.Count; i++)
+                            {
+                                ResultItem resultItem = resultItemBag[i];
+                                if (!filteredIndexIdIndexHeaderMapping.ContainsKey(resultItem.IndexId))
+                                {
+                                    filteredIndexIdIndexHeaderMapping.Add(resultItem.IndexId, completeIndexIdIndexHeaderMapping[resultItem.IndexId]);
+                                }
+                            }
                         }
                     }
                     finalResult.IndexIdIndexHeaderMapping = filteredIndexIdIndexHeaderMapping.Count > 0 ? filteredIndexIdIndexHeaderMapping : null;
                 }
+
                 #endregion
             }
+
             #endregion
 
             return finalResult;
@@ -343,6 +457,7 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
         #endregion
 
         #region IRelayMessageQuery Members
+
         public override byte QueryId
         {
             get
@@ -350,9 +465,11 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return (byte)QueryTypes.PagedTaggedIndexQuery;
             }
         }
+
         #endregion
 
         #region IVersionSerializable Members
+
         public override void Serialize(IPrimitiveWriter writer)
         {
             //PageSize
@@ -517,6 +634,20 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
 
             //GetIndexHeaderType
             writer.Write((byte)GetIndexHeaderType);
+
+            //DomainSpecificProcessingType
+            writer.Write((byte)DomainSpecificProcessingType);
+
+            //GroupBy
+            if (GroupBy == null)
+            {
+                writer.Write(false);
+            }
+            else
+            {
+                writer.Write(true);
+                Serializer.Serialize(writer.BaseStream, GroupBy);
+            }
         }
 
         public override void Deserialize(IPrimitiveReader reader, int version)
@@ -676,9 +807,25 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 //GetIndexHeaderType
                 GetIndexHeaderType = (GetIndexHeaderType)reader.ReadByte();
             }
+
+            if (version >= 11)
+            {
+                //DomainSpecificProcessingType
+                DomainSpecificProcessingType = (DomainSpecificProcessingType)reader.ReadByte();
+            }
+
+            if (version >= 12)
+            {
+                //GroupBy
+                if (reader.ReadBoolean())
+                {
+                    GroupBy = new GroupBy();
+                    Serializer.Deserialize(reader.BaseStream, GroupBy);
+                }
+            }
         }
 
-        private const int CURRENT_VERSION = 10;
+        private const int CURRENT_VERSION = 12;
         public override int CurrentVersion
         {
             get
@@ -686,6 +833,16 @@ namespace MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3
                 return CURRENT_VERSION;
             }
         }
+
+        #endregion
+
+        #region ICloneable Members
+
+        public sealed override object Clone()
+        {
+            return new PagedIndexQuery(this);
+        }
+
         #endregion
     }
 }
