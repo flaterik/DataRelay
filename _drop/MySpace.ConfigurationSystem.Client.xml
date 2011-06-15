@@ -1,0 +1,342 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>MySpace.ConfigurationSystem.Client</name>
+    </assembly>
+    <members>
+        <member name="T:MySpace.ConfigurationSystem.ConfigurationChangedEventArgs">
+            <summary>
+            Event data for a configuration section changing
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationChangedEventArgs.#ctor(System.String,System.String,System.Byte[])">
+            <summary>
+            Creates a new instance of ConfigurationChangedEventArgs
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationChangedEventArgs.SectionName">
+            <summary>
+            The name of the section that changed
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationChangedEventArgs.SectionString">
+            <summary>
+            The string representing the section that changed
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationChangedEventArgs.SectionStringBytes">
+            <summary>
+            The bytes of the section that changed
+            </summary>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.ConfigurationClient">
+            <summary>
+            A client to the MySpace configuration system servers. Provides fetching, local caching, and notification of
+            updates to configuration sections.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.GetSectionString(System.String)">
+            <summary>
+            Gets the string for <paramref name="sectionName"/> from the configuration server
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.GetSectionString(System.String,MySpace.ConfigurationSystem.ConfigurationClient.ConfigurationChangedEventHandler)">
+            <summary>
+            Gets the string for <paramref name="sectionName"/> from the configuration server and
+            sets <paramref name="eventHandler"/> to be called if the section is updated.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.GetSectionXml(System.String)">
+            <summary>
+            Gets an XmlNode representing the <paramref name="sectionName"/> from the configuration server.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.InvalidateSection(System.String)">
+            <summary>
+            Removes <paramref name="sectionName"/> from the local cache and forces a get from the server 
+            on the next request. Use this as a callback if your application detects a problem with your config.
+            </summary>
+            <param name="sectionName"></param>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.GetGenericSetting(System.String,System.String)">
+            <summary>
+            Retrieves the setting <paramref name="keyName"/> from the generic section <paramref name="sectionName"/>
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.RegisterReloadNotification(System.String,MySpace.ConfigurationSystem.ConfigurationClient.ConfigurationChangedEventHandler)">
+            <summary>
+            Sets <paramref name="handler"/> to be called if the section named <paramref name="sectionName"/> is updated.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.UnregisterReloadNotification(System.String,MySpace.ConfigurationSystem.ConfigurationClient.ConfigurationChangedEventHandler)">
+            <summary>
+            If you have registered for an event, you should call this to unregister when your 
+            class is ready to be disposed, because otherwise a reference will be held to it by the
+            delegate and it will never be fully garbage collected.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.RefreshSection(System.String)">
+            <summary>
+            This forces a refresh of section <paramref name="sectionName"/>, even if running in a web context.
+            </summary>
+            <remarks>The .net framework does nothing when ConfigurationManager.RefreshSection is called, and instead assumes
+            that the file must have changed and triggered an internal refresh. Since our file does not change, that functionality
+            does not work for us. Instead we reflect into the internal classes and methods that accomplish the refresh manually.
+            </remarks>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationClient.GetSectionFromConfigServer``1(System.String)">
+            <summary>
+            Gets the section object using type T and sectionName
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="sectionName"></param>
+            <returns></returns>
+        </member>
+        <member name="E:MySpace.ConfigurationSystem.ConfigurationClient.ConfigurationChangedEvent">
+            <summary>
+            A event that fires when a configuration section has changed.
+            </summary>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.ConfigurationClient.ConfigurationChangedEventHandler">
+            <summary>
+            A delegate for handling changes in a configuration section.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationItemStore.GetItemList">
+            <summary>
+            Gets a list of every item in the collection. The list is build inside of a lock and returned so than it can be safely
+            enumerated without holding a lock.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1">
+            <summary>
+            <para>
+            A replacement for the <see cref="T:System.Configuration.ConfigurationSection"/> base class that adds support
+            for a <see cref="M:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.GetSection(System.Boolean)"/> method, Configuration System and automatic refresh 
+            (either from local files or Configuration System).
+            </para>
+            </summary>
+            <typeparam name="TImpl">
+            <para>
+            The non-abstract descendent of this class.
+            The implementation class must be decorated with a <see cref="T:MySpace.Configuration.ConfigurationSectionNameAttribute"/>
+            to specify the section name.
+            </para>
+            </typeparam>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.GetSection(System.Boolean)">
+            <summary>
+            Loads the <typeparamref name="TImpl"/> section or returns a cached copy.  This method
+            be used in favor of <see cref="M:System.Configuration.ConfigurationManager.GetSection(System.String)"/> because it will attempt
+            to load the section from the configuration server even if it is not listed in the app config
+            file.
+            </summary>
+            <param name="throwOnSectionNotFound">
+            <see langword="true"/> to throw an exception rather than returning <see langword="null"/>
+            when a valid configuration section is not found; <see langword="false"/> to return
+            <see langword="null"/> when the section is not found.
+            </param>
+            <returns>
+            The <typeparamref name="TImpl"/> read from the app config file;	<see langword="null"/>
+            if no such config section is found.
+            </returns>
+            <exception cref="T:System.ApplicationException">
+            The implementation class is not marked with a <see cref="T:MySpace.Configuration.ConfigurationSectionNameAttribute"/>.
+            </exception>
+            <exception cref="T:MySpace.ConfigurationSystem.ConfigurationSystemException">
+            The section was not successfully loaded and <paramref name="throwOnSectionNotFound"/> is 
+            <see langword="true"/>.
+            </exception>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.DeserializeElement(System.Xml.XmlReader,System.Boolean)">
+            <summary>
+            Reads XML from the configuration file.
+            </summary>
+            <param name="reader">The <see cref="T:System.Xml.XmlReader"/> that reads from the configuration file.</param>
+            <param name="serializeCollectionKey">true to serialize only the collection key properties; otherwise, false.</param>
+            <exception cref="T:System.Configuration.ConfigurationErrorsException">The element to read is locked.- or -An attribute of the current node is not recognized.- or -The lock status of the current node cannot be determined.  </exception>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.TriggerRefresh">
+            <summary>
+            	<para>Causes the <see cref="E:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.Refreshed"/> event to be manually raised.
+            	Should be called whenever a configuration element is modified.</para>
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.IsReadOnly">
+            <summary>
+            	<para>Overriden. Gets a value indicating whether the
+            	<see cref="T:System.Configuration.ConfigurationElement"/> object is read-only.</para>
+            </summary>
+            <returns>
+            	<para>true if the <see cref="T:System.Configuration.ConfigurationElement"/> object is
+            	read-only; otherwise, false.</para>
+            </returns>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.ModifyForTest(System.Action)">
+            <summary>
+            Allows modifications of this instance for test purposes.
+            </summary>
+            <param name="modifications">Delegate containing modifications to this
+            instance.</param>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.MissingSectionRetryInterval">
+            <summary>
+            Gets or sets the missing section retry interval.  If a section is not defined in
+            app.config/web.config and is not found on the configuration server, subsequent calls to 
+            <see cref="M:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.GetSection(System.Boolean)"/> will not hit the configuration server for at least this
+            interval.
+            </summary>
+            <value>
+            A <see cref="T:System.TimeSpan"/> that specifies missing section retry interval.  The default is 5 minutes.
+            </value>
+        </member>
+        <member name="E:MySpace.ConfigurationSystem.ConfigurationSectionHandler`1.Refreshed">
+            <summary>
+            	<para>Invoked when this configuration section has been modified and refreshed.</para>
+            </summary>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.FailStrategy">
+            <summary>
+            How the configuration client should handle communication failures with the server.
+            </summary>
+        </member>
+        <member name="F:MySpace.ConfigurationSystem.FailStrategy.ThrowException">
+            <summary>
+            If there is a communication problem, throw an exception to the requestor.
+            </summary>
+        </member>
+        <member name="F:MySpace.ConfigurationSystem.FailStrategy.UseLocal">
+            <summary>
+            If there is a communication problem, but a local copy exists, use the local copy and log the exception.
+            </summary>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.ConfigurationSystemClientConfig">
+            <summary>
+            Configuration information for the configuration system client.
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationSystemClientConfig.FailStrategy">
+            <summary>
+            Controls what the client will do if there is an problem when updating a locally cached config. 
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationSystemClientConfig.RemoteHost">
+            <summary>
+            The URI of the configuration server.
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationSystemClientConfig.SectionCheckIntervalSeconds">
+            <summary>
+            How often to poll the configuration server for updates.
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationSystemClientConfig.CheckOnGet">
+            <summary>
+            Whether to poll the server actively on each request for a config section that is more than SectionCheckIntervalSeconds old. 
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationSystemClientConfig.KeyProviderTypeName">
+            <summary>
+            The full type string for the implementation of MySpace.ConfigurationSystem.Encryption.IKeyProvider to use
+            </summary>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.ConfigurationSystemException">
+            <summary>
+            Indicates an exception with a configuration section that is stored on the configuration system
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationSystemException.#ctor(System.String,System.String)">
+            <summary>
+            Creates a new ConfigurationSystemException for section <paramref name="sectionName"/> with message <paramref name="errorMessage"/>
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationSystemException.#ctor(System.String,System.String,System.Exception)">
+            <summary>
+            Creates a new ConfigurationSystemException for section <paramref name="sectionName"/> with message <paramref name="errorMessage"/> 
+            and inner exception <paramref name="innerException"></paramref>
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationSystemException.SectionName">
+            <summary>
+            The name of the section that experienced a problem.
+            </summary>
+        </member>
+        <member name="P:MySpace.ConfigurationSystem.ConfigurationSystemException.ErrorMessage">
+            <summary>
+            Any information available about the problem with the section.
+            </summary>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.ConfigurationWatcher">
+            <summary>
+            Watches config files and config sections hosted on the configuration server system for changes.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationWatcher.WatchRemoteSection(System.String,MySpace.ConfigurationSystem.ConfigurationWatcher.ReloadDelegate)">
+            <summary>
+            Watches the section <paramref name="sectionName"/> from the Configuration System for changes. <paramref name="reloadDelegate"/> will be called when the section changes, after any other changes that happen within a second of the first change.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationWatcher.WatchFile(System.String,MySpace.ConfigurationSystem.ConfigurationWatcher.ReloadDelegate)">
+            <summary>
+            Watches the file <paramref name="path"/> for changes. <paramref name="reloadDelegate"/> will be called when the file changes, after any other changes that happen within a second of the first change.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.ConfigurationWatcher.WatchConfig(System.String,MySpace.ConfigurationSystem.ConfigurationWatcher.ReloadDelegate)">
+            <summary>
+            Watches a perticular section within config.  If sectionName points to a remote config server, it will watch the remote server.
+            </summary>
+            <param name="sectionName">section to watch</param>
+            <param name="reloadConfig">delegate to execute when reload happens</param>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.ConfigurationWatcher.ReloadDelegate">
+            <summary>
+            A delegate that will be called when a configuration file or remotely hosted section changes.
+            </summary>
+            <param name="name">The file path or remote section name that changed.</param>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.HttpTransport.MySpace#ConfigurationSystem#IConfigurationClientTransport#GetSectionStringWasNew(System.String,System.String,System.String@,System.String@)">
+            <summary>
+            Checks the section remotely to see if it matches currentHash.
+            </summary>
+            <param name="sectionName">The name of the section to retrieve</param>
+            <param name="currentHash">The md5 hash of the section string you have already, if any.</param>
+            <param name="sectionString">The retrieved section string, if the hash did not match.</param>
+            <param name="generic">Whether the retrived section has been defined as generic.</param>
+            <remarks>This method is not thread safe; do not call it on the same instance from multiple threads simultaneously.</remarks>
+            <returns>True if the section string did not match currentHash and the sectionString was returned</returns>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.XmlSerializerReplacementHandler">
+            <summary>
+            Intended as a mostly drop-in replacement for XmlSerializerSectionHandler. Operates in the same fashion,
+            except when registering for a reload you provide the name of the section rather than the type name of 
+            the class that represents the section.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.XmlSerializerReplacementHandler.Create(System.Object,System.Object,System.Xml.XmlNode)">
+            <summary>
+            Creates the configuration section using the configuraton server.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.XmlSerializerReplacementHandler.GetConfigInstance(System.Xml.XmlNode)">
+            <summary>
+            Creates a section from the identical XML used by XmlSerializationSectionHandler. The only difference is that the XML comes
+            from the configuration system instead of the local file.
+            </summary>
+            <param name="section"></param>
+            <returns></returns>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.XmlSerializerReplacementHandler.RegisterReloadNotification(System.String,System.EventHandler)">
+            <summary>
+            Sets <paramref name="handler"/> to be called if the section named <paramref name="sectionName"/> is updated.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.XmlSerializerReplacementHandler.UnregisterReloadNotification(System.String,System.EventHandler)">
+            <summary>
+            If you have registered for an event, you should call this to unregister when your 
+            class is ready to be disposed, because otherwise a reference will be held to it by the
+            delegate and it will never be fully garbage collected.
+            </summary>
+        </member>
+    </members>
+</doc>

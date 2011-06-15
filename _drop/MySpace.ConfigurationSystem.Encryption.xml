@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>MySpace.ConfigurationSystem.Encryption</name>
+    </assembly>
+    <members>
+        <member name="T:MySpace.ConfigurationSystem.Encryption.Encryptor">
+            <summary>
+            Provides encryption and decryption using the RijndaelManaged algorithm.
+            </summary>
+        </member>
+        <member name="F:MySpace.ConfigurationSystem.Encryption.Encryptor.DefaultKeyProviderType">
+            <summary>
+            The type string for the key provider that will be used if none is supplied.
+            </summary>
+            
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.#ctor">
+            <summary>
+            Creates a new encryptor using the default key provider.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.#ctor(MySpace.ConfigurationSystem.Encryption.IKeyProvider)">
+            <summary>
+            Creates a new encryptor using the supplied key provider.
+            </summary>
+            <param name="keyProvider">The implementation of MySpace.ConfigurationSystem.Encryption.IKeyProvider that will supply the keys.</param>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.#ctor(System.String)">
+            <summary>
+            Creates a new encryptor using the supplied key provider type.
+            </summary>
+            <param name="keyProviderType">A fully qualified type,assembly string for the implementation of MySpace.ConfigurationSystem.Encryption.IKeyProvider that will supply the keys. /></param>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.TryGetEncryptor(MySpace.ConfigurationSystem.Encryption.Encryptor@)">
+            <summary>
+            If the default provider type can be loaded, then <paramref name="encryptor"/> will be instantiated with it, otherwise encryptor will be null. 
+            </summary>
+            <param name="encryptor">The instance of Encryptor that was created, if any.</param>
+            <returns>Whether creating the encryptor was successful.</returns>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.TryGetEncryptor(System.String,MySpace.ConfigurationSystem.Encryption.Encryptor@)">
+            <summary>
+            If the type defined by <paramref name="keyProviderType"/> can be loaded as a key provider, then <paramref name="encryptor"/> will be instantiated with it, otherwise encryptor will be null. 
+            </summary>
+            <param name="keyProviderType">A fully qualified type,assembly string for the implementation of MySpace.ConfigurationSystem.Encryption.IKeyProvider that will supply the keys. /></param>
+            <param name="encryptor">The instance of Encryptor that was created, if any.</param>
+            <returns>Whether creating the encryptor was successful.</returns>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.IsKeyProviderAvailable">
+            <summary>
+            Returns whether the default key provider type string is avaiable.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.IsKeyProviderAvailable(System.String)">
+            <summary>
+            Returns whether the supplied key provider type string is avaiable.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.Encrypt(System.String)">
+            <summary>
+            Encrypts the UTF8 encoded bytes of <paramref name="unencryptedString"/> and returns the result as a base 64 encoded string.
+            </summary>
+            <param name="unencryptedString">The string to encrypt.</param>
+            <returns>The encrypted string in a base 64 encoding.</returns>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.Decrypt(System.String)">
+            <summary>
+            Decrypts <paramref name="encryptedBase64String"/> and returns the result.
+            </summary>
+            <param name="encryptedBase64String">The string to decrypt. It must be a base 64 encoding of the results of encrypting the UTF8 encoded bytes of a string.</param>
+            <returns>The decrypted string.</returns>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.Encrypt(System.Byte[])">
+            <summary>
+            Encrypts <paramref name="unencryptedBytes"/>.
+            </summary>
+            <param name="unencryptedBytes">The bytes to encrypt.</param>
+            <returns>The encrypted bytes.</returns>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.Encryptor.Decrypt(System.Byte[])">
+            <summary>
+            Decrypts <paramref>encryptedBytes</paramref>.
+            </summary>
+            <param name="encryptedBytes">The bytes to decrypt.</param>
+            <returns>The decrypted bytes.</returns>
+        </member>
+        <member name="T:MySpace.ConfigurationSystem.Encryption.IKeyProvider">
+            <summary>
+            An interface used by Encryptor for supplying keys to its encryption algorithm.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.IKeyProvider.GetKey">
+            <summary>
+            Returns the key to be used by the encryption algorithm.
+            </summary>
+        </member>
+        <member name="M:MySpace.ConfigurationSystem.Encryption.IKeyProvider.GetIV">
+            <summary>
+            Returns the initialization vector to be used by the encryption algorithm.
+            </summary>
+        </member>
+        <member name="T:KeyGenerator">
+            <summary>
+            Uses the SymmetricAlgorithm class to generate base 64 encoded initialization vectors and keys. These can be copied from the output to use in key providers.
+            </summary>
+        </member>
+        <member name="M:KeyGenerator.GetBase64Key">
+            <summary>
+            Returns a base 64 encoded key.
+            </summary>
+        </member>
+        <member name="M:KeyGenerator.GetBase64IV">
+            <summary>
+            Returns a base 64 encoded initialization vector.
+            </summary>
+        </member>
+    </members>
+</doc>
