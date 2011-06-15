@@ -104,6 +104,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArgumentHelper.cs" />
     <Compile Include="Barf\AssertArgs.cs" />
     <Compile Include="Barf\BarfDeserializationArgs.cs" />
     <Compile Include="Barf\BarfErrors.cs" />
@@ -161,6 +162,7 @@
     <Compile Include="Collections\CountBoundStack.cs" />
     <Compile Include="Collections\MinimumPriorityQueue.cs" />
     <Compile Include="Collections\MultiValueDictionary.cs" />
+    <Compile Include="Configuration\BaseSectionHandler.cs" />
     <Compile Include="Configuration\ConfigurationLoader.cs" />
     <Compile Include="Configuration\ConfigurationSectionBase.cs" />
     <Compile Include="Configuration\ConfigurationSectionNameAttribute.cs" />
@@ -169,6 +171,10 @@
     <Compile Include="Configuration\EnvironmentMappingsConfig.cs">
       <DependentUpon>EnvironmentMappingsConfig.xsd</DependentUpon>
     </Compile>
+    <Compile Include="Configuration\GenericFactoryConfigurationSection.cs" />
+    <Compile Include="Configuration\SectionHandlerAttribute.cs" />
+    <Compile Include="Configuration\XmlAttributeReader.cs" />
+    <Compile Include="HelperObjects\GenericFactory.cs" />
     <Compile Include="Threading\TaskScheduler.cs" />
     <None Include="Configuration\EnvironmentMappingsConfig.xsd" />
     <Compile Include="Configuration\XmlSerializerSectionHandler.cs" />

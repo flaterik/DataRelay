@@ -5,22 +5,20 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{9EAF04E0-5DB7-4FBD-A23C-B4C93DA1AE63}</ProjectGuid>
+    <ProjectGuid>{75741793-B468-460A-AE3E-058BEA48533B}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MySpace.DataRelay.Client</RootNamespace>
-    <AssemblyName>MySpace.DataRelay.Client</AssemblyName>
+    <RootNamespace>MySpace.DataRelay.RelayComponent.FlexForwarding</RootNamespace>
+    <AssemblyName>MySpace.DataRelay.RelayComponent.FlexForwarding</AssemblyName>
     <SccProjectName>SAK</SccProjectName>
     <SccLocalPath>SAK</SccLocalPath>
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
+    <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
+    <FileUpgradeFlags></FileUpgradeFlags>
+    <UpgradeBackupLocation></UpgradeBackupLocation>
     <OldToolsVersion>3.5</OldToolsVersion>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -33,6 +31,7 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -40,28 +39,25 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\_drop\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <RunCodeAnalysis>false</RunCodeAnalysis>
-    <CodeAnalysisRules>
-    </CodeAnalysisRules>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.FlexForwarding.xml</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\..\..\_drop\</OutputPath>
+    <OutputPath>..\..\..\drop\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\..\..\drop\MySpace.DataRelay.RelayComponent.FlexForwarding.XML</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-    <DocumentationFile>
-    </DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|AnyCPU' ">
-    <OutputPath>..\..\..\_drop\</OutputPath>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -69,21 +65,23 @@
     <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.FlexForwarding.xml</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>..\..\..\_drop\</OutputPath>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x86</PlatformTarget>
     <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.FlexForwarding.xml</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <OutputPath>..\..\..\_drop\</OutputPath>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -91,10 +89,11 @@
     <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.FlexForwarding.xml</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x86' ">
-    <OutputPath>..\..\..\_drop\</OutputPath>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -102,21 +101,23 @@
     <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.FlexForwarding.xml</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>..\..\..\_drop\</OutputPath>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.FlexForwarding.xml</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
-    <OutputPath>..\..\..\_drop\</OutputPath>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -124,10 +125,11 @@
     <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.FlexForwarding.xml</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Deploy|x64' ">
-    <OutputPath>..\..\..\_drop\</OutputPath>
+    <OutputPath>..\DataRelay.WindowsService\Output\RelayAssemblies\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -135,96 +137,67 @@
     <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
     <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
     <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>..\DataRelay.WindowsService\Output\RelayAssemblies\MySpace.DataRelay.RelayComponent.FlexForwarding.xml</DocumentationFile>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Ccr.Core, Version=2.0.913.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\_drop\Microsoft.Ccr.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="MySpace.DataRelay.Common, Version=1.3.2.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.DataRelay.Common, Version=1.3.2.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\MySpace.DataRelay.Common.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.DataRelay.NodeFactory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.DataRelay.NodeFactory, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\MySpace.DataRelay.NodeFactory.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.FlexCache, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="MySpace.FlexCache">
       <HintPath>..\..\..\_drop\MySpace.FlexCache.dll</HintPath>
     </Reference>
     <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\MySpace.Logging.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.PipelineTransport, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.PerfCounters, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\_drop\MySpace.PipelineTransport.dll</HintPath>
+      <HintPath>..\..\..\_drop\MySpace.PerfCounters.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.ResourcePool, Version=1.0.1.0, Culture=neutral, processorArchitecture=MSIL" />
-    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
-    <Reference Include="MySpace.SocketTransport.Client, Version=3.1.0.0, Culture=neutral, processorArchitecture=MSIL" />
-    <Reference Include="MySpace.Storage, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\_drop\MySpace.Storage.dll</HintPath>
+      <HintPath>..\..\..\_drop\MySpace.Shared.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.configuration" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Configuration.Install" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BDProvider.cs" />
-    <Compile Include="CacheClient.cs" />
-    <Compile Include="CacheGetArgs.cs" />
-    <Compile Include="CacheResult.cs" />
-    <Compile Include="IRelayMessageSender.cs" />
-    <Compile Include="IHashMap.cs" />
-    <Compile Include="ModuloHashMap.cs" />
-    <Compile Include="PipelineSender.cs" />
+    <Compile Include="FlexCacheClientExtensions.cs" />
+    <Compile Include="RelayMessageExtensions.cs" />
+    <Compile Include="CountersInstaller.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CountersInstaller.Designer.cs">
+      <DependentUpon>CountersInstaller.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FlexForwarder.cs" />
+    <Compile Include="ForwarderRuntimeInfo.cs" />
+    <Compile Include="FlexForwarderConfig.cs">
+      <DependentUpon>FlexForwarderConfig.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="Counters.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RelayClient.cs" />
-    <Compile Include="RelayEndPoint.cs" />
-    <Compile Include="RelayMessageClient.cs" />
-    <Compile Include="RelayMessageFutureExtensions.cs" />
-    <Compile Include="RelayResult.cs" />
-    <Compile Include="RelayResults.cs" />
-    <Compile Include="RelayResultType.cs" />
-    <Compile Include="RelayServers.cs" />
-    <Compile Include="RelayTypeSettings.cs" />
-    <Compile Include="SocketTransportSender.cs" />
-    <Compile Include="Storage\RelayTypePolicyFactory.cs" />
-    <Compile Include="CacheConfigurationException.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DataRelay.Common\DataRelay.Common.csproj">
-      <Project>{96D6B431-2895-4C2D-A9B3-2F96655F8C5F}</Project>
-      <Name>DataRelay.Common</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\DataRelay.RelayNode\DataRelay.RelayNode.csproj">
-      <Project>{FDDB1E6C-4D27-4C59-93B7-46E3DE31A71F}</Project>
-      <Name>DataRelay.RelayNode</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\DataRelay.Transports.Socket\DataRelay.Transports.Socket.csproj">
-      <Project>{8EE6155E-AD75-4D62-9E74-945E27565698}</Project>
-      <Name>DataRelay.Transports.Socket</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RelayComponent.FlexForwarding\RelayComponent.FlexForwarding.csproj">
-      <Project>{75741793-B468-460A-AE3E-058BEA48533B}</Project>
-      <Name>RelayComponent.FlexForwarding</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RelayComponent.Forwarding\RelayComponent.Forwarding.csproj">
-      <Project>{74FE2ACF-763C-483B-BF5D-673A807F7E17}</Project>
-      <Name>RelayComponent.Forwarding</Name>
-    </ProjectReference>
+    <None Include="FlexForwarderConfig.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="FlexForwarderConfig.xsx">
+      <DependentUpon>FlexForwarderConfig.xsd</DependentUpon>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Service Include="{B4F97281-0DBD-4835-9ED8-7DFB966E87FF}" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Migrated rules for DataRelay.Client.ruleset" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
@@ -251,4 +224,10 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <PropertyGroup>
+    <PostBuildEvent>IF NOT EXIST "$(ProjectDir)..\..\..\_drop\" MKDIR "$(ProjectDir)..\..\..\_drop\"
+copy /Y "$(TargetDir)$(TargetName).*" "$(ProjectDir)..\..\..\_drop\"
+
+</PostBuildEvent>
+  </PropertyGroup>
 </Project>

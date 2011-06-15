@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace MySpace.Common.Threading
 {
-	internal class TaskScheduler : IDisposable
+	public class TaskScheduler : IDisposable
 	{
 		private readonly SortedDictionary<ActionKey, Task> _actions = new SortedDictionary<ActionKey, Task>(new ActionKeyComparer());
 		private readonly LinkedList<Task> _addQueue = new LinkedList<Task>();

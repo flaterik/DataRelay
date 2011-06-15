@@ -19,22 +19,12 @@ namespace MySpace.Configuration
         static ConfigurationLoader()
         {
             LoadConfig();
-            newWatcher = new FileSystemWatcher(BaseFolder, "*.config");
+            newWatcher = new FileSystemWatcher(BaseFolder, MainConfigName);
             newWatcher.Changed += ConfigDirChanged;
-            newWatcher.Created += ConfigDirChanged;
             newWatcher.Filter = MainConfigName;
             newWatcher.EnableRaisingEvents = true;
         }
 
-        /// <summary>
-        /// When the main app/web.config is changed, this handler will be called.
-        /// </summary>
-        /// <param name="handler"></param>
-        public static void AddConfigurationReloadHandler(FileSystemEventHandler handler)
-        {
-            newWatcher.Changed += handler;
-            newWatcher.Created += handler;
-        }
 
         private static void ConfigDirChanged(object source, FileSystemEventArgs e)
         {

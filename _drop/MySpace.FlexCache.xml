@@ -1,0 +1,1044 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>MySpace.FlexCache</name>
+    </assembly>
+    <members>
+        <member name="F:MySpace.FlexCache.CacheConstants.KeySpaceParameterName">
+            <summary>
+            The name of the query parameter that supplies the keyspace.
+            </summary>
+        </member>
+        <member name="F:MySpace.FlexCache.CacheConstants.KeyParameterName">
+            <summary>
+            The name of the query parameter that supplies the key.
+            </summary>
+        </member>
+        <member name="T:MySpace.FlexCache.CacheOptions">
+            <summary>
+            Base class for cache request options.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.CacheOptions.PrepareRequest(MySpace.FlexCache.IRequestWriter)">
+            <summary>
+            Add appropriate headers or make other necessary modifications to the <see cref="T:MySpace.FlexCache.IRequestWriter"/>
+            before the <see cref="T:MySpace.FlexCache.Request"/> is built.
+            </summary>
+            <param name="request">The <see cref="T:MySpace.FlexCache.IRequestWriter"/>.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.CachePutOptions.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.CachePutOptions"/> class.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.CachePutOptions.#ctor(MySpace.FlexCache.Request)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.CachePutOptions"/> class.
+            </summary>
+            <param name="request">A <see cref="T:MySpace.FlexCache.Request"/> object containing headers from which the options will be extracted.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.CachePutOptions.PrepareRequest(MySpace.FlexCache.IRequestWriter)">
+            <summary>
+            Add appropriate headers or make other necessary modifications to the <see cref="T:MySpace.FlexCache.IRequestWriter"/>
+            before the <see cref="T:MySpace.FlexCache.Request"/> is built.
+            </summary>
+            <param name="request">The <see cref="T:MySpace.FlexCache.IRequestWriter"/>.</param>
+        </member>
+        <member name="P:MySpace.FlexCache.CachePutOptions.MaxAge">
+            <summary>
+            Gets or sets the time interval after which the object being stored will expire.
+            </summary>
+            <value>The expiration interval as a <see cref="T:System.TimeSpan"/>.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.CacheResult`1">
+            <summary>
+            Encapsulates the result of a get operation to flex cache.
+            </summary>
+            <typeparam name="T">The type of object retrieved or not retrieved.</typeparam>
+        </member>
+        <member name="P:MySpace.FlexCache.CacheResult`1.WasFound">
+            <summary>
+            Gets a value indicating whether the value was found or not.
+            </summary>
+            <value>
+            	<see langword="true"/> if the value was found; otherwise, <see langword="false"/>.
+            </value>
+        </member>
+        <member name="P:MySpace.FlexCache.CacheResult`1.Value">
+            <summary>
+            Gets the value.
+            </summary>
+            <value>The value.</value>
+            <exception cref="T:MySpace.FlexCache.FlexCacheException">
+            	<para><see cref="P:MySpace.FlexCache.CacheResult`1.WasFound"/> is <see langword="false"/>.</para>
+            </exception>
+        </member>
+        <member name="P:MySpace.FlexCache.CacheResult`1.Metadata">
+            <summary>
+            Gets meta information about the object found in flex cache.
+            </summary>
+            <value>Meta information about the object found in flex cache.</value>
+            <exception cref="T:MySpace.FlexCache.FlexCacheException">
+            	<para><see cref="P:MySpace.FlexCache.CacheResult`1.WasFound"/> is <see langword="false"/>.</para>
+            </exception>
+        </member>
+        <member name="T:MySpace.FlexCache.CacheResultFuture`1">
+            <summary>
+            Encapsulates the result of a get operation from cache.
+            </summary>
+            <typeparam name="T">The type of object that was retrieved.</typeparam>
+        </member>
+        <member name="P:MySpace.FlexCache.CacheResultFuture`1.KeySpace">
+            <summary>
+            Gets the key-space of the cache request.
+            </summary>
+            <value>The key-space of the cache request.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.CacheResultFuture`1.Key">
+            <summary>
+            Gets the key of the cache request.
+            </summary>
+            <value>The key of the cache request.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.CacheResultFuture`1.WasFound">
+            <summary>
+            Gets a value indicating whether the value was found and no failures occurred.
+            </summary>
+            <value>
+            	<see langword="true"/> if the value was found and no failures occurred; otherwise, <see langword="false"/>.
+            </value>
+        </member>
+        <member name="P:MySpace.FlexCache.CacheResultFuture`1.Value">
+            <summary>
+            Gets the value from cache or throws an exception if <see cref="P:MySpace.FlexCache.CacheResultFuture`1.WasFound"/> is <see langword="false"/>.
+            </summary>
+            <value>The value that was found.</value>
+            <exception cref="T:MySpace.FlexCache.FlexCacheException">
+            	<para>A failure occurred. See <see cref="P:MySpace.Common.Future.HasError"/> to check for this state.</para>
+            	<para>- or -</para>
+            	<para>No value exists. See <see cref="P:MySpace.FlexCache.CacheResultFuture`1.WasFound"/> to check for this state.</para>
+            </exception>
+        </member>
+        <member name="P:MySpace.FlexCache.CacheResultFuture`1.Metadata">
+            <summary>
+            Gets meta-information about the stored value if a value was returned.
+            </summary>
+            <value>Meta-information about the stored value.</value>
+            <exception cref="T:MySpace.FlexCache.FlexCacheException">
+            	<para>No value was found. In this case <see cref="P:MySpace.FlexCache.CacheResultFuture`1.WasFound"/> will be <see langword="false"/>.</para>
+            	<para>- or -</para>
+            	<para>An error occurred with the operation. In this case the HasError property will be <see langword="true"/>.</para>
+            </exception>
+        </member>
+        <member name="T:MySpace.FlexCache.ClientNodeMerit">
+            <summary>
+            Used to implement optimal node selection using the criteria of recent connection failures,
+            service unavailable responses, recent request timeout responses, zone proximity and 
+            distance from the hash point.  (The latter two criteria are actually implmented by
+            <see cref="T:MySpace.FlexCache.ZoneNodeMerit"/>.)
+            </summary>
+        </member>
+        <member name="T:MySpace.FlexCache.ZoneNodeMerit">
+            <summary>
+            Used to implement optimal node selection using the criteria of zone proximity
+            and distance from the hash point.
+            </summary>
+        </member>
+        <member name="T:MySpace.FlexCache.INodeMerit">
+            <summary>
+            Interface used to implement optimal node selection.  A node with higher merit should
+            be a better choice than a node with lower merit.
+            </summary>
+        </member>
+        <member name="P:MySpace.FlexCache.INodeMerit.Node">
+            <summary>
+            Gets the <see cref="P:MySpace.FlexCache.INodeMerit.Node"/> associated with this <see cref="T:MySpace.FlexCache.INodeMerit"/> object.
+            </summary>
+            <value>The node.</value>
+        </member>
+        <member name="M:MySpace.FlexCache.ZoneNodeMerit.#ctor(MySpace.FlexCache.Node,System.Int32,MySpace.FlexCache.Zone)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.ZoneNodeMerit"/> class.
+            </summary>
+            <param name="node">The node.</param>
+            <param name="sequence">The distance from the hash point.</param>
+            <param name="localZone">The local zone.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.ZoneNodeMerit.CompareTo(MySpace.FlexCache.INodeMerit)">
+            <summary>
+            Compares the merit of one node to that of another.
+            </summary>
+            <param name="other">The merit of the other node.</param>
+            <returns>
+            An integer greater than zero if this node has higher merit than the other node.
+            An integer less than zero if the other node has higher merit than this node.
+            Zero if both nodes have equal merit.
+            </returns>
+        </member>
+        <member name="P:MySpace.FlexCache.ZoneNodeMerit.Node">
+            <summary>
+            Gets the <see cref="P:MySpace.FlexCache.ZoneNodeMerit.Node"/> associated with this <see cref="T:MySpace.FlexCache.ZoneNodeMerit"/> object.
+            </summary>
+            <value>The node.</value>
+        </member>
+        <member name="M:MySpace.FlexCache.ClientNodeMerit.#ctor(MySpace.FlexCache.Node,System.Int32,MySpace.FlexCache.Zone)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.ClientNodeMerit"/> class.
+            </summary>
+            <param name="node">The node.</param>
+            <param name="sequence">The distance from the hash point.</param>
+            <param name="localZone">The local zone.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.ClientNodeMerit.CompareTo(MySpace.FlexCache.INodeMerit)">
+            <summary>
+            Compares the merit of one node to that of another.
+            </summary>
+            <param name="other">The merit of the other node.</param>
+            <returns>
+            An integer greater than zero if this node has higher merit than the other node.
+            An integer less than zero if the other node has higher merit than this node.
+            Zero if both nodes have equal merit.
+            </returns>
+        </member>
+        <member name="T:MySpace.FlexCache.NodeConfig">
+            <summary>
+            Encapsulates information about a particular node within a flex cache group.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.NodeConfig.ToString">
+            <summary>
+            Returns a <see cref="T:System.String"/> that represents this instance.
+            </summary>
+            <returns>
+            A <see cref="T:System.String"/> that represents this instance.
+            </returns>
+        </member>
+        <member name="P:MySpace.FlexCache.NodeConfig.Name">
+            <summary>
+            Gets or sets the name of the node. This ought to be a valid DNS entry or an IP address.
+            </summary>
+            <value>The name of the node.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.NodeConfig.VirtualNodeCount">
+            <summary>
+            Gets or sets the number of virtual nodes that this node will occupy in a consistent hashing algorithm. 1000 by default.
+            </summary>
+            <value>The virtual node count.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.NodeConfig.Zone">
+            <summary>
+            Gets or sets the network zone in which this node is located.
+            This is some arbitrary text that is used to separate nodes in to groups of nodes with common zones.
+            <see cref="F:System.String.Empty"/> by default.
+            </summary>
+            <value>The network zone in which the node is located.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.RoutingProtocolConfig">
+            <summary>
+            Encapsulates information about the routing protocol to use.
+            </summary>
+        </member>
+        <member name="P:MySpace.FlexCache.RoutingProtocolConfig.Name">
+            <summary>
+            Gets or sets the name of the protocol. "ConsistentHashing/1.0" by default.
+            </summary>
+            <value>The name of the protocol.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.RoutingProtocolConfig.HashType">
+            <summary>
+            Gets or sets the type of hashing algorithm to use.
+            </summary>
+            <value>The type of hashing algorithm to use.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.ExponentialDecayCounter">
+            <summary>
+            Implements a counter that decays exponentially toward zero with a specified half-life.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.ExponentialDecayCounter.#ctor(System.Double)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.ExponentialDecayCounter"/> class.
+            </summary>
+            <param name="halfLife">The half life (in seconds).</param>
+        </member>
+        <member name="M:MySpace.FlexCache.ExponentialDecayCounter.Increment">
+            <summary>
+            Increments the counter value by 1.0 after decaying the current value.
+            </summary>
+            <returns>The new value of the counter.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.ExponentialDecayCounter.IncrementBy(System.Single)">
+            <summary>
+            Increments the counter value by a specified amount after decaying the
+            current value.
+            </summary>
+            <remarks>
+            The increment may be negative.  Negative counters decay toward zero.
+            </remarks>
+            <param name="increment">The increment.</param>
+            <returns>The new value of the counter.</returns>
+        </member>
+        <member name="P:MySpace.FlexCache.ExponentialDecayCounter.Epsilon">
+            <summary>
+            Gets or sets a floor value for the counter.  If the absolute value of the counter decays below
+            <see cref="P:MySpace.FlexCache.ExponentialDecayCounter.Epsilon"/> it will be set to zero.  The default <see cref="P:MySpace.FlexCache.ExponentialDecayCounter.Epsilon"/> is 0.1.
+            </summary>
+            <exception cref="T:System.ArgumentException">Thrown on an attempt to set <see cref="P:MySpace.FlexCache.ExponentialDecayCounter.Epsilon"/> to a negative value.</exception>
+            <value>Epsilon is small.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.ExponentialDecayCounter.Value">
+            <summary>
+            Gets the current value of the counter.  Each read of the value causes the counter
+            to decay.
+            </summary>
+            <value>The current counter value.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.FlexCacheClient">
+            <summary>
+            Encapsulates methods for communicating with a flex cache group.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.FlexCacheClient"/> class.
+            </summary>
+            <param name="groupName">The domain name or group name of the flex cache group.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.Get``1(System.String,System.Byte[])">
+            <summary>
+            Attempts to get a value from cache.
+            </summary>
+            <typeparam name="T">The type of value.</typeparam>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <returns>A cache-result that encapsulates the object that may or may not have been retrieved from cache.</returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="keySpace"/> is <see langword="null"/>.</para>
+            	<para>- or -</para>
+            	<para><paramref name="key"/> is <see langword="null"/>.</para>
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.Get``1(System.String,System.String)">
+            <summary>
+            Attempts to get a value from cache.
+            </summary>
+            <typeparam name="T">The type of value.</typeparam>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <returns>A cache-result that encapsulates the object that may or may not have been retrieved from cache.</returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="keySpace"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            	<para>- or -</para>
+            	<para><paramref name="key"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.GetMetadata(System.String,System.Byte[])">
+            <summary>
+            Gets metadata for an item in cache or <see langword="null"/> if no item exists.
+            </summary>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <returns>
+            	<para>A <see cref="T:MySpace.FlexCache.ValueMetadata"/> instance containing metadata about the cached item or <see langword="null"/> if the item doesn't exist.</para>
+            </returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="keySpace"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            	<para>- or -</para>
+            	<para><paramref name="key"/> is <see langword="null"/>.</para>
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.GetMetadata(System.String,System.String)">
+            <summary>
+            Gets metadata for an item in cache or <see langword="null"/> if no item exists.
+            </summary>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <returns>
+            	<para>A <see cref="T:MySpace.FlexCache.ValueMetadata"/> instance containing metadata about the cached item or <see langword="null"/> if the item doesn't exist.</para>
+            </returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="keySpace"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            	<para>- or -</para>
+            	<para><paramref name="key"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.Delete(System.String,System.Byte[])">
+            <summary>
+            Attempts to delete a value from cache.
+            </summary>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <returns>A value-less future that signals completion or an error.</returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="keySpace"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            	<para>- or -</para>
+            	<para><paramref name="key"/> is <see langword="null"/>.</para>
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.Delete(System.String,System.String)">
+            <summary>
+            Attempts to delete a value from cache.
+            </summary>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <returns>A value-less future that signals completion or an error.</returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="keySpace"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            	<para>- or -</para>
+            	<para><paramref name="key"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.Get(System.String,System.String)">
+            <summary>
+            Attempts to get data from cache.
+            </summary>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <returns>
+            A <see cref="T:MySpace.FlexCache.CacheResultFuture`1"/> object from which a <see cref="T:System.IO.Stream"/> containing the item data can be obtained.
+            </returns>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.Put(System.String,System.String,System.IO.Stream,System.Net.Mime.ContentType,MySpace.FlexCache.CachePutOptions)">
+            <summary>
+            Saves a stream of bytes under the specified keySpace and key.
+            </summary>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <param name="body">A <see cref="T:System.IO.Stream"/> that supplies the data to be saved.</param>
+            <param name="contentType">Type of the content.</param>
+            <param name="options">The <see cref="T:MySpace.FlexCache.CachePutOptions"/>. May be <see langword="null"/>.</param>
+            <returns>
+            A value-less future that signals completion or an error.
+            </returns>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.Put``1(System.String,System.Byte[],``0,MySpace.FlexCache.CachePutOptions)">
+            <summary>
+            Puts the specified key space.
+            </summary>
+            <typeparam name="T">The type of value.</typeparam>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <param name="value">The value.</param>
+            <param name="options">The <see cref="T:MySpace.FlexCache.CachePutOptions"/>. May be <see langword="null"/>.</param>
+            <returns>
+            A value-less future that signals completion or an error.
+            </returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="keySpace"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            	<para>- or -</para>
+            	<para><paramref name="key"/> is <see langword="null"/>.</para>
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheClient.Put``1(System.String,System.String,``0,MySpace.FlexCache.CachePutOptions)">
+            <summary>
+            Saves an object under the specified keySpace and key.
+            </summary>
+            <typeparam name="T">The type of value.</typeparam>
+            <param name="keySpace">The key-space. This is used to separate your objects from those of other consumers even if they have the same keys.</param>
+            <param name="key">The key of the object.</param>
+            <param name="value">The value.</param>
+            <param name="options">The <see cref="T:MySpace.FlexCache.CachePutOptions"/>.  May be <see langword="null"/>.</param>
+            <returns>
+            A value-less future that signals completion or an error.
+            </returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="keySpace"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            	<para>- or -</para>
+            	<para><paramref name="key"/> is <see langword="null"/>, empty, or contains '/' characters.</para>
+            </exception>
+        </member>
+        <member name="P:MySpace.FlexCache.FlexCacheClient.Default">
+            <summary>
+            Gets a default <see cref="T:MySpace.FlexCache.FlexCacheClient"/> instance initialized to talk to the default group.
+            </summary>
+            <value>The default <see cref="T:MySpace.FlexCache.FlexCacheClient"/>.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.FlexCacheClient.GroupName">
+            <summary>
+            Gets or sets the name of the group.
+            </summary>
+            <value>The name of the group.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.FlexCacheException">
+            <summary>
+            Encapsulates errors that occur in flex cache.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.FlexCacheException"/> class.
+            </summary>
+            <param name="message">The error message.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.FlexCacheException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.FlexCacheException"/> class.
+            </summary>
+            <param name="info">The <see cref="T:System.Runtime.Serialization.SerializationInfo"/> that holds the serialized object data about the exception being thrown.</param>
+            <param name="context">The <see cref="T:System.Runtime.Serialization.StreamingContext"/> that contains contextual information about the source or destination.</param>
+            <exception cref="T:System.ArgumentNullException">
+            The <paramref name="info"/> parameter is null.
+            </exception>
+            <exception cref="T:System.Runtime.Serialization.SerializationException">
+            The class name is null or <see cref="P:System.Exception.HResult"/> is zero (0).
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.HttpHeaders.ParseHttpDateOrSeconds(System.String)">
+            <summary>
+            Parses a header value that may be expressed as either an HTTP-Date or seconds from the current time.
+            </summary>
+            <param name="value">The header value.</param>
+            <returns>The resulting <see cref="T:System.DateTime"/> or null if the header could not be parsed.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.GroupMap.GetNodes(System.String)">
+            <summary>
+            Gets all nodes for the specified in order of priority.
+            Only charted nodes are included in the result set.
+            </summary>
+            <param name="key">The key.</param>
+            <returns>All nodes for the specified in order of priority.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.GroupMap.GetAllChartedNodes">
+            <summary>
+            Gets all charted nodes in the map. These are nodes
+            that existed in the <see cref="T:MySpace.FlexCache.GroupMapConfig"/>
+            when the <see cref="T:MySpace.FlexCache.GroupMap"/> was initialized.
+            </summary>
+            <returns>
+            	<para>All charted nodes in the map.</para>
+            </returns>
+        </member>
+        <member name="M:MySpace.FlexCache.GroupMap.GetChartedNodeByName(System.String)">
+            <summary>
+            Gets an existing charted node by its name.
+            </summary>
+            <param name="nodeName">Name of the node.</param>
+            <returns>A node.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.GroupMap.GetNodeByName(System.String,System.Boolean)">
+            <summary>
+            Gets a node by its node name.
+            </summary>
+            <param name="nodeName">Name of the node.</param>
+            <param name="getUnchartedIfNotFound"><see langword="true"/> to include uncharted nodes in the result set.</param>
+            <returns>A node.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.GroupMap.GetAllUnchartedNodes">
+            <summary>
+            Gets all uncharted nodes encountered thus far.
+            </summary>
+            <returns>All uncharted nodes encountered thus far.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.GroupMap.GetAllNodes">
+            <summary>
+            Gets all nodes, charted or un-charted.
+            </summary>
+            <returns>All nodes, charted or un-charted.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.GroupMap.UpdateNodeProximity">
+            <summary>
+            Initiates an update of the proximity data for the nodes in this map.
+            </summary>
+        </member>
+        <member name="P:MySpace.FlexCache.GroupMap.LocalNode">
+            <summary>
+            Gets the current node that this map exists on if this is a server hosted map that belongs to the group.
+            </summary>
+            <value>The current node.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.IpRouteTracer">
+            <summary>
+            Implements something similar to traceroute (tracert on Windows).
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.IpRouteTracer.#ctor(System.Net.IPAddress)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.IpRouteTracer"/> class.
+            </summary>
+            <param name="destinationIp">The destination IP address.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.IpRouteTracer.StartTrace(System.Action{MySpace.FlexCache.IpRouteTracer,System.Object},System.Object)">
+            <summary>
+            Starts the trace.
+            </summary>
+            <param name="completionHandler">
+            The completion handler.  If <see langword="null"/> no completion handler will be called.
+            </param>
+            <param name="obj">An object that will be passed to the completion handler.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.IpRouteTracer.Wait">
+            <summary>
+            Waits for the trace to complete.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.IpRouteTracer.Cancel">
+            <summary>
+            Cancels the trace.
+            </summary>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.DestinationIp">
+            <summary>
+            Gets the destination IP address.
+            </summary>
+            <value>The destination IP address.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.Timeout">
+            <summary>
+            Gets or sets the timeout for each ping request.
+            </summary>
+            <remarks>
+            The documentation for the <see cref="T:System.Net.NetworkInformation.Ping"/> class indicates this is in milliseconds, but observation
+            indicates it is more like 1/4 millisecond units.
+            </remarks>
+            <value>The timeout in milliseconds.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.MaxHops">
+            <summary>
+            Gets or sets the maximum number of hops.  The trace will terminate with <see cref="F:System.Net.NetworkInformation.IPStatus.TtlExpired"/> if the
+            maximum number of hops is exceeded.
+            </summary>
+            <value>The maximum hop count.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.MaxTimeouts">
+            <summary>
+            Gets or sets the maximum number of consecutive timeouts allowed.  If this value is exceeded the trace
+            will terminate with <see cref="F:System.Net.NetworkInformation.IPStatus.TimedOut"/>.
+            </summary>
+            <value>The maximum number of consecutive timeouts allowed.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.DontFragment">
+            <summary>
+            Gets or sets a value indicating whether or not the ping requests may be fragmented.
+            </summary>
+            <value>
+            	<see langword="true"/> if fragmentation is not allowed; otherwise, <see langword="false"/>.
+            </value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.Data">
+            <summary>
+            Gets or sets the data sent with the ping requests.
+            </summary>
+            <value>A byte array containing the ping data.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.Completed">
+            <summary>
+            Gets a value indicating whether this trace has completed.
+            </summary>
+            <value>
+            	<see langword="true"/> if completed; otherwise, <see langword="false"/>.
+            </value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.Status">
+            <summary>
+            Gets the status of the last hop.
+            </summary>
+            <value>The status.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.Hops">
+            <summary>
+            Gets the hops.
+            </summary>
+            <value>An enumeration of <see cref="T:MySpace.FlexCache.IpRouteTracer.Hop"/> structs.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.IpRouteTracer.Latency">
+            <summary>
+            Gets the latency of the last hop.
+            </summary>
+            <value>The latency (round-trip-time) of the last hop in milliseconds.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.IpRouteTracer.Hop">
+            <summary>
+            Provides information on a hop of the IP route.
+            </summary>
+        </member>
+        <member name="F:MySpace.FlexCache.IpRouteTracer.Hop.IpAddress">
+            <summary>
+            IP address of the host or router for this hop.
+            </summary>
+        </member>
+        <member name="F:MySpace.FlexCache.IpRouteTracer.Hop.Latency">
+            <summary>
+            Latency (aka round-trip-time) for this hop.
+            </summary>
+        </member>
+        <member name="F:MySpace.FlexCache.IpRouteTracer.Hop.Status">
+            <summary>
+            The status returned for this hop.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.IpRouteTracer.Hop.#ctor(System.Net.IPAddress,System.Int32,System.Net.NetworkInformation.IPStatus)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.IpRouteTracer.Hop"/> struct.
+            </summary>
+            <param name="address">The IP address.</param>
+            <param name="latency">The latency.</param>
+            <param name="status">The status.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.IpRouteTracer.Hop.ToString">
+            <summary>
+            Returns a <see cref="T:System.String"/> that represents this instance.
+            </summary>
+            <returns>
+            A <see cref="T:System.String"/> that represents this instance.
+            </returns>
+        </member>
+        <member name="M:MySpace.FlexCache.ITransport.Send(MySpace.FlexCache.Request,System.TimeSpan,System.IO.Stream)">
+            <summary>
+            Sends the specified request to the underlying end-point.
+            </summary>
+            <param name="request">The request to send.</param>
+            <param name="timeout">
+            	<para>The maximum amount of time to wait before abandoning the request.</para>
+            	<para>If a timeout occurs a response with status code 408, <see cref="F:System.Net.HttpStatusCode.RequestTimeout"/>, will be returned.</para>
+            </param>
+            <param name="body">Optional data to send with the request as the body.</param>
+            <returns>A future response that will be returned from the underlying end-point.</returns>
+        </member>
+        <member name="T:MySpace.FlexCache.GroupMapConfig">
+            <summary>
+            Encapsulates a map of a flex cache group/cloud.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.GroupMapConfig.Add(System.String)">
+            <summary>
+            Adds a node with the specified name and default initial values.
+            </summary>
+            <param name="nodeName">Name of the node.</param>
+        </member>
+        <member name="P:MySpace.FlexCache.GroupMapConfig.Generation">
+            <summary>
+            Gets or sets the generation number of this map. The generation ought to be
+            the UTC time at which it was last modified. The generation may not be decremented.
+            This value is used to quickly compare maps between two hosts.
+            </summary>
+            <value>The generation number of the map.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.GroupMapConfig.DefaultCopyCount">
+            <summary>
+            Gets or sets the default number of copies to store for every value.
+            </summary>
+            <value>The default number of copies to store for every value.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.GroupMapConfig.RoutingProtocol">
+            <summary>
+            Gets or sets the routing protocol.
+            </summary>
+            <value>The routing protocol.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.GroupMapConfig.Nodes">
+            <summary>
+            Gets or sets the nodes that belong to this group/cloud.
+            </summary>
+            <value>The nodes that belong to this group/cloud.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.GroupMapConfig.LastUpdateUtc">
+            <summary>
+            Gets the last UTC time that the map was modified.
+            </summary>
+            <value>The last UTC time that the map was modified.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.Node">
+            <summary>
+            Encapsulates a physical node.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.Node.#ctor(MySpace.FlexCache.NodeConfig,MySpace.FlexCache.Context)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.Node"/> class.
+            </summary>
+            <param name="nodeConfig">The node configuration from which to build the <see cref="T:MySpace.FlexCache.Node"/>.</param>
+            <param name="context">The context in which this instance will reside.
+            (e.g. <see cref="P:MySpace.FlexCache.ClientContext.Current"/> for clients or a host context for servers hosting the map.)</param>
+        </member>
+        <member name="M:MySpace.FlexCache.Node.Send(MySpace.FlexCache.Request,System.TimeSpan,System.IO.Stream)">
+            <summary>
+            Sends the specified request to the underlying end-point.
+            </summary>
+            <param name="request">The request to send.</param>
+            <param name="timeout">
+            	<para>The maximum amount of time to wait before abandoning the request.</para>
+            	<para>If a timeout occurs a response with status code 408, <see cref="F:System.Net.HttpStatusCode.RequestTimeout"/>, will be returned.</para>
+            </param>
+            <param name="body">Optional data to send with the request as the body.</param>
+            <returns>
+            A future response that will be returned from the underlying end-point.
+            </returns>
+        </member>
+        <member name="M:MySpace.FlexCache.Node.ToString">
+            <summary>
+            Returns a <see cref="T:System.String"/> that represents this instance.
+            </summary>
+            <returns>
+            A <see cref="T:System.String"/> that represents this instance.
+            </returns>
+        </member>
+        <member name="M:MySpace.FlexCache.Node.RequestProximityUpdate(System.Action{MySpace.FlexCache.Node})">
+            <summary>
+            Initiates a route trace to determine the network proximity of this node.
+            </summary>
+            <param name="completionHandler">The completion handler.</param>
+            <returns></returns>
+        </member>
+        <member name="P:MySpace.FlexCache.Node.Name">
+            <summary>
+            Gets or the name of the physical node. This ought to be a DNS entry or the text representation of an IP address.
+            This will be used for routing in the consistent hash routing algorithm.
+            </summary>
+            <value>The name of the host.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Node.VirtualNodeCount">
+            <summary>
+            Gets or the number of virtual nodes that this node will have when using a consistent hashing routing algorithm.
+            </summary>
+            <value>The virtual node count.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Node.Zone">
+            <summary>
+            Gets the zone that this instance exists in.
+            </summary>
+            <value>The zone.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Node.ConnectionFailureCount">
+            <summary>
+            Gets a floating point value representative of the number of recent connection failures for this node.
+            </summary>
+            <value>The connection failure count.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Node.ServiceAvailable">
+            <summary>
+            Gets a value indicating whether the FlexCache service is available for this node.
+            </summary>
+            <remarks>
+            <see cref="P:MySpace.FlexCache.Node.ServiceAvailable"/> is set to <see langword="false"/> when a ServiceUnavailable (503) status
+            code is received in a response.  It reverts to <see langword="true"/> when the interval specified by
+            the RetryAfter header has passed.
+            </remarks>
+            <value><see langword="true"/> if the service is available; otherwise, <see langword="false"/>.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Node.RequestTimeoutCount">
+            <summary>
+            Gets a floating point value representative of the number of recent RequestTimeout (408)
+            responses received from this node.
+            </summary>
+            <value>The request timeout count.</value>
+        </member>
+        <member name="F:MySpace.FlexCache.Ohttp.OhttpBodyFormat.Unprefixed">
+            <summary>
+            The content is prefixed with no length and is depending on a lower layer protocol to determine the length.
+            </summary>
+        </member>
+        <member name="F:MySpace.FlexCache.Ohttp.OhttpBodyFormat.LengthPrefixed">
+            <summary>
+            The content is prefixed with a length and followed by the content.
+            </summary>
+        </member>
+        <member name="F:MySpace.FlexCache.Ohttp.OhttpBodyFormat.Chunked">
+            <summary>
+            The content is a series of chunks where each chunk is prefixed with a length. When a 0 length is encountered the content is complete.
+            </summary>
+        </member>
+        <member name="P:MySpace.FlexCache.Request.PathSegments">
+            <summary>
+            Gets the path segments. The segments returned are not encoded.
+            </summary>
+            <value>The un-encoded path segments.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.ThreadPoolThrottle`1">
+            <summary>
+            The <see cref="T:MySpace.FlexCache.ThreadPoolThrottle`1"/> class implements a queue of work items that will be
+            processed using <see cref="T:System.Threading.ThreadPool"/> threads.  Up to the number of work items specified
+            by <see cref="P:MySpace.FlexCache.ThreadPoolThrottle`1.MaxThreadCount"/> may be processed concurrently.
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="M:MySpace.FlexCache.ThreadPoolThrottle`1.#ctor(System.Action{`0},System.Action{System.Exception})">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.FlexCache.ThreadPoolThrottle`1"/> class.
+            </summary>
+            <param name="action">The action to perform on each work item.</param>
+            <param name="exceptionHandler">An exception handler that will be called if the action on a work item
+            throws an exception.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.ThreadPoolThrottle`1.Enqueue(`0)">
+            <summary>
+            Queues the specified work item.
+            </summary>
+            <param name="item">The work item.</param>
+        </member>
+        <member name="P:MySpace.FlexCache.ThreadPoolThrottle`1.MaxThreadCount">
+            <summary>
+            Gets or sets the maximum number of work items that will be processed concurrently.
+            </summary>
+            <value>The maximum number of concurrent threads.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.ValueMetadata">
+            <summary>
+            Encapsulates meta-information about a value in cache.
+            </summary>
+        </member>
+        <member name="P:MySpace.FlexCache.ValueMetadata.TimeSinceLastModified">
+            <summary>
+            Gets estimated time that has elapsed since the value was modified.
+            </summary>
+            <value>The time since the value was last modified.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.ValueMetadata.Date">
+            <summary>
+            Gets the current UTC time on the server that produced this response.
+            </summary>
+            <value>The current UTC time on the server that produced this response.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.ValueMetadata.LastModified">
+            <summary>
+            Gets the UTC time at which the value was last modified.
+            </summary>
+            <value>The UTC time at which the value was last modified.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.ValueMetadata.ContentType">
+            <summary>
+            Gets the Content-Type of the value or <see langword="null"/> if not available.
+            </summary>
+            <value>The Content-Type of the value or <see langword="null"/> if not available.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.ValueMetadata.Size">
+            <summary>
+            Gets the size (in bytes) of the value in cache or null if it's not available.
+            </summary>
+            <value>The size (in bytes) of the value in cache.</value>
+        </member>
+        <member name="T:MySpace.FlexCache.WorkQueue`1">
+            <summary>
+            	<para>A task queue for serializing work onto a single thread.</para>
+            </summary>
+            <typeparam name="T">
+            <para>The type of object to operate on.</para>
+            </typeparam>
+        </member>
+        <member name="M:MySpace.FlexCache.WorkQueue`1.#ctor(System.Action{`0})">
+            <summary>
+            	<para>Initializes a new instance of the <see cref="T:MySpace.FlexCache.WorkQueue`1"/> class.</para>
+            </summary>
+            <param name="workAction">The delegate to invoke for every object queued.</param>
+        </member>
+        <member name="M:MySpace.FlexCache.WorkQueue`1.Enqueue(`0,System.Boolean)">
+            <summary>
+            	<para>Enqueues an item onto the work queue.</para>
+            </summary>
+            <param name="item">The item to operate on.</param>
+            <param name="mayUseInvokingThread">
+            <para><see langword="true"/> to use the invoking thread to work on
+            items if no other threads are working on the queue.</para>
+            </param>
+        </member>
+        <member name="T:MySpace.FlexCache.Zone">
+            <summary>
+            Encapsulates a network zone.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.Zone.GetByName(System.String)">
+            <summary>
+            Gets the <see cref="T:MySpace.FlexCache.Zone"/> with the specified <paramref name="name"/>.
+            </summary>
+            <param name="name">The name of the zone.</param>
+            <returns>The <see cref="T:MySpace.FlexCache.Zone"/> with the specified <paramref name="name"/>.</returns>
+            <exception cref="T:System.ArgumentNullException">
+            	<para><paramref name="name"/> is <see langword="null"/>.</para>
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.Zone.op_Equality(MySpace.FlexCache.Zone,MySpace.FlexCache.Zone)">
+            <summary>
+            Implements the operator ==.
+            </summary>
+            <param name="a">A.</param>
+            <param name="b">The b.</param>
+            <returns>The result of the operator.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.Zone.op_Inequality(MySpace.FlexCache.Zone,MySpace.FlexCache.Zone)">
+            <summary>
+            Implements the operator !=.
+            </summary>
+            <param name="a">A.</param>
+            <param name="b">The b.</param>
+            <returns>The result of the operator.</returns>
+        </member>
+        <member name="M:MySpace.FlexCache.Zone.#cctor">
+            <summary>
+            Initializes the <see cref="T:MySpace.FlexCache.Node"/> class.
+            </summary>
+        </member>
+        <member name="M:MySpace.FlexCache.Zone.ToString">
+            <summary>
+            Returns a <see cref="T:System.String"/> that represents this instance.
+            </summary>
+            <returns>
+            A <see cref="T:System.String"/> that represents this instance.
+            </returns>
+        </member>
+        <member name="M:MySpace.FlexCache.Zone.GetHashCode">
+            <summary>
+            Returns a hash code for this instance.
+            </summary>
+            <returns>
+            A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+            </returns>
+        </member>
+        <member name="M:MySpace.FlexCache.Zone.Equals(System.Object)">
+            <summary>
+            Determines whether the specified <see cref="T:System.Object"/> is equal to this instance.
+            </summary>
+            <param name="obj">The <see cref="T:System.Object"/> to compare with this instance.</param>
+            <returns>
+            	<c>true</c> if the specified <see cref="T:System.Object"/> is equal to this instance; otherwise, <c>false</c>.
+            </returns>
+            <exception cref="T:System.NullReferenceException">
+            The <paramref name="obj"/> parameter is null.
+            </exception>
+        </member>
+        <member name="M:MySpace.FlexCache.Zone.Equals(MySpace.FlexCache.Zone)">
+            <summary>
+            Determines whether the specified <see cref="T:MySpace.FlexCache.Zone"/> is equal to this instance.
+            </summary>
+            <param name="other">The <see cref="T:MySpace.FlexCache.Zone"/> to compare with this instance.</param>
+            <returns>
+            	<c>true</c> if the specified <see cref="T:System.Object"/> is equal to this instance; otherwise, <c>false</c>.
+            </returns>
+            <exception cref="T:System.NullReferenceException">
+            The <paramref name="other"/> parameter is null.
+            </exception>
+        </member>
+        <member name="P:MySpace.FlexCache.Zone.Default">
+            <summary>
+            Gets the default zone to use when non is specified.
+            The name of the default zone is an empty string.
+            </summary>
+            <value>The default zone.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Zone.Name">
+            <summary>
+            Gets the name of the network zone that this node lives in. Routing may change depending
+            on what zone the node is in to minimize network latency.
+            </summary>
+            <value>The name of the zone.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Zone.Id">
+            <summary>
+            Gets the zone id; a unique integer ID within the current app domain.
+            This value has no meaning outside the app domain and is used for
+            comparisons in place of <see cref="P:MySpace.FlexCache.Zone.Name"/> for performance reasons.
+            </summary>
+            <value>The zone id (unique within the app domain).</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Zone.Proximity">
+            <summary>
+            Gets or sets the proximity.
+            </summary>
+            <value>A measure of the proximity of this zone to the local host.</value>
+        </member>
+        <member name="P:MySpace.FlexCache.Zone.UnknownProximity">
+            <summary>
+            Gets a value used to indicate the proximity of this zone is unknown.
+            </summary>
+            <value>The unknown proximity value.</value>
+        </member>
+    </members>
+</doc>
