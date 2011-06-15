@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="ForwardingConfig" targetNamespace="http://myspace.com/ForwardingConfig.xsd" elementFormDefault="qualified" xmlns="http://myspace.com/ForwardingConfig.xsd" xmlns:mstns="http://myspace.com/ForwardingConfig.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="FlexForwarderConfig">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="GroupName" type="xs:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

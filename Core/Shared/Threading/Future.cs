@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using MySpace.Common.Threading;
+using MySpace.Logging;
 
 namespace MySpace.Common
 {
@@ -17,6 +19,7 @@ namespace MySpace.Common
 	/// </summary>
 	public abstract class Future : IFuture, IFutureReaction
 	{
+		private static readonly LogWrapper _log = new LogWrapper();
 		private static readonly Future _complete = (Future<int>)0;
 
 		public static implicit operator Future(Exception error)
@@ -158,8 +161,33 @@ namespace MySpace.Common
 				while (!IsComplete)
 				{
 					++_waiterCount;
-					Monitor.Wait(SyncRoot);
-					--_waiterCount;
+					try
+					{
+						Monitor.Wait(SyncRoot);
+					}
+					catch (ThreadAbortException)
+					{
+						int availableWorkers, availableIocp;
+						ThreadPool.GetAvailableThreads(out availableWorkers, out availableIocp);
+						int maxWorkers, maxIocp;
+						ThreadPool.GetMaxThreads(out maxWorkers, out maxIocp);
+						int minWorkers, minIocp;
+						ThreadPool.GetMinThreads(out minWorkers, out minIocp);
+						var builder = new StringBuilder();
+						builder.AppendLine("ThreadAbortException thrown on Future.Wait()");
+						builder.AppendLine("AvailableWorkers = " + availableWorkers);
+						builder.AppendLine("AvailableIocp = " + availableIocp);
+						builder.AppendLine("MaxWorkers = " + maxWorkers);
+						builder.AppendLine("MaxIocp = " + maxIocp);
+						builder.AppendLine("MinWorkers = " + minWorkers);
+						builder.AppendLine("MinIocp = " + minIocp);
+						_log.Info(builder.ToString());
+						throw;
+					}
+					finally
+					{
+						--_waiterCount;
+					}
 				}
 			}
 		}

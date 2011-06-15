@@ -1,0 +1,571 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>MySpace.PipelineTransport</name>
+    </assembly>
+    <members>
+        <member name="T:MySpace.PipelineTransport.ChunkDataAssembler">
+            <summary>
+            Assembles Pipeline Data from Pipeline Chunks.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.ChunkDataAssembler.CopyTo(System.IO.Stream)">
+            <summary>
+            Copies the bytes represented by this assembler into a Stream.
+            </summary>
+            <param name="stream">The stream to write the data bytes to.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.ChunkDataAssembler.Reset">
+            <summary>
+            Resets this assembler, preparing it for the next pipeline chunk.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.ChunkDataAssembler.Assemble(MySpace.PipelineTransport.ChunkHeader,System.Byte[],System.Int32@,System.Int32)">
+            <summary>
+            Assembles chunk data bytes that correspond to the ChunkHeader provided.
+            </summary>
+            <param name="header">The header for the pipeline chunk being assembled.</param>
+            <param name="buffer">The data buffer containing bytes read from the socket layer.</param>
+            <param name="position">The position of the first data byte to be assembled from the buffer.  Upon return, position will be updated to be one past the end of the last byte assembled.</param>
+            <param name="length">The maximum count of data bytes in the buffer that may be used in assembly.</param>
+            <returns>true if this assembler should be used to copy bytes to a stream or the end of the chunk's data has been reached.</returns>
+        </member>
+        <member name="P:MySpace.PipelineTransport.ChunkDataAssembler.Buffer">
+            <summary>
+            Gets the data buffer for this assembler instance.
+            </summary>
+            <value>The buffer.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.ChunkDataAssembler.Position">
+            <summary>
+            Gets the position of the starting data byte in Buffer.
+            </summary>
+            <value>The position.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.ChunkDataAssembler.Length">
+            <summary>
+            Gets the number of data bytes in the Buffer.
+            </summary>
+            <value>The length.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.ChunkDataAssembler.Completed">
+            <summary>
+            Gets a value indicating whether this <see cref="T:MySpace.PipelineTransport.ChunkDataAssembler"/> is completed.
+            </summary>
+            <value><c>true</c> if completed; otherwise, <c>false</c>.</value>
+        </member>
+        <member name="T:MySpace.PipelineTransport.ChunkHeaderAssembler">
+            <summary>
+            Assembles Pipeline Chunk Headers.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.ChunkHeaderAssembler.Reset">
+            <summary>
+            Resets this instance of the header assembler, making it ready to assemble another header.  Once
+            an entire header is assembled, further calls to Assemble() will not assemble any more header bytes
+            until Reset() is called again.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.ChunkHeaderAssembler.Assemble(System.Byte[],System.Int32@,System.Int32)">
+            <summary>
+            Assembles a Chunk header from the bytes passed in.
+            </summary>
+            <param name="buffer">The buffer.</param>
+            <param name="position">The position.</param>
+            <param name="length">The length.</param>
+            <returns>Returns true if the the assembler contains a valid header, accessible with the Current property.</returns>
+            <remarks>Call Reset() to begin processing of the next header. Once
+            an entire header is assembled, further calls to Assemble() will not assemble any more header bytes
+            until Reset() is called again.</remarks>
+        </member>
+        <member name="M:MySpace.PipelineTransport.ChunkHeaderAssembler.RequiresRequestIndexing(System.Int32)">
+            <summary>
+            Determines if a request index is required if dataLength bytes are immediately available.
+            </summary>
+            <param name="dataLength">Length of the data that is immediately available.</param>
+            <returns></returns>
+        </member>
+        <member name="T:MySpace.PipelineTransport.EndPointComparer">
+            <summary>
+            Compares two EndPoints.  We need this class to use EndPoints in Dictionaries.  Network connections are pooled by remote endpoint.
+            within the Pipeline transport.
+            </summary>
+        </member>
+        <member name="T:MySpace.PipelineTransport.PerformanceCountersInstaller">
+            <summary>
+            Installs the performance counters for the PipelineTransport assembly.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PerformanceCountersInstaller.Install(System.Collections.IDictionary)">
+            <summary>
+            Install PipelineTransport performance counters.
+            </summary>
+            <param name="stateSaver">An <see cref="T:System.Collections.IDictionary"/> used to save information needed to perform a commit, rollback, or uninstall operation.</param>
+            <exception cref="T:System.ArgumentException">The <paramref name="stateSaver"/> parameter is null. </exception>
+            <exception cref="T:System.Exception">An exception occurred in the <see cref="E:System.Configuration.Install.Installer.BeforeInstall"/> event handler of one of the installers in the collection.-or- An exception occurred in the <see cref="E:System.Configuration.Install.Installer.AfterInstall"/> event handler of one of the installers in the collection. </exception>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PerformanceCountersInstaller.Uninstall(System.Collections.IDictionary)">
+            <summary>
+            Removes PipelineTransport performance counters.
+            </summary>
+            <param name="savedState">An <see cref="T:System.Collections.IDictionary"/> that contains the state of the computer after the installation was complete.</param>
+            <exception cref="T:System.ArgumentException">The saved-state <see cref="T:System.Collections.IDictionary"/> might have been corrupted. </exception>
+            <exception cref="T:System.Configuration.Install.InstallException">An exception occurred while uninstalling. This exception is ignored and the uninstall continues. However, the application might not be fully uninstalled after the uninstallation completes. </exception>
+        </member>
+        <member name="T:MySpace.PipelineTransport.BrokenPipelineException">
+            <summary>
+            Error used whenever a pipeline transport is used when it has been disconnected.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.BrokenPipelineException.#ctor(System.Net.IPEndPoint)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.BrokenPipelineException"/> class.
+            </summary>
+            <param name="remoteEndpoint">The remote endpoint.</param>
+        </member>
+        <member name="P:MySpace.PipelineTransport.BrokenPipelineException.Message">
+            <summary>
+            Gets a message that describes the current exception.
+            </summary>
+            <value></value>
+            <returns>The error message that explains the reason for the exception, or an empty string("").</returns>
+        </member>
+        <member name="T:MySpace.PipelineTransport.PipelinePerformanceCounters">
+            <summary>
+            Performance counters for Pipeline Transport.  
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelinePerformanceCounters.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.PipelinePerformanceCounters"/> class.
+            </summary>
+            <param name="instanceName">Name of the instance.</param>
+        </member>
+        <member name="T:MySpace.PipelineTransport.PipelineClosedException">
+            <summary>
+            Indicates a pipeline connection that as been closed.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClosedException.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.PipelineClosedException"/> class.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClosedException.#ctor(System.Exception)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.PipelineClosedException"/> class.
+            </summary>
+            <param name="innerException">The inner exception.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClosedException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.PipelineClosedException"/> class.
+            </summary>
+            <param name="message">A message.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClosedException.#ctor(System.Net.Sockets.SocketError)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.PipelineClosedException"/> class from a SocketError.
+            </summary>
+            <param name="socketError">The socket error.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineSocket.#ctor(System.Net.Sockets.Socket,MySpace.PipelineTransport.PipelinePerformanceCounters,System.Action{MySpace.PipelineTransport.PipelineStream})">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.PipelineSocket"/> class on a Socket that has already been connected (likely by a listener).
+            </summary>
+            <param name="socket">The socket.</param>
+            <param name="performanceCounters">The performance counters to use for this instance.</param>
+            <param name="onRequest">The onRequest handler.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineSocket.#ctor(System.Net.IPEndPoint,MySpace.PipelineTransport.PipelinePerformanceCounters)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.PipelineSocket"/> class that will connect to a remote
+            endpoint.  Using this constructor version will direct PipelineSocket to reconnect to the endpoint if
+            the connection is broken.
+            </summary>
+            <param name="remoteEndPoint">The remote end point.</param>
+            <param name="performanceCounters">The performance counters.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineSocket.SendRequest(System.IO.Stream)">
+            <summary>
+            Sends a request to the connected, remote endpoint.
+            </summary>
+            <param name="requestStream">The entire request.</param>
+            <returns>A <see cref="T:MySpace.Common.Future`1"/>, which upon completion, will contain the the response to the request.</returns>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineSocket.Cancel(System.UInt32)">
+            <summary>
+            Cancels the specified request for the corresponding message id.
+            </summary>
+            <param name="messageId">The message id.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineSocket.OnMessageReceived">
+            <summary>
+            Called when a message has been received by the reader.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineSocket.Reset(System.Exception)">
+            <summary>
+            Resets the PipelineSocket, possibly due to an error.
+            </summary>
+            <param name="ex">The exception responsible for the reset, or null if there no exception.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineSocket.ReleaseIdleResources">
+            <summary>
+            Releases the idle resources.
+            </summary>
+            <remarks>This method is to be polled occaisionally to give the socket a chance to release idle
+            resource or maybe even close itself down.</remarks>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineSocket.AckTimeout">
+            <summary>
+            Gets or set the message acknowledgment timeout. 
+            </summary>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineSocket.ResponseTimeout">
+            <summary>
+            Get or sets the timeout for how long to wait for a reponse from the server. 
+            </summary>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineSocket.ReplyLatency">
+            <summary>
+            Gets the reply latency.
+            </summary>
+            <value>The reply latency.</value>
+        </member>
+        <member name="E:MySpace.PipelineTransport.PipelineSocket.Closed">
+            <summary>
+            Raised when the PipelineSocket has been closed, and will not be reconnected.
+            </summary>
+        </member>
+        <member name="T:MySpace.PipelineTransport.PipelineSocket.ClosedDelegate">
+            <summary>
+            The delegate that allows a subscriber to receive notification when the PipelineSocket instance is no longer in service.
+            </summary>
+        </member>
+        <member name="T:MySpace.PipelineTransport.PipelineStreamPublisher">
+            <summary>
+            A <see cref="T:System.IO.Stream"/> that holds data received over a pipeline transport connection.
+            </summary>
+        </member>
+        <member name="T:MySpace.PipelineTransport.PipelineStream">
+            <summary>
+            A stream used for exchanging data on a Pipline socket transport.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineStream.SendResponse(System.IO.Stream)">
+            <summary>
+            Sends a response to the connected, remote endpoint.
+            </summary>
+            <param name="responseStream">The response to be send to the remote endpoint that issued the request.</param>
+            <remarks><para>SendResponse is used when a <see cref="T:MySpace.PipelineTransport.PipelineListener"/> calls your delegate
+            for handling an incoming request with a pipeline Stream.</para></remarks>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineStream.Cancel">
+            <summary>
+            Cancels the message associated with this PipelineStream instance.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineStream.Close">
+            <summary>
+            Closes the current stream and releases any resources (such as sockets and file handles) associated with the current stream.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineStream.Write(System.Byte[],System.Int32,System.Int32)">
+            <summary>
+            Writes a block of bytes to the current stream using data read from buffer.
+            </summary>
+            <param name="buffer">The buffer to write data from.</param>
+            <param name="offset">The byte offset in <paramref name="buffer"/> at which to begin writing from.</param>
+            <param name="count">The maximum number of bytes to write.</param>
+            <exception cref="T:System.ArgumentNullException">
+            	<paramref name="buffer"/> is null. </exception>
+            <exception cref="T:System.NotSupportedException">The stream does not support writing. For additional information see <see cref="P:System.IO.Stream.CanWrite"/>.-or- The current position is closer than <paramref name="count"/> bytes to the end of the stream, and the capacity cannot be modified. </exception>
+            <exception cref="T:System.ArgumentException">
+            	<paramref name="offset"/> subtracted from the buffer length is less than <paramref name="count"/>. </exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">
+            	<paramref name="offset"/> or <paramref name="count"/> are negative. </exception>
+            <exception cref="T:System.IO.IOException">An I/O error occurs. </exception>
+            <exception cref="T:System.ObjectDisposedException">The current stream instance is closed. </exception>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineStream.MessagesIndexed">
+            <summary>
+            Gets the messages indexed.
+            </summary>
+            <value>The messages indexed.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineStreamPublisher.Acknowledged">
+            <summary>
+            Gets or sets a value indicating whether this <see cref="T:MySpace.PipelineTransport.PipelineStreamPublisher"/> is acknowledged.
+            </summary>
+            <value><c>true</c> if acknowledged; otherwise, <c>false</c>.</value>
+            <remarks>An Acknowleged stream is one that has received a response from the server that the request
+            has been received, but the reply may not have arrived, yet.</remarks>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineStreamPublisher.Completed">
+            <summary>
+            Gets or sets a value indicating whether this <see cref="T:MySpace.PipelineTransport.PipelineStreamPublisher"/> has received a reply.
+            </summary>
+            <value><c>true</c> if replied; otherwise, <c>false</c>.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineStreamPublisher.ReplyLatency">
+            <summary>
+            Gets the reply latency in ticks.
+            </summary>
+            <value>The reply latency.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineStreamPublisher.AckLatency">
+            <summary>
+            Gets the ack latency.
+            </summary>
+            <value>The ack latency.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineStreamPublisher.Age">
+            <summary>
+            Gets the age of the stream from the time it was contructed.
+            </summary>
+            <value>A Timespan representing the age of the stream object.</value>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineWriter.Send(MySpace.PipelineTransport.ChunkHeaderFlags,System.IO.Stream,System.UInt32)">
+            <summary>
+            Sends the specified stream, with the flags specified on the message transport.  This method is guaranteed to be thread-safe.
+            </summary>
+            <param name="flags">The flags.</param>
+            <param name="stream">The stream.</param>
+            <param name="messageId">The message id.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineWriter.SendNullData(MySpace.PipelineTransport.ChunkHeaderFlags,System.UInt32)">
+            <summary>
+            Sends an empty message.  This method simplifies the chunk semgentor methods in this class.
+            </summary>
+            <param name="flags">The chunk header flags.</param>
+            <param name="messageId">The message id.</param>
+        </member>
+        <member name="T:MySpace.PipelineTransport.PipelineClient">
+            <summary>
+            A client that can send streams as requests or responses to a remote endpoint.  PipelineClient is used by both client and server side code.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClient.OnRequest(System.Action{MySpace.PipelineTransport.PipelineStream})">
+            <summary>
+            Sets the delegate that is called when a request message is received from the other side of the connection.
+            </summary>
+            <param name="onRequest">The delegate.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClient.EnablePerformanceCounters">
+            <summary>
+            Enables the performance counters.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClient.GetClient(System.Net.IPEndPoint)">
+            <summary>
+            Connects to a Pipeline Transport listening on a remote endpoint.
+            </summary>
+            <param name="remoteEndPoint">The remote end point.</param>
+            <returns>A <see cref="T:MySpace.Common.Future`1"/>.</returns>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClient.GetClient(System.String,System.Int32)">
+            <summary>
+            Connects to Tcp Pipeline Transport listening on a remote endpoint.
+            </summary>
+            <param name="host">The name of the remote host to connect to.</param>
+            <param name="port">The port number on the remote host that is expected to have a <see cref="T:MySpace.PipelineTransport.PipelineListener"/> running on it.</param>
+            <returns>A <see cref="T:MySpace.PipelineTransport.PipelineClient"/>.</returns>
+            <remarks>
+            <para>All methods and properties are thread-safe on the PipelineClient instance.</para>
+            <para>PipelineClient instances may be shared between threads for sending and receiving any number streams simultaneously.</para>
+            </remarks>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClient.SendRequest(System.IO.Stream)">
+            <summary>
+            Sends a request to the connected, remote endpoint.
+            </summary>
+            <param name="requestStream">The entire request.</param>
+            <returns>A <see cref="T:MySpace.Common.Future`1"/>, which upon completion, will contain the the response to the request.</returns>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClient.Ping(System.TimeSpan)">
+            <summary>
+            Pings the remote endpoint.
+            </summary>
+            <param name="timeout">The timeout for how long a ping takes to be ACK'd.  Use TimeSpan.FromMilliseconds(-1) to indicate no timeout.</param>
+            <returns>
+            A <see cref="T:MySpace.Common.Future`1"/> which is the time elapsed for the ping to be acknowledged.
+            </returns>
+            <remarks>If the ping fails, the future will complete with a <see cref="T:System.TimeoutException"/>.</remarks>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineClient.Close">
+            <summary>
+            Closes the PipelineClient.
+            </summary>
+            <remarks>When the consuming code is finished using a PipelineClient, then it should call Close() to allow it to return
+            resources.  Closing an instance of a PipelineClient will not affect other consumers using the same client.</remarks>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineClient.MaxSocketsPerEndpoint">
+            <summary>
+            Gets or sets the max sockets per endpoint.
+            </summary>
+            <value>The max sockets per endpoint.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineClient.Connected">
+            <summary>
+            Used to determine the connected state or wait for a connection for a client.
+            </summary>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineClient.MessagesInProgress">
+            <summary>
+            Gets the count of messages in progress.
+            </summary>
+            <value>The messages in progress.</value>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineClient.AckTimeout">
+            <summary>
+            Gets or set the message acknowledgment timeout. Specify <see cref="F:System.Threading.Timeout.Infinite"/> in <see cref="M:System.TimeSpan.FromMilliseconds(System.Double)"/> to disable this type of timeout. 
+            </summary>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineClient.ResponseTimeout">
+            <summary>
+            Get or sets the timeout for how long to wait for a reponse from the server. Specify <see cref="F:System.Threading.Timeout.Infinite"/> in <see cref="M:System.TimeSpan.FromMilliseconds(System.Double)"/> to disable this type of timeout. 
+            </summary>
+        </member>
+        <member name="P:MySpace.PipelineTransport.PipelineClient.ReplyLatency">
+            <summary>
+            Gets the reply latency, for requests sent on this PipelineClient.
+            </summary>
+            <value>The reply latency.</value>
+            <remarks><para>The latency considers only a recent reply history.</para>
+            <para>The intended use of this property is to sort PipelineClients to determine the best candidate to send the next request on.  
+            A lesser latency indicates a more response remote endpoint.  A value of 0 means that the client has not seen any traffic recently.</para>
+            <para>Approximately the most recent 10 seconds of activity are considered for latency computations.  The size of the time window may vary.</para>
+            <para>If there are some recent replies received successfully, but others have timed out, the timed out replies are computed as twice the 
+            timeout value  If there have been no recent reqeusts, the latency will be 0.</para>
+            <para>The order of clients by relative latency will be: (1) new/unused, (2) fastest with no timeouts, (3) slower with no timeouts, 
+            (4) fastest with some timeouts, (5) slowest with some timeouts, and finally, (6) clients with all timeouts.</para></remarks>
+        </member>
+        <member name="F:MySpace.PipelineTransport.ChunkHeaderFlags.None">
+            <summary>
+            No flags asserted.
+            </summary>
+        </member>
+        <member name="F:MySpace.PipelineTransport.ChunkHeaderFlags.StartChunk">
+            <summary>
+            Indicates the first chunk of a message.
+            </summary>
+        </member>
+        <member name="F:MySpace.PipelineTransport.ChunkHeaderFlags.EndChunk">
+            <summary>
+            Indicates the final chunk of a message.
+            </summary>
+        </member>
+        <member name="F:MySpace.PipelineTransport.ChunkHeaderFlags.Response">
+            <summary>
+            Indicates the chunk is within a response message.
+            </summary>
+        </member>
+        <member name="F:MySpace.PipelineTransport.ChunkHeaderFlags.Abort">
+            <summary>
+            Indicates that the message was aborted before being fully composed.  The message may be incomplete and unserializable.
+            </summary>
+        </member>
+        <member name="F:MySpace.PipelineTransport.ChunkHeaderFlags.Ping">
+            <summary>
+            Indicates the chunk is involved in the ping protocol. If Response == 0, then the remote side
+            should respond with a Ping chunk and set Response.
+            </summary>
+        </member>
+        <member name="F:MySpace.PipelineTransport.ChunkHeaderFlags.Ack">
+            <summary>
+            Indicates acknowledgement of a received a completed message or ping request.
+            </summary>
+        </member>
+        <member name="F:MySpace.PipelineTransport.ChunkHeaderFlags.DoNotAck">
+            <summary>
+            Indicates that an acknowledgement response packet is not required.
+            </summary>
+        </member>
+        <member name="T:MySpace.PipelineTransport.PipelineListener">
+            <summary>
+            Accepts Pipeline connections and dispatches incoming requests for your code to handle.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineListener.EnablePerformanceCounters">
+            <summary>
+            Enables the performance counters.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineListener.#ctor(System.UInt16)">
+            <summary>
+            Initializes a new instance of the <see cref="T:MySpace.PipelineTransport.PipelineListener"/> class.
+            </summary>
+            <param name="port">The port.  The PipelineListener will listen on all local IP addresses.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineListener.Start(System.Action{MySpace.PipelineTransport.PipelineStream})">
+            <summary>
+            Starts the listener, and will call the onRequest delegate whenever a new request arrives that should be processed.
+            </summary>
+            <param name="onRequest">The delegate.</param>
+        </member>
+        <member name="M:MySpace.PipelineTransport.PipelineListener.Stop">
+            <summary>
+            Stops this instance of the listener.
+            </summary>
+        </member>
+        <member name="T:MySpace.PipelineTransport.MessageIndex">
+            <summary>
+            A container for storing in-flight messages being send or received over a pipeline transport connection.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.MessageIndex.New(MySpace.PipelineTransport.PipelineSocket)">
+            <summary>
+            Instantiates a new <see cref="T:MySpace.PipelineTransport.PipelineStream"/> with a unique message id.  It is stored in the container until it is removed.
+            </summary>
+            <param name="socket">The socket connection that the <see cref="T:MySpace.PipelineTransport.PipelineStream"/> is being transported over.</param>
+            <returns>The newly instantiated stream.</returns>
+        </member>
+        <member name="M:MySpace.PipelineTransport.MessageIndex.New(MySpace.PipelineTransport.PipelineSocket,System.UInt32)">
+            <summary>
+            Instantiates a new <see cref="T:MySpace.PipelineTransport.PipelineStream"/> with the specified message id.  It is stored in the container until it is removed.
+            </summary>
+            <param name="socket">The socket connection that the <see cref="T:MySpace.PipelineTransport.PipelineStream"/> is being transported over.</param>
+            <param name="messageId">The message id.</param>
+            <returns>The newly instantiated stream.</returns>
+        </member>
+        <member name="M:MySpace.PipelineTransport.MessageIndex.Get(System.UInt32)">
+            <summary>
+            Gets an existing <see cref="T:MySpace.PipelineTransport.PipelineStream"/> from the container that matches the header.  If on is not already in the container,
+            adds a newly instantiated PipelineStream with the id found in the header, and stores the stream in the container.
+            </summary>
+            <param name="messageId">The message id.</param>
+            <returns>
+            A PipelineStream that matches the header.
+            </returns>
+        </member>
+        <member name="M:MySpace.PipelineTransport.MessageIndex.Remove(System.UInt32)">
+            <summary>
+            Removes a <see cref="T:MySpace.PipelineTransport.PipelineStream"/> from the container, if it exists, by message id.
+            </summary>
+            <param name="messageId">The message id of the PipelineStream to remove.</param>
+            <returns>The stream that was removed from the index, or null if the stream wasn't found.</returns>
+        </member>
+        <member name="M:MySpace.PipelineTransport.MessageIndex.TrimMemory">
+            <summary>
+            Trims the memory used by this message index.
+            </summary>
+        </member>
+        <member name="P:MySpace.PipelineTransport.MessageIndex.Count">
+            <summary>
+            Gets the count of messags contained in the index.
+            </summary>
+            <value>The count.</value>
+        </member>
+        <member name="T:MySpace.PipelineTransport.SocketBufferPool">
+            <summary>
+             A pool of buffers that are divided by processor core.  Buffers can be borrowed from a pool from one core and returned to a different core's pool.
+            </summary>
+        </member>
+        <member name="M:MySpace.PipelineTransport.WriterBufferPool.Clear">
+            <summary>
+            Clears all previously written bytes from the buffer pool.
+            </summary>
+        </member>
+    </members>
+</doc>

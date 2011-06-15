@@ -27,10 +27,19 @@ namespace MySpace.Common.IO
 
 	public static class Serializer
 	{
-		private const string _legacyMessageFormat = "Use of BinaryFormatter on object type {0}. Use an alternative type that is supported by the myspace serialization framework or email INFRASTRUCTURE_CORE to add support for this type. Enable Debug logging to view the stack-trace. This will tell you what the root object is.";
 		private static readonly LogWrapper _log = new LogWrapper();
 
 		private static readonly Pool<MemoryStream> _memoryPool;
+
+		private static string GetLegacyMessage(Type type, bool includeStackTrace)
+		{
+			var message = string.Format("Use of BinaryFormatter on object type {0}. Use an alternative type that is supported by the myspace serialization framework or email INFRASTRUCTURE_CORE to add support for this type.", type);
+			if (includeStackTrace)
+			{
+				message += "\r\n" + Environment.StackTrace;
+			}
+			return message;
+		}
 
 		static Serializer()
 		{
@@ -98,11 +107,7 @@ namespace MySpace.Common.IO
 
 		private static readonly Factory<Type, bool> _oneTimeLogger = Algorithm.LazyIndexer<Type, bool>(type =>
 		{
-			_log.WarnFormat(_legacyMessageFormat, type);
-			if (_log.IsDebugEnabled)
-			{
-				_log.Debug("StackTrace=" + Environment.StackTrace);
-			}
+			_log.WarnFormat(GetLegacyMessage(type, true));
 			return true;
 		});
 
@@ -139,7 +144,7 @@ namespace MySpace.Common.IO
 #if DEBUG
 			if (_suppressAlertCount == 0)
 			{
-				throw new InvalidOperationException(string.Format(_legacyMessageFormat, type));
+				throw new InvalidOperationException(GetLegacyMessage(type, false));
 			}
 #endif
 			_oneTimeLogger(type);
