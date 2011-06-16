@@ -33,7 +33,7 @@ namespace MySpace.DataRelay.RelayComponent.Forwarding
 		private Port<List<SerializedRelayMessage>> _inMessagesPort = new Port<List<SerializedRelayMessage>>();
 		private Port<SerializedRelayMessage> _inMessagePort = new Port<SerializedRelayMessage>();
 		private Port<MessagesWithLock> _outMessagesPort = new Port<MessagesWithLock>();
-		private int _maxQueueLength;
+		
 		private readonly BatchedQueue<SerializedRelayMessage> _batch;
 
 		internal string GetMessageQueueName()

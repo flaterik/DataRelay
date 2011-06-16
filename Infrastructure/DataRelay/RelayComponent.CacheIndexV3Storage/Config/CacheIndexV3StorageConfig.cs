@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using System.Collections.ObjectModel;
-using MySpace.BerkeleyDb.Configuration;
 using MySpace.DataRelay.Common.Interfaces.Query.IndexCacheV3;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Enums;
 using MySpace.Common.HelperObjects;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
 using System.Text;
+using MySpace.BerkeleyDb.Configuration;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
 {
@@ -420,7 +420,6 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config
 
         private void GetDefaultSortTagValue()
         {
-            byte[] retVal;
             if (!String.IsNullOrEmpty(DefaultSortTagValue))
             {
                 switch (sortOrderList[0].DataType)

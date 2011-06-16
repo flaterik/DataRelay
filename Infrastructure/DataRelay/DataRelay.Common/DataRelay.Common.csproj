@@ -355,7 +355,6 @@
     <Compile Include="Util\SmallDateTime.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Migrated rules for DataRelay.Common.ruleset" />
     <None Include="Configuration\RelayNodeConfig.xsd">
       <SubType>
       </SubType>

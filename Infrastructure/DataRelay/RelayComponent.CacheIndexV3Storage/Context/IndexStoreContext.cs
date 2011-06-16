@@ -3,20 +3,18 @@ using System.Configuration;
 using System.Text;
 using System.Threading;
 using System.Collections.Generic;
-using MySpace.BerkeleyDb.Configuration;
 using MySpace.DataRelay.Common.Schemas;
 using MySpace.DataRelay.Configuration;
-using MySpace.DataRelay.RelayComponent.BerkeleyDb;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Config;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.DomainSpecificConfigs;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.PerfCounters;
 using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Utils;
 using MySpace.DataRelay.RelayComponent.Forwarding;
-using MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Enums;
-using MySpace.BinaryStorage.Store;
 using MySpace.Storage;
 using MySpace.ResourcePool;
 using System.IO;
+using MySpace.BerkeleyDb.Configuration;
+using MySpace.BinaryStorage.Store;
 
 namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Context
 {
