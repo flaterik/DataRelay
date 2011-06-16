@@ -83,52 +83,57 @@
   <Choose>
     <When Condition="$(Platform)!='x64'">
       <ItemGroup>
-        <Reference Include="MySpace.BerkeleyDb.Configuration.win32, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Configuration.win32.dll</HintPath>
-        </Reference>
-        <Reference Include="MySpace.BerkeleyDb.Facade.win32, Version=1.0.0.1, Culture=neutral, processorArchitecture=MSIL">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Facade.win32.dll</HintPath>
-        </Reference>
-        <Reference Include="MySpace.BerkeleyDb.Wrapper.win32, Version=1.0.2718.25488, Culture=neutral, processorArchitecture=x86">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.win32.dll</HintPath>
-        </Reference>
-        <Reference Include="MySpace.BerkeleyDb.Wrapper.Common.win32, Version=1.0.2718.25488, Culture=neutral, processorArchitecture=x86">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.Common.win32.dll</HintPath>
-        </Reference>
-        <Reference Include="MySpace.BinaryStorage.BerkeleyBinaryStore.win32, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BinaryStorage.BerkeleyBinaryStore.win32.dll</HintPath>
-        </Reference>
+				<Reference Include="MySpace.BerkeleyDb.Wrapper.win32.exe">
+					<SpecificVersion>False</SpecificVersion>
+					<HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.win32.exe</HintPath>
+				</Reference>			        
       </ItemGroup>
+			<Choose>
+				<When Condition="$(Configuration)!='Debug'">
+					<ItemGroup>
+						<Reference Include="MySpace.BinaryStorage.BerkeleyBinaryStore.win32">
+							<SpecificVersion>False</SpecificVersion>
+							<HintPath>..\..\..\_drop\MySpace.BinaryStorage.BerkeleyBinaryStore.win32.dll</HintPath>
+						</Reference>
+					</ItemGroup>
+				</When>
+				<When Condition="$(Configuration)=='Debug'">
+					<ItemGroup>
+						<Reference Include="MySpace.BinaryStorage.BerkeleyBinaryStore.debug.win32">
+							<SpecificVersion>False</SpecificVersion>
+							<HintPath>..\..\..\_drop\MySpace.BinaryStorage.BerkeleyBinaryStore.debug.win32.dll</HintPath>
+						</Reference>
+					</ItemGroup>
+				</When>
+			</Choose>
     </When>
     <When Condition="$(Platform)=='x64'">
       <ItemGroup>
-        <Reference Include="MySpace.BerkeleyDb.Configuration.x64, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Configuration.x64.dll</HintPath>
-        </Reference>
-        <Reference Include="MySpace.BerkeleyDb.Facade.x64, Version=1.0.0.1, Culture=neutral, processorArchitecture=MSIL">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Facade.x64.dll</HintPath>
-        </Reference>
-        <Reference Include="MySpace.BerkeleyDb.Wrapper.x64, Version=1.0.2718.25488, Culture=neutral, processorArchitecture=x64">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.x64.dll</HintPath>
-        </Reference>
-        <Reference Include="MySpace.BerkeleyDb.Wrapper.Common.x64, Version=1.0.2718.25488, Culture=neutral, processorArchitecture=x64">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.Common.x64.dll</HintPath>
-        </Reference>
-        <Reference Include="MySpace.BinaryStorage.BerkeleyBinaryStore.x64, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\..\..\_drop\MySpace.BinaryStorage.BerkeleyBinaryStore.x64.dll</HintPath>
-        </Reference>
+				<Reference Include="MySpace.BerkeleyDb.Wrapper.x64.exe">
+					<SpecificVersion>False</SpecificVersion>
+					<HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.x64.exe</HintPath>
+				</Reference>        
       </ItemGroup>
+			<Choose>
+				<When Condition="$(Configuration)!='Debug'">
+					<ItemGroup>
+						<Reference Include="MySpace.BinaryStorage.BerkeleyBinaryStore.x64">
+							<SpecificVersion>False</SpecificVersion>
+							<HintPath>..\..\..\_drop\MySpace.BinaryStorage.BerkeleyBinaryStore.x64.dll</HintPath>
+						</Reference>
+					</ItemGroup>
+				</When>
+				<When Condition="$(Configuration)=='Debug'">
+					<ItemGroup>
+						<Reference Include="MySpace.BinaryStorage.BerkeleyBinaryStore.debug.x64">
+							<SpecificVersion>False</SpecificVersion>
+							<HintPath>..\..\..\_drop\MySpace.BinaryStorage.BerkeleyBinaryStore.debug.x64.dll</HintPath>
+						</Reference>
+					</ItemGroup>
+				</When>
+			</Choose>
     </When>
+		
   </Choose>
   <ItemGroup>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
@@ -137,24 +142,27 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\MySpace.BinaryStorage.SmartStream.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.DataRelay.NodeFactory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.DataRelay.NodeFactory">
       <HintPath>..\..\..\_drop\MySpace.DataRelay.NodeFactory.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.DataRelay.RelayComponent.BerkeleyDb, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.DataRelay.RelayComponent.BerkeleyDb">
       <HintPath>..\..\..\_drop\MySpace.DataRelay.RelayComponent.BerkeleyDb.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.DataRelay.RelayComponent.Forwarding, Version=1.2.1.4, Culture=neutral, processorArchitecture=AMD64">
+		<Reference Include="MySpace.BerkeleyDb.Wrapper.Common">
+			<HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.Common.dll</HintPath>
+		</Reference>
+    <Reference Include="MySpace.DataRelay.RelayComponent.Forwarding">
       <HintPath>..\..\..\_drop\MySpace.DataRelay.RelayComponent.Forwarding.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.ResourcePool, Version=1.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.ResourcePool">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\MySpace.ResourcePool.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.Shared">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\MySpace.Shared.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.Storage, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.Storage">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\MySpace.Storage.dll</HintPath>
     </Reference>
@@ -162,7 +170,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\PowerCollections.dll</HintPath>
     </Reference>
-    <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="MySpace.Logging">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\_drop\MySpace.Logging.dll</HintPath>
     </Reference>

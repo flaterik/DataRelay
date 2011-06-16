@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema  id="StreamRecencyConfig" elementFormDefault="qualified" targetNamespace="http://myspace.com/StreamRecencyConfig.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:mstns="http://myspace.com/StreamRecencyConfig.xsd">
+	<xs:element name="StreamRecencyConfig">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="InitialRecencyValue" />
+				<xs:element name="TimeStampTagName" />
+				<xs:element name="TypeTagName" />
+				<xs:element name="DefaultDecay" />
+				<xs:element name="TypeDecayMappingCollection">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element maxOccurs="unbounded" name="TypeDecayMapping">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="Type" />
+										<xs:element name="Decay" />
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

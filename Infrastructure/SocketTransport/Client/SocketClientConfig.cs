@@ -232,6 +232,9 @@ namespace MySpace.SocketTransport
 			return copy;
 		}
 
+		/// <summary>
+		/// Provides a summary of this settings instance
+		/// </summary>
 		public override string ToString()
 		{
 			return string.Format("Buffer Reuses: {0} Connect Timeout: {1} InitialMessageSize: {2} Maximum Reply Message Size: {3} Pool Size: {4} Pool Type: {5} Receive Buffer Size: {6} Receive Timeout: {7} Send Buffer Size: {8} Send Timeout: {9} Socket Lifetime Minutes: {10} Use Network Order: {11} Request One Way Ack: {12}  Request Server Capabilities: {13}", 

@@ -536,7 +536,7 @@ namespace MySpace.DataRelay.RelayComponent.CacheIndexV3Storage.Processors
 
                     byte[] payload;
                     CompactBinaryWriter writer;
-                    RelayMessage indexStorageMessage;
+                    
                     byte[] extendedId;
 
                     PayloadStorage bdbEntryHeaed = new PayloadStorage

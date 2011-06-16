@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{7BCB6277-D6C4-4169-9C79-34CAD9AF92C1}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MySpace.BinaryStorage.Store</RootNamespace>
+    <AssemblyName>MySpace.BinaryStorage.BerkeleyBinaryStore.x64</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <FileUpgradeFlags></FileUpgradeFlags>
+    <UpgradeBackupLocation></UpgradeBackupLocation>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AssemblyName>MySpace.BinaryStorage.BerkeleyBinaryStore.debug.win32</AssemblyName>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AssemblyName>MySpace.BinaryStorage.BerkeleyBinaryStore.win32</AssemblyName>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <AssemblyName>MySpace.BinaryStorage.BerkeleyBinaryStore.x64</AssemblyName>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <OutputPath>..\..\..\_drop\</OutputPath>
+    <AssemblyName>MySpace.BinaryStorage.BerkeleyBinaryStore.debug.x64</AssemblyName>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+		<Reference Include="MySpace.BerkeleyDb.Wrapper.Common">
+			<HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.Common.dll</HintPath>
+		</Reference>
+		<Reference Include="MySpace.BerkeleyDb.Facade">
+			<HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Facade.dll</HintPath>
+		</Reference>
+    <Reference Include="MySpace.ResourcePool, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.ResourcePool.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Storage, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Storage.dll</HintPath>
+    </Reference>
+    <Reference Include="MySpace.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\_drop\MySpace.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <Choose>
+    <When Condition="$(Platform)!='x64'">
+      <ItemGroup>
+				<Reference Include="MySpace.BerkeleyDb.Wrapper.win32.exe">
+					<SpecificVersion>False</SpecificVersion>
+					<HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.win32.exe</HintPath>
+				</Reference>
+      </ItemGroup>
+      <Choose>
+        <When Condition="$(Configuration)!='Debug'">
+          <ItemGroup>
+            <Content Include="..\..\..\_drop\libdb47.win32.dll">
+              <Link>libdb47.win32.dll</Link>
+              <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </Content>
+          </ItemGroup>
+        </When>
+        <When Condition="$(Configuration)=='Debug'">
+          <ItemGroup>
+            <Content Include="..\..\BerkeleyDb\BerkeleyDb.Wrapper\LibDb.Debug\libdb47.Debug.win32.dll">
+              <Link>libdb47.Debug.win32.dll</Link>
+              <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </Content>
+          </ItemGroup>
+        </When>
+      </Choose>
+    </When>
+    <When Condition="$(Platform)=='x64'">
+      <ItemGroup>
+				<Reference Include="MySpace.BerkeleyDb.Wrapper.x64.exe">
+					<SpecificVersion>False</SpecificVersion>
+					<HintPath>..\..\..\_drop\MySpace.BerkeleyDb.Wrapper.x64.exe</HintPath>
+				</Reference>
+      </ItemGroup>
+      <Choose>
+        <When Condition="$(Configuration)!='Debug'">
+          <ItemGroup>
+            <Content Include="..\..\..\_drop\libdb47.x64.dll">
+              <Link>libdb47.x64.dll</Link>
+              <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </Content>
+          </ItemGroup>
+        </When>
+        <When Condition="$(Configuration)=='Debug'">
+          <ItemGroup>
+            <Content Include="..\..\..\_drop\libdb47.Debug.x64.dll">
+              <Link>libdb47.Debug.x64.dll</Link>
+              <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </Content>
+          </ItemGroup>
+        </When>
+      </Choose>
+    </When>
+  </Choose>
+  <ItemGroup>
+    <Compile Include="BerkeleyBinaryStore.cs" />
+    <Compile Include="PerformanceCounterConstant.cs" />
+    <Compile Include="PerformanceCounters.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

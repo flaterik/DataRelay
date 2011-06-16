@@ -48,10 +48,10 @@ namespace MySpace.SocketTransport
       private readonly object padLock = new object();
 
       private LinkedManagedSocket nextSocket;
-      Thread t = null;
-      private int spareSockets = 0;
-      private const int minWaitingSockets = 3;
-      private static int endpoints = 0;
+      
+      private int spareSockets;
+      
+      private static int endpoints;
       private static object endLock = new object();
 
 
@@ -70,11 +70,7 @@ namespace MySpace.SocketTransport
             socketLimiter = new Semaphore(settings.PoolSize, settings.PoolSize);
             socketLimiterValue = settings.PoolSize;
          }
-         else
-         {
-            //t = new Thread(new ThreadStart(PoolFiller));
-            //t.Start();
-         }
+        
          connectTimeout = settings.ConnectTimeout;
       }
 
@@ -88,26 +84,14 @@ namespace MySpace.SocketTransport
                List<LinkedManagedSocket> disposeList = null;
                lock (padLock)
                {
-                  //// count the number left
-                  //LinkedManagedSocket socketPointer = nextSocket;
-                  //int counter = 0;
-                  //while (socketPointer != null)
-                  //{
-                  //   socketPointer = socketPointer.Next;
-                  //   counter++;
-                  //}
-                  //log.InfoFormat("{0} has {1} spares at start", destination, counter);
-
                   LinkedManagedSocket socketPointer = nextSocket;
                   while (socketPointer != null)
                   {
                      if (SocketAgedOut(socketPointer))
                      {
-                        //log.InfoFormat("removing aged out socket to destination {0}, socket {1}", destination, socketPointer.Handle);
+                
                         LinkedManagedSocket expiredSocket = socketPointer;
                         socketPointer = socketPointer.Next;
-                        //if (expiredSocket == null)
-                        //   log.InfoFormat("expiredSocket was null");
                         PullSocketFromRotation(expiredSocket);
                         spareSockets--;
                         if (disposeList == null) disposeList = new List<LinkedManagedSocket>();
@@ -116,16 +100,6 @@ namespace MySpace.SocketTransport
                      else
                         socketPointer = socketPointer.Next;
                   }
-
-                  //// count the number left
-                  //socketPointer = nextSocket;
-                  //counter = 0;
-                  //while (socketPointer != null)
-                  //{
-                  //   socketPointer = socketPointer.Next;
-                  //   counter++;
-                  //}
-                  //log.InfoFormat("{0} has {1} spares after", destination, counter);
                }
                if (disposeList != null) disposeList.ForEach(expiredSocket => DisposeSocket(expiredSocket, false));
             }
@@ -135,53 +109,6 @@ namespace MySpace.SocketTransport
             }
          } while (true);
       }
-
-      //public void PoolFiller()
-      //{
-      //   do
-      //   {
-      //      Thread.Sleep(60000);
-      //      try
-      //      {
-      //         int spares = 0;
-      //         lock (padLock)
-      //         {
-      //            spares = spareSockets;
-      //            //if ((spares = spareSockets) < 0)
-      //            //   spares = spareSockets = 0;
-      //         }
-
-      //         while (spares < minFreeSocket)
-      //         {
-      //            log.InfoFormat("only {0} spares for pool {1}.  activeSocketCount:{2}, total endpoint: {3}", spares, destination, activeSocketCount, endpoints);
-
-      //            var socket = BuildSocket();
-      //            socket.Idle = true;
-
-      //            lock (padLock)
-      //            {
-      //               if (nextSocket == null)
-      //               {
-      //                  nextSocket = (LinkedManagedSocket)socket;
-      //               }
-      //               else
-      //               {
-      //                  LinkedManagedSocket newNextSocket = (LinkedManagedSocket)socket;
-      //                  LinkedManagedSocket currentNextSocket = nextSocket;
-      //                  newNextSocket.Next = currentNextSocket;
-      //                  nextSocket = newNextSocket;
-      //               }
-      //               ++spareSockets;
-      //               log.InfoFormat("Created spare socket {0}", spares);
-      //            }
-      //         }
-      //      }
-      //      catch (Exception ex)
-      //      {
-      //         log.InfoFormat("poolfiller exception {0}", ex.Message);
-      //      }
-      //   } while (true);
-      //}
 
       private LinkedManagedSocket BuildSocket()
       {
@@ -349,33 +276,30 @@ namespace MySpace.SocketTransport
          {
             try
             {
-               //log.InfoFormat("{0}Checking socket idle for socket {1}", destination, socket.Handle);
                if (!socket.Idle)
                {
                   exitLimiter = true;
                   Interlocked.Decrement(ref activeSocketCount);
                }
-               //log.InfoFormat("{0}pull from rotation for socket {1}", destination, socket.Handle);
+               
                if (pullFromRotation)
                {
                   PullSocketFromRotation((LinkedManagedSocket)socket);
                }
-               //log.InfoFormat("{0}setting idle for socket {1}", destination, socket.Handle);
+               
                socket.Idle = false;
                Interlocked.Decrement(ref socketCount);
 
                lock (setLock)
                {
-                  //log.InfoFormat("{0}Removing socket {1}", destination, socket.Handle);
                   sockets.Remove((LinkedManagedSocket)socket);
                }
 
                if (socket.Connected)
                {
-                  //log.InfoFormat("{0}Shuttign down socket {1}", destination, socket.Handle);
                   socket.Shutdown(SocketShutdown.Both);
                }
-               //log.InfoFormat("{0}Closign socket {1}", destination, socket.Handle);
+               
                socket.Close();
             }
             catch (SocketException)
@@ -405,7 +329,6 @@ namespace MySpace.SocketTransport
             {
                if (socket == nextSocket)
                {
-                  //log.InfoFormat("{0} pulling socket {1} from head", destination, socket.Handle);
                   nextSocket = nextSocket.Next;
                   spareSockets--;
                }
@@ -420,7 +343,6 @@ namespace MySpace.SocketTransport
                   }
                   if (pointer == socket && prevPointer != null && pointer != null)
                   {
-                     //log.InfoFormat("{0} pulling socket {1} from middle", destination, pointer.Handle);
                      prevPointer.Next = pointer.Next; //skip over it!
                      spareSockets--;
                   }
